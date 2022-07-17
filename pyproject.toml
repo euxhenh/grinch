@@ -1,0 +1,27 @@
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+line_length = 79
+profile = "black"
+force_to_top = ["prelude"]
+
+skip=['.bzr',
+      '.direnv',
+      '.eggs',
+      '.git',
+      '.hg',
+      '.mypy_cache',
+      '.nox',
+      '.pants.d',
+      '.svn',
+      '.tox',
+      '.venv',
+      '_build',
+      'buck-out',
+      'build',
+      'dist',
+      'node_modules',
+      'venv',
+      'python_venv']
+skip_gitignore=true

@@ -1,0 +1,9 @@
+include LICENSE
+include MANIFEST.in
+include pyproject.toml
+include README.md
+include tests/*.py
+include requirements.txt
+
+exclude .git*
+prune .github
