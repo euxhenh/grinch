@@ -9,7 +9,7 @@ from sklearn.utils.validation import (
     check_non_negative,
 )
 
-from .aliases import ADK
+from .aliases import OBS, VAR
 from .conf import BaseConfigurable
 from .utils import any_not_None, true_inside
 
@@ -34,6 +34,7 @@ class BaseFilter(BaseConfigurable):
             ensure_min_features=2,
             ensure_min_samples=2,
         )
+        # Make sure there are no negative counts
         check_non_negative(adata.X, f'{self.__class__.__name__}')
 
         if not self.cfg.inplace:
@@ -63,7 +64,7 @@ class FilterCells(BaseFilter):
         # Keep all cells by default
         to_keep = np.ones(adata.shape[0], dtype=bool)
 
-        counts_per_cell = adata.X.sum(axis=1)
+        counts_per_cell = np.ravel(adata.X.sum(axis=1))
         if any_not_None(self.cfg.min_counts, self.cfg.max_counts):
             to_keep &= true_inside(
                 counts_per_cell,
@@ -72,7 +73,7 @@ class FilterCells(BaseFilter):
             )
 
         # Values are ensured to be non-negative
-        genes_per_cell = (adata.X > 0).sum(axis=1)
+        genes_per_cell = np.ravel((adata.X > 0).sum(axis=1))
         if any_not_None(self.cfg.min_genes, self.cfg.max_genes):
             to_keep &= true_inside(
                 genes_per_cell,
@@ -87,8 +88,8 @@ class FilterCells(BaseFilter):
             )
 
         # Set these after the exception above
-        adata.obs[ADK.N_COUNTS] = counts_per_cell
-        adata.obs[ADK.N_GENES] = genes_per_cell
+        adata.obs[OBS.N_COUNTS] = counts_per_cell
+        adata.obs[OBS.N_GENES] = genes_per_cell
 
         adata._inplace_subset_obs(to_keep)
 
@@ -113,7 +114,7 @@ class FilterGenes(BaseFilter):
         # Keep all genes by default
         to_keep = np.ones(adata.shape[1], dtype=bool)
 
-        counts_per_gene = adata.X.sum(axis=0)
+        counts_per_gene = np.ravel(adata.X.sum(axis=0))
         if any_not_None(self.cfg.min_counts, self.cfg.max_counts):
             to_keep &= true_inside(
                 counts_per_gene,
@@ -122,7 +123,7 @@ class FilterGenes(BaseFilter):
             )
 
         # Values are ensured to be non-negative
-        cells_per_gene = (adata.X > 0).sum(axis=0)
+        cells_per_gene = np.ravel((adata.X > 0).sum(axis=0))
         if any_not_None(self.cfg.min_cells, self.cfg.max_cells):
             to_keep &= true_inside(
                 cells_per_gene,
@@ -137,8 +138,8 @@ class FilterGenes(BaseFilter):
             )
 
         # Set these after the exception above
-        adata.var[ADK.N_COUNTS] = counts_per_gene
-        adata.var[ADK.N_CELLS] = cells_per_gene
+        adata.var[VAR.N_COUNTS] = counts_per_gene
+        adata.var[VAR.N_CELLS] = cells_per_gene
 
         adata._inplace_subset_var(to_keep)
 
