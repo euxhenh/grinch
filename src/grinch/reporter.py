@@ -24,5 +24,4 @@ class Reporter:
         self.counter: int = 0
 
     def log(self, report: Report):
-        rep = report.dict(exclude_none=True)
-        print(rep)
+        rep = report.dict(exclude_none=True)  # noqa

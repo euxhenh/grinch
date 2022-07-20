@@ -2,12 +2,13 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sp
-from _utils import assert_allclose, parametrize, to_view
 from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
 from grinch import OBS, VAR
+
+from ._utils import assert_allclose, parametrize, to_view
 
 X = np.array([
     [1.0, 4, 0, 2],
@@ -29,7 +30,9 @@ class TestFilterCells(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[[0, 2]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.obs[OBS.N_COUNTS], [7, 13])
@@ -46,7 +49,9 @@ class TestFilterCells(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[[0, 1]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.obs[OBS.N_COUNTS], [7, 5])
@@ -64,7 +69,9 @@ class TestFilterCells(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[[0, 2]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.obs[OBS.N_COUNTS], [7, 13])
@@ -82,7 +89,9 @@ class TestFilterCells(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[[0, 1]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.obs[OBS.N_COUNTS], [7, 5])
@@ -101,7 +110,9 @@ class TestFilterCells(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[[0, 2]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.obs[OBS.N_COUNTS], [7, 13])
@@ -147,7 +158,9 @@ class TestFilterGenes(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[:, [1, 3]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.var[VAR.N_COUNTS], [9, 9])
@@ -164,7 +177,9 @@ class TestFilterGenes(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[:, [0, 2]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.var[VAR.N_COUNTS], [4, 3])
@@ -182,7 +197,9 @@ class TestFilterGenes(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[:, [0]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.var[VAR.N_COUNTS], [4])
@@ -200,7 +217,9 @@ class TestFilterGenes(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[:, [0, 2, 3]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.var[VAR.N_COUNTS], [4, 3, 9])
@@ -219,7 +238,9 @@ class TestFilterGenes(unittest.TestCase):
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
         adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
+        assert_allclose(X_original, X)
         X_filtered = X[:, [3]]
         assert_allclose(X_filtered, adata.X)
         assert_allclose(adata.var[VAR.N_COUNTS], [9])

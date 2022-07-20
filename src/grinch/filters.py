@@ -3,11 +3,8 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
-from pydantic import validate_arguments
-from sklearn.utils.validation import (
-    check_array,
-    check_non_negative,
-)
+from pydantic import Field, validate_arguments
+from sklearn.utils.validation import check_array, check_non_negative
 
 from .aliases import OBS, VAR
 from .conf import BaseConfigurable
@@ -27,7 +24,7 @@ class BaseFilter(BaseConfigurable):
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> Optional[AnnData]:
-        check_array(
+        _ = check_array(
             adata.X,
             accept_sparse=True,
             ensure_2d=True,
@@ -53,10 +50,10 @@ class FilterCells(BaseFilter):
     """Filters cells based on counts and number of expressed genes."""
 
     class Config(BaseFilter.Config):
-        min_counts: Optional[float] = None
-        max_counts: Optional[float] = None
-        min_genes: Optional[int] = None
-        max_genes: Optional[int] = None
+        min_counts: Optional[float] = Field(None, ge=0)
+        max_counts: Optional[float] = Field(None, ge=0)
+        min_genes: Optional[int] = Field(None, ge=0)
+        max_genes: Optional[int] = Field(None, ge=0)
 
     cfg: Config
 
@@ -88,8 +85,8 @@ class FilterCells(BaseFilter):
             )
 
         # Set these after the exception above
-        adata.obs[OBS.N_COUNTS] = counts_per_cell
-        adata.obs[OBS.N_GENES] = genes_per_cell
+        adata.obs[OBS.N_COUNTS] = counts_per_cell.astype(np.float32)
+        adata.obs[OBS.N_GENES] = genes_per_cell.astype(np.float32)
 
         adata._inplace_subset_obs(to_keep)
 
@@ -103,10 +100,10 @@ class FilterGenes(BaseFilter):
     """Filters cells based on counts and number of expressed genes."""
 
     class Config(BaseFilter.Config):
-        min_counts: Optional[float] = None
-        max_counts: Optional[float] = None
-        min_cells: Optional[int] = None
-        max_cells: Optional[int] = None
+        min_counts: Optional[float] = Field(None, ge=0)
+        max_counts: Optional[float] = Field(None, ge=0)
+        min_cells: Optional[int] = Field(None, ge=0)
+        max_cells: Optional[int] = Field(None, ge=0)
 
     cfg: Config
 
@@ -138,8 +135,8 @@ class FilterGenes(BaseFilter):
             )
 
         # Set these after the exception above
-        adata.var[VAR.N_COUNTS] = counts_per_gene
-        adata.var[VAR.N_CELLS] = cells_per_gene
+        adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
+        adata.var[VAR.N_CELLS] = cells_per_gene.astype(np.float32)
 
         adata._inplace_subset_var(to_keep)
 

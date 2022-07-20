@@ -1,3 +1,4 @@
+import argparse
 import os
 import warnings
 
@@ -28,5 +29,9 @@ def instantiate_config(config_name):
     return instantiate(cfg, _convert_='all')
 
 
+parser = argparse.ArgumentParser(description="DE gene and enrichment toolbox.")
+parser.add_argument('conf', metavar='C', type=str, help="path to config file")
+
 if __name__ == "__main__":
-    obj = instantiate_config('preprocessing')
+    args = parser.parse_args()
+    obj = instantiate_config(args.conf)
