@@ -1,5 +1,5 @@
-from functools import reduce, wraps
-from itertools import chain, combinations, product
+from functools import reduce
+from itertools import chain, combinations
 from typing import Callable
 
 import numpy as np
@@ -30,31 +30,6 @@ def compose(functions) -> Callable:
     if len(functions) == 0:
         return identity
     return reduce(lambda f, g: lambda x: g(f(x)), functions, identity)
-
-
-def parametrize(param_list, to_apply=None):
-    """Applies all combinations of params and functions in to_apply.
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self):
-            for params in param_list:
-                if to_apply is None:
-                    func(self, params)
-                    return
-
-                try:
-                    apply_iter = list(iter(to_apply))
-                except TypeError:
-                    apply_iter = [to_apply]
-
-                for params, function in product(param_list, apply_iter):
-                    params = function(params)
-                    with self.subTest(params):
-                        func(self, params)
-
-        return wrapper
-    return decorator
 
 
 def to_view(x):
