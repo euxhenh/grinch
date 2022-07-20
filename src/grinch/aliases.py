@@ -10,14 +10,22 @@ class auto:
 
 
 class AnnDataKeys:
-    N_COUNTS = auto()
-    N_GENES = auto()
-    N_CELLS = auto()
+    class OBS:
+        N_COUNTS = auto()
+        N_GENES = auto()
+        LABEL = auto()
 
-    LABEL = auto()
-    X_EMB = auto()
-    X_EMB_2D = auto()
+    class VAR:
+        N_COUNTS = auto()
+        N_CELLS = auto()
+
+    class OBSM:
+        X_EMB = auto()
+        X_EMB_2D = auto()
 
 
-# Create a shorter alias, since this will be used a lot
+# Create shorter aliases, since these will be used a lot
 ADK = AnnDataKeys
+OBS = AnnDataKeys.OBS
+VAR = AnnDataKeys.VAR
+OBSM = AnnDataKeys.OBSM

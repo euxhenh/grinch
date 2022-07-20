@@ -1,22 +1,26 @@
 import unittest
 
 import numpy as np
+import scipy.sparse as sp
 from anndata import AnnData
 from hydra.utils import instantiate
-from numpy.testing import assert_allclose
 from omegaconf import OmegaConf
 
-from grinch import ADK
+from grinch import OBS, VAR
+
+from ._utils import assert_allclose, parametrize, to_view
+
+X = np.array([
+    [1.0, 4, 0, 2],
+    [0, 3, 2, 0],
+    [3, 2, 1, 7.0],
+], dtype=np.float32)
 
 
 class TestFilterCells(unittest.TestCase):
-    X = np.array([
-        [1.0, 4, 0, 2],
-        [0, 3, 2, 0],
-        [3, 2, 1, 7.0],
-    ], dtype=np.float32)
 
-    def test_min_counts(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_min_counts(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterCells.Config",
@@ -25,14 +29,17 @@ class TestFilterCells(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
-        X_filtered = self.X[[0, 2]]
+        assert_allclose(X_original, X)
+        X_filtered = X[[0, 2]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.obs[ADK.N_COUNTS], [7, 13])
-        assert_allclose(adata.obs[ADK.N_GENES], [3, 4])
+        assert_allclose(adata.obs[OBS.N_COUNTS], [7, 13])
+        assert_allclose(adata.obs[OBS.N_GENES], [3, 4])
 
-    def test_max_counts(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_max_counts(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterCells.Config",
@@ -41,14 +48,17 @@ class TestFilterCells(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
-        X_filtered = self.X[[0, 1]]
+        assert_allclose(X_original, X)
+        X_filtered = X[[0, 1]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.obs[ADK.N_COUNTS], [7, 5])
-        assert_allclose(adata.obs[ADK.N_GENES], [3, 2])
+        assert_allclose(adata.obs[OBS.N_COUNTS], [7, 5])
+        assert_allclose(adata.obs[OBS.N_GENES], [3, 2])
 
-    def test_min_max_counts(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_min_max_counts(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterCells.Config",
@@ -58,14 +68,17 @@ class TestFilterCells(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
-        X_filtered = self.X[[0, 2]]
+        assert_allclose(X_original, X)
+        X_filtered = X[[0, 2]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.obs[ADK.N_COUNTS], [7, 13])
-        assert_allclose(adata.obs[ADK.N_GENES], [3, 4])
+        assert_allclose(adata.obs[OBS.N_COUNTS], [7, 13])
+        assert_allclose(adata.obs[OBS.N_GENES], [3, 4])
 
-    def test_min_max_genes(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_min_max_genes(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterCells.Config",
@@ -75,14 +88,17 @@ class TestFilterCells(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
-        X_filtered = self.X[[0, 1]]
+        assert_allclose(X_original, X)
+        X_filtered = X[[0, 1]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.obs[ADK.N_COUNTS], [7, 5])
-        assert_allclose(adata.obs[ADK.N_GENES], [3, 2])
+        assert_allclose(adata.obs[OBS.N_COUNTS], [7, 5])
+        assert_allclose(adata.obs[OBS.N_GENES], [3, 2])
 
-    def test_all(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_all(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterCells.Config",
@@ -93,14 +109,17 @@ class TestFilterCells(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_cells(adata)
-        X_filtered = self.X[[0, 2]]
+        assert_allclose(X_original, X)
+        X_filtered = X[[0, 2]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.obs[ADK.N_COUNTS], [7, 13])
-        assert_allclose(adata.obs[ADK.N_GENES], [3, 4])
+        assert_allclose(adata.obs[OBS.N_COUNTS], [7, 13])
+        assert_allclose(adata.obs[OBS.N_GENES], [3, 4])
 
-    def test_inplace(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_inplace(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterCells.Config",
@@ -112,13 +131,13 @@ class TestFilterCells(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_cells = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
         adata_new = filter_cells(adata)
-        X_filtered = self.X[[0, 2]]
-        assert_allclose(self.X, adata.X)
+        X_filtered = X[[0, 2]]
+        assert_allclose(X, adata.X)
         assert_allclose(X_filtered, adata_new.X)
-        assert_allclose(adata_new.obs[ADK.N_COUNTS], [7, 13])
-        assert_allclose(adata_new.obs[ADK.N_GENES], [3, 4])
+        assert_allclose(adata_new.obs[OBS.N_COUNTS], [7, 13])
+        assert_allclose(adata_new.obs[OBS.N_GENES], [3, 4])
 
 
 class TestFilterGenes(unittest.TestCase):
@@ -128,7 +147,8 @@ class TestFilterGenes(unittest.TestCase):
         [3, 2, 1, 7.0],
     ], dtype=np.float32)
 
-    def test_min_counts(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_min_counts(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterGenes.Config",
@@ -137,14 +157,17 @@ class TestFilterGenes(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
-        X_filtered = self.X[:, [1, 3]]
+        assert_allclose(X_original, X)
+        X_filtered = X[:, [1, 3]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.var[ADK.N_COUNTS], [9, 9])
-        assert_allclose(adata.var[ADK.N_CELLS], [3, 2])
+        assert_allclose(adata.var[VAR.N_COUNTS], [9, 9])
+        assert_allclose(adata.var[VAR.N_CELLS], [3, 2])
 
-    def test_max_counts(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_max_counts(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterGenes.Config",
@@ -153,14 +176,17 @@ class TestFilterGenes(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
-        X_filtered = self.X[:, [0, 2]]
+        assert_allclose(X_original, X)
+        X_filtered = X[:, [0, 2]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.var[ADK.N_COUNTS], [4, 3])
-        assert_allclose(adata.var[ADK.N_CELLS], [2, 2])
+        assert_allclose(adata.var[VAR.N_COUNTS], [4, 3])
+        assert_allclose(adata.var[VAR.N_CELLS], [2, 2])
 
-    def test_min_max_counts(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_min_max_counts(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterGenes.Config",
@@ -170,14 +196,17 @@ class TestFilterGenes(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
-        X_filtered = self.X[:, [0]]
+        assert_allclose(X_original, X)
+        X_filtered = X[:, [0]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.var[ADK.N_COUNTS], [4])
-        assert_allclose(adata.var[ADK.N_CELLS], [2])
+        assert_allclose(adata.var[VAR.N_COUNTS], [4])
+        assert_allclose(adata.var[VAR.N_CELLS], [2])
 
-    def test_min_max_genes(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_min_max_genes(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterGenes.Config",
@@ -187,14 +216,17 @@ class TestFilterGenes(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
-        X_filtered = self.X[:, [0, 2, 3]]
+        assert_allclose(X_original, X)
+        X_filtered = X[:, [0, 2, 3]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.var[ADK.N_COUNTS], [4, 3, 9])
-        assert_allclose(adata.var[ADK.N_CELLS], [2, 2, 2])
+        assert_allclose(adata.var[VAR.N_COUNTS], [4, 3, 9])
+        assert_allclose(adata.var[VAR.N_CELLS], [2, 2, 2])
 
-    def test_all(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_all(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterGenes.Config",
@@ -205,14 +237,17 @@ class TestFilterGenes(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
+        X_original = adata.X.copy()
         filter_genes(adata)
-        X_filtered = self.X[:, [3]]
+        assert_allclose(X_original, X)
+        X_filtered = X[:, [3]]
         assert_allclose(X_filtered, adata.X)
-        assert_allclose(adata.var[ADK.N_COUNTS], [9])
-        assert_allclose(adata.var[ADK.N_CELLS], [2])
+        assert_allclose(adata.var[VAR.N_COUNTS], [9])
+        assert_allclose(adata.var[VAR.N_CELLS], [2])
 
-    def test_inplace(self):
+    @parametrize([X], to_apply=[sp.csr_matrix, sp.csc_matrix, to_view])
+    def test_inplace(self, X):
         cfg = OmegaConf.create(
             {
                 "_target_": "src.grinch.filters.FilterGenes.Config",
@@ -224,10 +259,10 @@ class TestFilterGenes(unittest.TestCase):
         )
         cfg = instantiate(cfg)
         filter_genes = cfg.initialize()
-        adata = AnnData(self.X)
+        adata = AnnData(X)
         adata_new = filter_genes(adata)
-        X_filtered = self.X[:, [1]]
-        assert_allclose(self.X, adata.X)
+        X_filtered = X[:, [1]]
+        assert_allclose(X, adata.X)
         assert_allclose(X_filtered, adata_new.X)
-        assert_allclose(adata_new.var[ADK.N_COUNTS], [9])
-        assert_allclose(adata_new.var[ADK.N_CELLS], [3])
+        assert_allclose(adata_new.var[VAR.N_COUNTS], [9])
+        assert_allclose(adata_new.var[VAR.N_CELLS], [3])
