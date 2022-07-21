@@ -7,13 +7,13 @@ import scipy.sparse as sp
 from numpy.testing import assert_allclose as _assert_allclose
 
 
-def assert_allclose(x1, x2):
+def assert_allclose(x1, x2, **kwargs):
     """Check if assert_allclose(x1, x2) and convert to numpy if sparse."""
     if sp.issparse(x1):
         x1 = x1.toarray()
     if sp.issparse(x2):
         x2 = x2.toarray()
-    _assert_allclose(x1, x2)
+    _assert_allclose(x1, x2, **kwargs)
 
 
 def powerset(iterable):

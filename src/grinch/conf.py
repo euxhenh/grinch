@@ -97,7 +97,7 @@ class BaseConfig(BaseModel):
 class BaseConfigurable(_BaseConfigurable):
 
     class Config(BaseConfig):
-        seed: Optional[int] = Field(None, exclude=True)
+        seed: Optional[int] = None
         sanity_check: bool = Field(False, exclude=True)
 
     cfg: Config

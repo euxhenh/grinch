@@ -34,4 +34,4 @@ parser.add_argument('conf', metavar='C', type=str, help="path to config file")
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    obj = instantiate_config(args.conf)
+    cfg = instantiate_config(args.conf)

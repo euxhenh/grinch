@@ -1,4 +1,4 @@
-_target_: src.grinch.filters.FilterCells.Config
+_target_: src.grinch.FilterCells.Config
 
 min_counts: 3
 min_genes: 50

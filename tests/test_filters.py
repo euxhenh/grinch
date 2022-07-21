@@ -16,7 +16,7 @@ X = np.array([
 ], dtype=np.float32)
 
 
-X_mods = [sp.csr_matrix(X), sp.csc_matrix(X), to_view(X)]
+X_mods = [X, sp.csr_matrix(X), sp.csc_matrix(X), to_view(X)]
 
 
 @pytest.mark.parametrize("X", X_mods)
