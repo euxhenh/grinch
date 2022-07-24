@@ -5,3 +5,4 @@ anndata
 scipy
 scikit-learn
 rich
+umap-learn
