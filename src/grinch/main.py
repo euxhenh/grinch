@@ -1,9 +1,19 @@
 import argparse
+import logging
 import os
 import warnings
 
 import hydra
 from hydra.utils import instantiate
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[RichHandler(omit_repeated_times=False, rich_tracebacks=True)],
+)
+logging.captureWarnings(True)
+
 
 try:
     import grinch
@@ -24,7 +34,7 @@ CONF_DIR = os.path.abspath(CONF_DIR)
 
 def instantiate_config(config_name):
     # context initialization
-    with hydra.initialize_config_dir(config_dir=CONF_DIR):
+    with hydra.initialize_config_dir(version_base=None, config_dir=CONF_DIR):
         cfg = hydra.compose(config_name=config_name)
     return instantiate(cfg, _convert_='all')
 
@@ -34,4 +44,4 @@ parser.add_argument('conf', metavar='C', type=str, help="path to config file")
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    obj = instantiate_config(args.conf)
+    cfg = instantiate_config(args.conf)

@@ -30,5 +30,5 @@ setup(
     author_email="ehasanaj@cs.cmu.edu",
     description=("Gene enrichment made easy."),
     long_description=("Same as above."),
-    python_requires=">=3.10",
+    python_requires=">=3.9",
 )

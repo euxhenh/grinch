@@ -2,8 +2,10 @@ from .aliases import ADK, OBS, OBSM, VAR, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
+from .normalizers import Log1P, NormalizeTotal
+from .processors import BaseProcessor
 from .reporter import Report, Reporter
-from .transforms import Log1P, NormalizeTotal
+from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
     'ADK',
@@ -13,8 +15,13 @@ __all__ = [
     'AnnDataKeys',
     'BaseConfig',
     'BaseConfigurable',
+    'BaseProcessor',
+    'BaseTransformer',
     'FilterCells',
     'FilterGenes',
+    'PCA',
+    'TruncatedSVD',
+    'UMAP',
     'Report',
     'Reporter',
     'Log1P',

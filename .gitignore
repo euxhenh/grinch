@@ -7,3 +7,5 @@ tmp.py
 tmp.yaml
 tags
 .mypy*
+grinch.egg*
+*cache
