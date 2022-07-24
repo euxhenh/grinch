@@ -11,9 +11,9 @@ from sklearn.utils.validation import check_array, check_non_negative
 from .conf import BaseConfigurable
 
 
-class BaseTransform(BaseConfigurable):
-    """An abstract class for transformations on adata.X.
-    These transformations cannot change the shape of the data, but can only
+class BaseNormalizer(BaseConfigurable):
+    """An abstract class for normalizers of adata.X.
+    These normalizers cannot change the shape of the data, but can only
     modify the values of X.
     """
 
@@ -43,26 +43,26 @@ class BaseTransform(BaseConfigurable):
             adata._init_as_actual(adata.copy())
 
         original_shape = adata.shape
-        self._transform(adata)
+        self._normalize(adata)
         # Transforms should not change the shape
         assert original_shape == adata.shape
 
         return adata if not self.cfg.inplace else None
 
     @abc.abstractmethod
-    def _transform(self, adata: AnnData) -> None:
+    def _normalize(self, adata: AnnData) -> None:
         raise NotImplementedError
 
 
-class NormalizeTotal(BaseTransform):
+class NormalizeTotal(BaseNormalizer):
     """Normalizes each cell so that total counts are equal."""
 
-    class Config(BaseTransform.Config):
+    class Config(BaseNormalizer.Config):
         total_counts: Optional[float] = Field(None, gt=0)
 
     cfg: Config
 
-    def _transform(self, adata: AnnData) -> None:
+    def _normalize(self, adata: AnnData) -> None:
         # Make sure values are non-negative for l1 norm to work as expected
         check_non_negative(adata.X, f'{self.__class__.__name__}')
         if self.cfg.total_counts is None:
@@ -77,15 +77,15 @@ class NormalizeTotal(BaseTransform):
         np.multiply(to_scale, scaling_factor, out=to_scale)
 
 
-class Log1P(BaseTransform):
+class Log1P(BaseNormalizer):
     """Log(X+1) transforms the data. Uses natural logarithm."""
 
-    class Config(BaseTransform.Config):
+    class Config(BaseNormalizer.Config):
         ...
 
     cfg: Config
 
-    def _transform(self, adata: AnnData) -> None:
+    def _normalize(self, adata: AnnData) -> None:
         check_non_negative(adata.X, f'{self.__class__.__name__}')
         to_log = adata.X.data if sp.issparse(adata.X) else adata.X
         np.log1p(to_log, out=to_log)

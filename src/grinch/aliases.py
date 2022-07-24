@@ -1,7 +1,6 @@
 class auto:
-    """Initialize a variable with a lowercase string representation
-    of its variable name.
-    """
+    """Initialize a variable with a lowercase string representation of its
+    name."""
 
     def __set_name__(self, owner, name):
         self.value = name.lower()
@@ -37,3 +36,5 @@ OBS = AnnDataKeys.OBS
 VAR = AnnDataKeys.VAR
 OBSM = AnnDataKeys.OBSM
 VARM = AnnDataKeys.VARM
+
+ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers']

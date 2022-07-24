@@ -1,2 +1,1 @@
-_target_: src.grinch.PCA.Config
-save_key: X
+_target_: grinch.UMAP.Config

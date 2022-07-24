@@ -5,10 +5,13 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from sklearn.decomposition import PCA, TruncatedSVD
+from umap import UMAP
 
 from grinch import OBSM
 
 from ._utils import assert_allclose, to_view
+
+SEED = 42
 
 X = np.array([
     [1, 2, 3, 4, 5],
@@ -29,19 +32,19 @@ def test_pca(X):
         {
             '_target_': 'src.grinch.PCA.Config',
             'n_components': 3,
-            'seed': 42,
+            'seed': SEED,
         }
     )
     cfg = instantiate(cfg)
     pca = cfg.initialize()
-    pca_sk = PCA(n_components=3, random_state=42)
+    pca_sk = PCA(n_components=3, random_state=SEED)
     adata = AnnData(X)
     pca(adata)
     x_emb_sk = pca_sk.fit_transform(X)
 
-    assert_allclose(adata.obsm[OBSM.X_PCA], x_emb_sk, rtol=1e-4, atol=1e-4)
     assert adata.uns[OBSM.X_PCA]['n_components'] == 3
-    assert adata.uns[OBSM.X_PCA]['seed'] == 42
+    assert adata.uns[OBSM.X_PCA]['seed'] == SEED
+    assert_allclose(adata.obsm[OBSM.X_PCA], x_emb_sk, rtol=1e-4, atol=1e-4)
 
 
 @pytest.mark.parametrize("X", X_mods + X_mods_sparse)
@@ -50,17 +53,46 @@ def test_truncated(X):
         {
             '_target_': 'src.grinch.TruncatedSVD.Config',
             'n_components': 3,
-            'seed': 42,
+            'seed': SEED,
         }
     )
     cfg = instantiate(cfg)
     tsvd = cfg.initialize()
-    tsvd_sk = TruncatedSVD(n_components=3, random_state=42)
+    tsvd_sk = TruncatedSVD(n_components=3, random_state=SEED)
     adata = AnnData(X)
     tsvd(adata)
     x_emb_sk = tsvd_sk.fit_transform(X)
 
+    assert adata.uns[OBSM.X_TRUNCATED_SVD]['n_components'] == 3
+    assert adata.uns[OBSM.X_TRUNCATED_SVD]['seed'] == SEED
     assert_allclose(adata.obsm[OBSM.X_TRUNCATED_SVD], x_emb_sk,
                     rtol=1e-4, atol=1e-4)
-    assert adata.uns[OBSM.X_TRUNCATED_SVD]['n_components'] == 3
-    assert adata.uns[OBSM.X_TRUNCATED_SVD]['seed'] == 42
+
+
+@pytest.mark.parametrize("X", X_mods + X_mods_sparse)
+def test_umap(X):
+    cfg = OmegaConf.create(
+        {
+            '_target_': 'src.grinch.UMAP.Config',
+            'n_components': 2,
+            'seed': SEED,
+            'spread': 0.8,
+        }
+    )
+    cfg = instantiate(cfg)
+    umap_up = UMAP(
+        n_components=2,
+        spread=0.8,
+        random_state=SEED,
+        transform_seed=SEED
+    )
+    adata = AnnData(X)
+    up = cfg.initialize()
+    up(adata)
+    x_emb_up = umap_up.fit_transform(X)
+
+    assert adata.uns[OBSM.X_UMAP]['n_components'] == 2
+    assert adata.uns[OBSM.X_UMAP]['seed'] == SEED
+    assert adata.uns[OBSM.X_UMAP]['kwargs']['transform_seed'] == SEED
+    assert_allclose(adata.obsm[OBSM.X_UMAP], x_emb_up,
+                    rtol=1e-4, atol=1e-4)

@@ -1,7 +1,7 @@
 import abc
 import inspect
 from itertools import islice
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field
 
@@ -74,9 +74,14 @@ class BaseConfig(BaseModel):
         smart_union = True
         # Don't allow extra fields
         extra = Extra.forbid
+        # validate all, check if there are any bugs in validator's code
+        validate_all = True
 
     @property
     def init_type(self):
+        """Return the type of the object that this class belongs to. Useful
+        when trying to call static or class methods of the underlying type.
+        """
         if hasattr(self, '__init_type'):
             return self.__init_type
         return None
@@ -110,7 +115,7 @@ class BaseConfigurable(_BaseConfigurable):
         self,
         message: str,
         shape: Tuple[int, int] = None,
-        artifacts: Optional[str | List[str]] = None
+        artifacts: Optional[Union[str, List[str]]] = None
     ) -> None:
         """Sends a report to reporter for logging.
 
