@@ -33,8 +33,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     def _process(self, adata: AnnData) -> None:
         if self.processor is None:
             raise NotImplementedError(
-                f"Object of type {self.__class__} does not contain a "
-                "processor object."
+                f"Object of type {self.__class__} does not contain a processor object."
             )
         x_rep = self._get_repr(adata)
         x_rep_out = self.processor.fit_transform(x_rep)

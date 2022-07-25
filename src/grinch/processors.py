@@ -36,25 +36,18 @@ class BaseProcessor(BaseConfigurable):
                     "dot '.' that points to the representation to use."
                 )
             if len(parts := val.split('.')) > 2:
-                raise ValueError(
-                    "There can only be one dot '.' in read and save keys."
-                )
+                raise ValueError("There can only be one dot '.' in read and save keys.")
             if parts[0] not in ALLOWED_KEYS:
-                raise ValueError(
-                    f"AnnData annotation key should be one of {ALLOWED_KEYS}."
-                )
-            if len(parts[1]) > 120:
-                raise ValueError(
-                    "Columns keys should be less than 120 characters. "
-                )
+                raise ValueError(f"AnnData annotation key should be one of {ALLOWED_KEYS}.")
+            if len(parts[1]) >= 120:
+                raise ValueError("Columns keys should be less than 120 characters.")
             return val
 
         @validator('save_key')
         def ensure_save_key_not_X(cls, val):
             if val == 'X':
                 raise ValueError(
-                    "'save_key' cannot equal X. Maybe you meant to use a "
-                    "transform instead."
+                    "'save_key' cannot equal X. Maybe you meant to use a transform instead."
                 )
             return val
 

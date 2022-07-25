@@ -24,6 +24,8 @@ def test_normalize_total(X):
         {
             "_target_": "src.grinch.NormalizeTotal.Config",
             "total_counts": 10,
+            "save_input": True,
+            "input_layer_name": 'x_raw',
         }
     )
     cfg = instantiate(cfg)
@@ -37,6 +39,7 @@ def test_normalize_total(X):
         [0, 0, 0, 0],
     ])
     assert_allclose(X_normalized, adata.X)
+    assert_allclose(X, adata.layers['x_raw'])
 
 
 @pytest.mark.parametrize("X", X_mods)
@@ -45,6 +48,7 @@ def test_normalize_median(X):
         {
             "_target_": "src.grinch.NormalizeTotal.Config",
             "total_counts": None,
+            "save_input": True,
         }
     )
     cfg = instantiate(cfg)
@@ -58,6 +62,7 @@ def test_normalize_median(X):
         [0, 0, 0, 0],
     ])
     assert_allclose(X_normalized, adata.X)
+    assert_allclose(X, adata.layers['pre_NormalizeTotal'])
 
 
 @pytest.mark.parametrize("X", X_mods)
@@ -65,6 +70,7 @@ def test_log1p(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.Log1P.Config",
+            "save_input": True,
         }
     )
     cfg = instantiate(cfg)
@@ -73,3 +79,4 @@ def test_log1p(X):
     log1p(adata)
     X_logged = np.log1p(X)
     assert_allclose(X_logged, adata.X)
+    assert_allclose(X, adata.layers['pre_Log1P'])
