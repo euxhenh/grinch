@@ -79,6 +79,11 @@ def test_umap(X):
             'seed': SEED,
             'spread': 0.8,
             'n_neighbors': 2,
+            # We need to use init random, since there are a couple of weird
+            # things happening with spectral initialization and reproducibility
+            'kwargs': {
+                'init': 'random',
+            }
         }
     )
     cfg = instantiate(cfg)
@@ -87,7 +92,8 @@ def test_umap(X):
         n_neighbors=2,
         spread=0.8,
         random_state=SEED,
-        transform_seed=SEED
+        transform_seed=SEED,
+        init='random',
     )
     adata = AnnData(X)
     up = cfg.initialize()
