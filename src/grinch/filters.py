@@ -24,6 +24,9 @@ class BaseFilter(BaseConfigurable):
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> Optional[AnnData]:
+        if not self.cfg.inplace:
+            adata = adata.copy()
+
         _ = check_array(
             adata.X,
             accept_sparse=True,
@@ -33,9 +36,6 @@ class BaseFilter(BaseConfigurable):
         )
         # Make sure there are no negative counts
         check_non_negative(adata.X, f'{self.__class__.__name__}')
-
-        if not self.cfg.inplace:
-            adata = adata.copy()
 
         self._filter(adata)
 
@@ -80,8 +80,7 @@ class FilterCells(BaseFilter):
 
         if to_keep.sum() <= 1:
             raise ValueError(
-                "Filtering options are too stringent. "
-                "Less than 2 cells remained."
+                "Filtering options are too stringent. Less than 2 cells remained."
             )
 
         # Set these after the exception above
@@ -130,8 +129,7 @@ class FilterGenes(BaseFilter):
 
         if to_keep.sum() < 1:
             raise ValueError(
-                "Filtering options are too stringent. "
-                "Less than 1 gene remained."
+                "Filtering options are too stringent. Less than 1 gene remained."
             )
 
         # Set these after the exception above

@@ -22,6 +22,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
 
     @BaseProcessor.processor.setter
     def processor(self, value):
+        """Check if the processor implements a `fit_transform` method."""
         fit_transform = getattr(value, 'fit_transform', None)
         if not callable(fit_transform):
             raise ValueError(
@@ -33,8 +34,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     def _process(self, adata: AnnData) -> None:
         if self.processor is None:
             raise NotImplementedError(
-                f"Object of type {self.__class__} does not contain a "
-                "processor object."
+                f"Object of type {self.__class__} does not contain a processor object."
             )
         x_rep = self._get_repr(adata)
         x_rep_out = self.processor.fit_transform(x_rep)
@@ -111,8 +111,8 @@ class UMAP(BaseTransformer):
             ]:
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
-                        f"Removing key '{explicit_key}' from kwargs. If you "
-                        "wish to overwrite this key, pass it explicitly."
+                        f"Removing key '{explicit_key}' from kwargs. If you wish"
+                        " to overwrite this key, pass it directly in the config."
                     )
             return val
 

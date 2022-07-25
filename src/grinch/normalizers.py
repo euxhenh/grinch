@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
-from pydantic import Field, validate_arguments
+from pydantic import Field, validate_arguments, validator
 from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_array, check_non_negative
 
@@ -15,10 +15,25 @@ class BaseNormalizer(BaseConfigurable):
     """An abstract class for normalizers of adata.X.
     These normalizers cannot change the shape of the data, but can only
     modify the values of X.
+
+    Parameters
+    __________
+    save_input: bool
+        If True, will save the raw input into adata.layers.
+    input_layer_name: str
+        Ignored if save_input is False. Will store the raw input into
+        adata.layers[input_layer_name]. If None, the name will be
+        automatically set to 'pre_{self.__class__.__name__}'.
     """
 
     class Config(BaseConfigurable.Config):
         inplace: bool = True
+        save_input: bool = True
+        input_layer_name: Optional[str] = None
+
+        @validator('input_layer_name')
+        def resolve_input_layer_name(cls, value):
+            return f'pre_{cls.init_type.__name__}' if value is None else value
 
     cfg: Config
 
@@ -43,6 +58,9 @@ class BaseNormalizer(BaseConfigurable):
             adata._init_as_actual(adata.copy())
 
         original_shape = adata.shape
+        if self.cfg.save_input:
+            adata.layers[self.cfg.input_layer_name] = adata.X.copy()
+
         self._normalize(adata)
         # Transforms should not change the shape
         assert original_shape == adata.shape
