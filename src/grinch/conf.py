@@ -1,7 +1,7 @@
 import abc
 import inspect
 from itertools import islice
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Extra, Field
 
@@ -117,7 +117,7 @@ class BaseConfigurable(_BaseConfigurable):
         self,
         message: str,
         shape: Tuple[int, int] = None,
-        artifacts: Optional[Union[str, List[str]]] = None
+        artifacts: Optional[str | List[str]] = None
     ) -> None:
         """Sends a report to reporter for logging.
 

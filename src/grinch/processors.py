@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 class BaseProcessor(BaseConfigurable):
     """A base class for dimensionality reduction, clustering and other
-    processors.
+    processors. A processor cannot update the data matrix X, but can use it
+    to perform any kind of fitting.
     """
 
     class Config(BaseConfigurable.Config):

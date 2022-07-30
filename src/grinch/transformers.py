@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 from anndata import AnnData
 from pydantic import Field, validator
@@ -47,7 +47,7 @@ class PCA(BaseTransformer):
         read_key: str = "X"
         save_key: str = f"obsm.{OBSM.X_PCA}"
         # PCA args
-        n_components: Optional[Union[int, float, str]] = None
+        n_components: Optional[int | float | str] = None
         whiten: bool = False
         svd_solver: str = 'auto'
 
