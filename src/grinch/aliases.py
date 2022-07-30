@@ -14,6 +14,8 @@ class AnnDataKeys:
         N_COUNTS = auto()
         N_GENES = auto()
         LABEL = auto()
+        KMEANS = auto()
+        LEIDEN = auto()
 
     class VAR:
         N_COUNTS = auto()
