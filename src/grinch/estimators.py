@@ -18,7 +18,7 @@ class BaseEstimator(BaseProcessor, abc.ABC):
     class Config(BaseProcessor.Config):
         ...
 
-    @BaseProcessor.processor.setter
+    @BaseProcessor.processor.setter  # type: ignore[attr-defined]
     def processor(self, value):
         """Check if processor implements a fit_predict method."""
         fit_predict = getattr(value, 'fit_predict', None)

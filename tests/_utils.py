@@ -1,6 +1,4 @@
-from functools import reduce
 from itertools import chain, combinations
-from typing import Callable
 
 import numpy as np
 import scipy.sparse as sp
@@ -20,16 +18,6 @@ def powerset(iterable):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
-
-
-def compose(functions) -> Callable:
-    """Composes functions from right to left. I.e., functions on the right
-    will run after those on the left.
-    """
-    identity = lambda x, *args, **kwargs: x  # noqa: E731
-    if len(functions) == 0:
-        return identity
-    return reduce(lambda f, g: lambda x: g(f(x)), functions, identity)
 
 
 def to_view(x):

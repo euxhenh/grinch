@@ -20,7 +20,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     class Config(BaseProcessor.Config):
         ...
 
-    @BaseProcessor.processor.setter
+    @BaseProcessor.processor.setter  # type: ignore[attr-defined]
     def processor(self, value):
         """Check if the processor implements a `fit_transform` method."""
         fit_transform = getattr(value, 'fit_transform', None)

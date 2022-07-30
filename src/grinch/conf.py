@@ -13,6 +13,8 @@ reporter = Reporter()
 class _BaseConfigurable(abc.ABC):
     """A base class for configurable classes.
     """
+    class Config:
+        ...
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -60,7 +62,7 @@ class _BaseConfigurable(abc.ABC):
             )
 
         # Store outer class type in `Config`
-        cls.Config.init_type = cls
+        cls.Config.init_type = cls  # type: ignore
 
 
 class BaseConfig(BaseModel):
