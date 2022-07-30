@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Extra
 
@@ -8,7 +8,7 @@ class Report(BaseModel):
     config: Optional[BaseModel] = None
     message: Optional[str] = None
     shape: Optional[Tuple[int, int]] = None
-    artifacts: Optional[Union[str, List[str]]] = None
+    artifacts: Optional[str | List[str]] = None
 
     class Config:
         arbitrary_types_allowed = True
