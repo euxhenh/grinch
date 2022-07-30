@@ -1,4 +1,4 @@
-name: Linting
+name: Flake8
 
 on:
   push:
