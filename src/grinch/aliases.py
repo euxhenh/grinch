@@ -16,6 +16,7 @@ class AnnDataKeys:
         LABEL = auto()
         KMEANS = auto()
         LEIDEN = auto()
+        LOG_REG_PREDS = auto()
 
     class VAR:
         N_COUNTS = auto()
