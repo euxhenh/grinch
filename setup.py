@@ -4,7 +4,7 @@ from setuptools import Command, find_packages, setup
 
 
 class CleanCommand(Command):
-    user_options = []
+    user_options = []  # type: ignore
 
     def initialize_options(self):
         pass

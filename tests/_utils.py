@@ -22,16 +22,6 @@ def powerset(iterable):
     return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 
-def compose(functions) -> Callable:
-    """Composes functions from right to left. I.e., functions on the right
-    will run after those on the left.
-    """
-    identity = lambda x, *args, **kwargs: x  # noqa: E731
-    if len(functions) == 0:
-        return identity
-    return reduce(lambda f, g: lambda x: g(f(x)), functions, identity)
-
-
 def to_view(x):
     X_mod = np.insert(x, [1, 2], 42, axis=1)
     X_mod = np.insert(X_mod, [1, 2], 42, axis=0)
