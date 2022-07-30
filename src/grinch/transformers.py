@@ -106,12 +106,10 @@ class UMAP(BaseTransformer):
             """Don't allow any of the keys explicitly defined in Config
             to also be set in kwargs.
             """
-            for explicit_key in [
-                'n_neighbors', 'n_components', 'spread', 'random_state'
-            ]:
+            for explicit_key in ['n_neighbors', 'n_components', 'spread', 'random_state']:
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
-                        f"Removing key '{explicit_key}' from kwargs. If you wish"
+                        f"Popping '{explicit_key}' from kwargs. If you wish"
                         " to overwrite this key, pass it directly in the config."
                     )
             return val
