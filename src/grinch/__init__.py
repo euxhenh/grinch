@@ -1,5 +1,6 @@
 from .aliases import ADK, OBS, OBSM, VAR, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
+from .estimators import BaseEstimator, KMeans, LogisticRegression
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
@@ -15,6 +16,9 @@ __all__ = [
     'AnnDataKeys',
     'BaseConfig',
     'BaseConfigurable',
+    'BaseEstimator',
+    'KMeans',
+    'LogisticRegression',
     'BaseProcessor',
     'BaseTransformer',
     'FilterCells',
