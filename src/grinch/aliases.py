@@ -1,3 +1,6 @@
+from typing import Dict, List, Optional, TypeAlias
+
+
 class auto:
     """Initialize a variable with a lowercase string representation of its
     name."""
@@ -10,12 +13,14 @@ class auto:
 
 
 class AnnDataKeys:
+
     class OBS:
         N_COUNTS = auto()
         N_GENES = auto()
         LABEL = auto()
         KMEANS = auto()
         LEIDEN = auto()
+        LOG_REG = auto()
 
     class VAR:
         N_COUNTS = auto()
@@ -40,3 +45,5 @@ OBSM = AnnDataKeys.OBSM
 VARM = AnnDataKeys.VARM
 
 ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers']
+
+REP_KEY: TypeAlias = Optional[str | List[str] | Dict[str, str]]
