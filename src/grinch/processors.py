@@ -121,7 +121,9 @@ class BaseProcessor(BaseConfigurable):
             case [*vals]:
                 return [self._get_single_repr(adata, v) for v in vals]
             case {**vals}:
-                return {k: self._get_single_repr(adata, v) for k, v in vals.items()}
+                return {k: self._get_single_repr(adata, v) for k, v in vals.items()}  # type:ignore
+            case _:
+                raise ValueError("'read_key' format not understood.")
 
     @staticmethod
     def _set_single_repr(adata: AnnData, key: str, value: Any, cfg: Optional[Config] = None):

@@ -33,6 +33,8 @@ def adata_to_rep(func):
                 return func(*x_rep, *args, **kwargs)
             case {**vals}:  # noqa
                 return func({**x_rep, **kwargs})
+            case _:
+                raise ValueError("'read_key' format not understood.")
     return _wrapper
 
 
