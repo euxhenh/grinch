@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Any, Dict, List
 
 from pydantic import validate_arguments
 
@@ -12,7 +12,7 @@ def any_not_None(*args):
 
 
 @validate_arguments
-def pop_args(args: List[str], **kwargs):
+def pop_args(args: List[str], kwargs: Dict[str, Any]):
     """Pop any arg in args from kwargs. Meant to be used with estimators
     where some (important) arguments are defined explicitly in the Config,
     while others are deferred inside a kwargs block. We pop duplicate
