@@ -27,7 +27,7 @@ def test_kmeans_x(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.KMeans.Config",
-            "read_key": "X",
+            "x_key": "X",
             "n_clusters": 2,
             "seed": 42,
         }
@@ -50,7 +50,7 @@ def test_kmeans_x_pca(X):
             "_target_": "src.grinch.PCA.Config",
             "n_components": 2,
             "seed": 42,
-            "save_key": f"obsm.{OBSM.X_PCA}",
+            "x_emb_key": f"obsm.{OBSM.X_PCA}",
         }
     )
     cfg_pca = instantiate(cfg_pca)
@@ -60,7 +60,7 @@ def test_kmeans_x_pca(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.KMeans.Config",
-            "read_key": f"obsm.{OBSM.X_PCA}",
+            "x_key": f"obsm.{OBSM.X_PCA}",
             "n_clusters": 2,
             "seed": 42,
         }
@@ -82,7 +82,7 @@ def test_log_reg_x(X):
             "_target_": "src.grinch.PCA.Config",
             "n_components": 2,
             "seed": 42,
-            "save_key": f"obsm.{OBSM.X_PCA}",
+            "x_emb_key": f"obsm.{OBSM.X_PCA}",
         }
     )
     cfg_pca = instantiate(cfg_pca)
@@ -92,7 +92,7 @@ def test_log_reg_x(X):
     cfg_kmeans = OmegaConf.create(
         {
             "_target_": "src.grinch.KMeans.Config",
-            "read_key": f"obsm.{OBSM.X_PCA}",
+            "x_key": f"obsm.{OBSM.X_PCA}",
             "n_clusters": 2,
             "seed": 42,
         }
@@ -104,9 +104,10 @@ def test_log_reg_x(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.LogisticRegression.Config",
-            "read_key": [f"obsm.{OBSM.X_PCA}", f"obs.{OBS.KMEANS}"],
+            "x_key": f"obsm.{OBSM.X_PCA}",
+            "y_key": f"obs.{OBS.KMEANS}",
             "seed": 42,
-            "save_key": f"obs.{OBS.LOG_REG}",
+            "labels_key": f"obs.{OBS.LOG_REG}",
         }
     )
     # Need to start using convert all for lists and dicts

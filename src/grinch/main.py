@@ -17,14 +17,14 @@ logging.captureWarnings(True)
 
 try:
     import grinch
-    _src_dir = os.path.dirname(grinch.__file__)
-    _root_dir = os.path.join(_src_dir, os.pardir, os.pardir)
+    src_dir = os.path.dirname(grinch.__file__)
 except ImportError:
-    _this_dir = os.path.dirname(os.path.realpath(__file__))
-    _root_dir = os.path.join(_this_dir, os.pardir, os.pardir)
+    src_dir = os.path.dirname(os.path.realpath(__file__))
 
-if 'conf' in os.listdir(_root_dir):
-    CONF_DIR = os.path.join(_root_dir, 'conf')
+root_dir = os.path.join(src_dir, os.pardir, os.pardir)
+
+if 'conf' in os.listdir(root_dir):
+    CONF_DIR = os.path.join(root_dir, 'conf')
 else:
     warnings.warn('Could not find default conf directory.')
     CONF_DIR = '.'

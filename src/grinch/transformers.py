@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
 from pydantic import Field, validator
@@ -8,8 +8,9 @@ from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
 from umap import UMAP as _UMAP
 
-from .aliases import OBSM
+from .aliases import OBSM, UNS
 from .processors import BaseProcessor
+from .utils.validation import check_has_processor, pop_args
 
 logger = logging.getLogger(__name__)
 
@@ -18,34 +19,41 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     """A base estimator class for objects that implement `fit_transform`."""
 
     class Config(BaseProcessor.Config):
-        ...
+        x_key: str
+        x_emb_key: str
+        stats_key: str
 
-    @BaseProcessor.processor.setter  # type: ignore[attr-defined]
-    def processor(self, value):
-        """Check if the processor implements a `fit_transform` method."""
-        fit_transform = getattr(value, 'fit_transform', None)
-        if not callable(fit_transform):
-            raise ValueError(
-                f"Object of type '{type(value)}' does not implement "
-                "a callable 'fit_transform' method."
-            )
-        super(BaseTransformer, self.__class__).processor.fset(self, value)
+    @staticmethod
+    def _processor_must_implement() -> List[str]:
+        return BaseProcessor._processor_must_implement() + ['transform', 'fit_transform']
 
     def _process(self, adata: AnnData) -> None:
-        if self.processor is None:
-            raise NotImplementedError(
-                f"Object of type {self.__class__} does not contain a processor object."
-            )
-        x_rep = self._get_repr(adata)
-        x_rep_out = self.processor.fit_transform(x_rep)
-        self._set_repr(adata, x_rep_out)
+        """Gets the data representation to use and applies the transformer.
+        """
+        check_has_processor(self)
+
+        x = self.get_repr(adata, self.cfg.x_key)
+        x_emb = self.processor.fit_transform(x)
+        self.set_repr(adata, self.cfg.x_emb_key, x_emb)
+
+        self.save_processor_stats(adata)
+
+    def transform(self, adata: AnnData) -> None:
+        """Applies a transform only. Uses the same key as x_key.
+        """
+        check_has_processor(self)
+
+        x = self.get_repr(adata, self.cfg.x_key)
+        x_emb = self.processor.transform(x)
+        self.set_repr(adata, self.cfg.x_emb_key, x_emb)
 
 
 class PCA(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        read_key: str = "X"
-        save_key: str = f"obsm.{OBSM.X_PCA}"
+        x_key: str = "X"
+        x_emb_key: str = f"obsm.{OBSM.X_PCA}"
+        stats_key: str = f"uns.{UNS.X_PCA}"
         # PCA args
         n_components: Optional[int | float | str] = None
         whiten: bool = False
@@ -64,13 +72,23 @@ class PCA(BaseTransformer):
             random_state=self.cfg.seed,
         )
 
+    @staticmethod
+    def _processor_stats() -> List[str]:
+        return BaseTransformer._processor_stats() + [
+            'singular_values_',
+            'explained_variance_',
+            'explained_variance_ratio_',
+            'components_',
+        ]
+
 
 class TruncatedSVD(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        read_key: str = "X"
-        save_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
-        # PCA args
+        x_key: str = "X"
+        x_emb_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
+        stats_key: str = f"uns.{UNS.X_TRUNCATED_SVD}"
+        # Truncated SVD args
         n_components: int = Field(2, ge=1)
         algorithm: str = 'randomized'
         n_iter: int = Field(5, ge=1)
@@ -87,13 +105,23 @@ class TruncatedSVD(BaseTransformer):
             random_state=self.cfg.seed,
         )
 
+    @staticmethod
+    def _processor_stats() -> List[str]:
+        return BaseTransformer._processor_stats() + [
+            'singular_values_',
+            'explained_variance_',
+            'explained_variance_ratio_',
+            'components_',
+        ]
+
 
 class UMAP(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        read_key: str = "X"
-        save_key: str = f"obsm.{OBSM.X_UMAP}"
-        # PCA args
+        x_key: str = "X"
+        x_emb_key: str = f"obsm.{OBSM.X_UMAP}"
+        stats_key: Optional[str] = None
+        # UMAP args
         n_neighbors: int = Field(15, ge=1)
         n_components: int = Field(2, ge=1)
         # Use a smaller spread by default, for tighter scatterplots
@@ -103,16 +131,7 @@ class UMAP(BaseTransformer):
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
-            """Don't allow any of the keys explicitly defined in Config
-            to also be set in kwargs.
-            """
-            for explicit_key in ['n_neighbors', 'n_components', 'spread', 'random_state']:
-                if val.pop(explicit_key, None) is not None:
-                    logger.warning(
-                        f"Popping '{explicit_key}' from kwargs. If you wish"
-                        " to overwrite this key, pass it directly in the config."
-                    )
-            return val
+            return pop_args(['n_neighbors', 'n_components', 'spread', 'random_state'], val)
 
     cfg: Config
 

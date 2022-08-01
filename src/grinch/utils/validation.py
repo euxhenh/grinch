@@ -3,6 +3,8 @@ from typing import Any, Dict, List
 
 from pydantic import validate_arguments
 
+from .exceptions import ProcessorNotDefined
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,3 +27,12 @@ def pop_args(args: List[str], kwargs: Dict[str, Any]):
                 " to overwrite this key, pass it directly in the config."
             )
     return kwargs
+
+
+def check_has_processor(obj):
+    """Checks if obj.processor is not None. Raises an error otherwise.
+    """
+    if obj.processor is None:
+        raise ProcessorNotDefined(
+            f"Object of type {obj.__class__} does not contain a processor object."
+        )
