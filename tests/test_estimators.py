@@ -10,12 +10,18 @@ from grinch import OBS, OBSM
 from ._utils import to_view
 
 X = np.array([
-    [1, 1, 0, 0, 0],
-    [1, 2, 0, 0, 0],
+    [6, 8, 0, 0, 0],
+    [5, 7, 0, 0, 0],
     [0, 1, 5, 6, 5],
     [2, 1, 7, 9, 8],
     [0, 1, 5, 6, 7],
 ], dtype=np.float)
+
+X_test = np.array([
+    [0, -1, 5, 6, 5],
+    [5, 6, 0, 1, 0],
+    [1, 0, 5, 5, 5]
+])
 
 
 X_mods = [X, sp.csr_matrix(X), to_view(X)]
@@ -73,6 +79,13 @@ def test_kmeans_x_pca(X):
     assert np.unique(outp[2:]).size == 1
     assert outp[0] != outp[-1]
 
+    adata_test = AnnData(X_test)
+    pca.transform(adata_test)
+    kmeans.predict(adata_test)
+    outp = adata_test.obs[OBS.KMEANS]
+    assert outp[0] == outp[2]
+    assert outp[0] != outp[1]
+
 
 @pytest.mark.parametrize("X", X_mods_no_sparse)
 def test_log_reg_x(X):
@@ -118,3 +131,10 @@ def test_log_reg_x(X):
     assert np.unique(outp[:2]).size == 1
     assert np.unique(outp[2:]).size == 1
     assert outp[0] != outp[-1]
+
+    adata_test = AnnData(X_test)
+    pca.transform(adata_test)
+    lr.predict(adata_test)
+    outp = adata_test.obs[OBS.LOG_REG]
+    assert outp[0] == outp[2]
+    assert outp[0] != outp[1]
