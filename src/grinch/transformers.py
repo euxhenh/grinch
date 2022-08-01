@@ -21,7 +21,9 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     class Config(BaseProcessor.Config):
         x_key: str
         x_emb_key: str
-        stats_key: str
+        stats_key: Optional[str]
+
+    cfg: Config
 
     @staticmethod
     def _processor_must_implement() -> List[str]:

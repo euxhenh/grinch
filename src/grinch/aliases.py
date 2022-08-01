@@ -54,4 +54,4 @@ UNS = AnnDataKeys.UNS
 ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers']
 
 REP_KEY: TypeAlias = Optional[str | List[str] | Dict[str, str]]
-REP: TypeAlias = Any | List[Any] | Dict[str, Any]
+REP: TypeAlias = Dict[str, Any] | List[Any] | Any

@@ -139,14 +139,14 @@ class BaseProcessor(BaseConfigurable):
     def save_processor_stats(self, adata: AnnData) -> None:
         check_has_processor(self)
         if not hasattr(self.cfg, 'stats_key'):
-            raise KeyError(f"No 'stats_key' was found in {self.cfg.__qualname__}.")
+            raise KeyError(f"No 'stats_key' was found in {self.cfg.__class__.__qualname__}.")
         # Assume it has been explicitly set to None
-        if self.cfg.stats_key is None:
+        if self.cfg.stats_key is None:  # type: ignore
             return
 
         stats = {stat: getattr(self.processor, stat) for stat in self._processor_stats()}
         if stats:
-            self.set_repr(adata, self.cfg.stats_key, stats)
+            self.set_repr(adata, self.cfg.stats_key, stats)  # type: ignore
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> Optional[AnnData]:
