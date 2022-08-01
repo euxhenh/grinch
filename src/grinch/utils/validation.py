@@ -9,7 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 def any_not_None(*args):
-    """Returns True if any item is not None and False otherwise."""
+    """Returns True if any item is not None and False otherwise.
+    Examples
+    ________
+    >>> any_not_None(1, 2, None)
+    True
+    >>> any_not_None(None, None)
+    False
+    """
     return sum(arg is not None for arg in args) > 0
 
 
