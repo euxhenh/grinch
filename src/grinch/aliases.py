@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, TypeAlias
+from typing import Any, Dict, List, Optional, TypeAlias
 
 
 class auto:
@@ -36,6 +36,12 @@ class AnnDataKeys:
     class VARM:
         ...
 
+    class UNS:
+        X_PCA = auto()
+        X_TRUNCATED_SVD = auto()
+        KMEANS = auto()
+        LOG_REG = auto()
+
 
 # Create shorter aliases, since these will be used a lot
 ADK = AnnDataKeys
@@ -43,7 +49,9 @@ OBS = AnnDataKeys.OBS
 VAR = AnnDataKeys.VAR
 OBSM = AnnDataKeys.OBSM
 VARM = AnnDataKeys.VARM
+UNS = AnnDataKeys.UNS
 
 ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers']
 
 REP_KEY: TypeAlias = Optional[str | List[str] | Dict[str, str]]
+REP: TypeAlias = Dict[str, Any] | List[Any] | Any

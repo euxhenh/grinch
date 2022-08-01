@@ -43,8 +43,7 @@ def test_pca(X):
     pca(adata)
     x_emb_sk = pca_sk.fit_transform(X)
 
-    assert adata.uns[OBSM.X_PCA]['n_components'] == 3
-    assert adata.uns[OBSM.X_PCA]['seed'] == SEED
+    assert adata.uns[OBSM.X_PCA]['components_'].shape[0] == 3
     assert_allclose(adata.obsm[OBSM.X_PCA], x_emb_sk, rtol=1e-4, atol=1e-4)
 
 
@@ -64,8 +63,7 @@ def test_truncated(X):
     tsvd(adata)
     x_emb_sk = tsvd_sk.fit_transform(X)
 
-    assert adata.uns[OBSM.X_TRUNCATED_SVD]['n_components'] == 3
-    assert adata.uns[OBSM.X_TRUNCATED_SVD]['seed'] == SEED
+    assert adata.uns[OBSM.X_TRUNCATED_SVD]['components_'].shape[0] == 3
     assert_allclose(adata.obsm[OBSM.X_TRUNCATED_SVD], x_emb_sk, rtol=1e-4, atol=1e-4)
 
 
@@ -100,8 +98,4 @@ def test_umap(X):
     up(adata)
     x_emb_up = umap_up.fit_transform(X)
 
-    assert adata.uns[OBSM.X_UMAP]['n_components'] == 2
-    assert adata.uns[OBSM.X_UMAP]['seed'] == SEED
-    assert adata.uns[OBSM.X_UMAP]['n_neighbors'] == 2
-    assert adata.uns[OBSM.X_UMAP]['kwargs']['transform_seed'] == SEED
     assert_allclose(adata.obsm[OBSM.X_UMAP], x_emb_up, rtol=1e-4, atol=1e-4)

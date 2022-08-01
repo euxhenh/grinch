@@ -1,0 +1,2 @@
+class ProcessorNotDefined(Exception):
+    pass
