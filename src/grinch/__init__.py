@@ -6,6 +6,7 @@ from .normalizers import Log1P, NormalizeTotal
 from .predictors import BasePredictor, KMeans, LogisticRegression
 from .processors import BaseProcessor
 from .reporter import Report, Reporter
+from .splitter import DataSplitter, Splitter
 from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
@@ -22,6 +23,8 @@ __all__ = [
     'LogisticRegression',
     'BaseProcessor',
     'BaseTransformer',
+    'DataSplitter',
+    'Splitter',
     'FilterCells',
     'FilterGenes',
     'PCA',
