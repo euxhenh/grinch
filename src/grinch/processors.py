@@ -166,7 +166,7 @@ class BaseProcessor(BaseConfigurable):
         raise NotImplementedError
 
     @staticmethod
-    def _get_repr_single(adata: AnnData, key: str) -> Any:
+    def _get_repr(adata: AnnData, key: str) -> Any:
         """Get the data representation that key points to."""
         if key is None:
             raise ValueError("Cannot get representation if 'key' is None.")
@@ -183,7 +183,7 @@ class BaseProcessor(BaseConfigurable):
     @staticmethod
     def get_repr(adata: AnnData, key: REP_KEY) -> REP:
         """Get the representation(s) that read_key points to."""
-        single_get_func = partial(BaseProcessor._get_repr_single, adata)
+        single_get_func = partial(BaseProcessor._get_repr, adata)
         match key:
             case str() as v:
                 return single_get_func(v)
@@ -195,7 +195,7 @@ class BaseProcessor(BaseConfigurable):
                 raise ValueError(f"'{key}' format not understood.")
 
     @staticmethod
-    def _set_repr_single(adata: AnnData, key: str, value: Any):
+    def _set_repr(adata: AnnData, key: str, value: Any):
         """Save value under the key pointed to by key. Also saves
         config under `uns` if `save_config` is True.
         """
@@ -212,7 +212,7 @@ class BaseProcessor(BaseConfigurable):
 
     @staticmethod
     def set_repr(adata: AnnData, key: REP_KEY, value: REP) -> None:
-        single_set_func = partial(BaseProcessor._set_repr_single, adata)
+        single_set_func = partial(BaseProcessor._set_repr, adata)
 
         """Saves values under the key that save_key points to."""
         match key, value:

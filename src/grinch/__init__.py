@@ -3,6 +3,7 @@ from .conf import BaseConfig, BaseConfigurable
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
+from .pipeline import GRPipeline
 from .predictors import BasePredictor, KMeans, LogisticRegression
 from .processors import BaseProcessor
 from .reporter import Report, Reporter
@@ -24,6 +25,7 @@ __all__ = [
     'BaseProcessor',
     'BaseTransformer',
     'DataSplitter',
+    'GRPipeline',
     'Splitter',
     'FilterCells',
     'FilterGenes',

@@ -13,9 +13,13 @@ from .utils.validation import all_not_None, any_not_None
 
 @dataclass(eq=False)
 class DataSplitter:
-    TRAIN_SPLIT: Optional[AnnData] = None
+    TRAIN_SPLIT: AnnData = None
     VAL_SPLIT: Optional[AnnData] = None
     TEST_SPLIT: Optional[AnnData] = None
+
+    @property
+    def is_split(self):
+        return any_not_None(self.VAL_SPLIT, self.TEST_SPLIT)
 
 
 class Splitter(BaseConfigurable):
@@ -48,14 +52,23 @@ class Splitter(BaseConfigurable):
         super().__init__(cfg)
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, adata: AnnData) -> DataSplitter:
+    def __call__(self, adata: AnnData | DataSplitter) -> DataSplitter:
+        """Splits the adata into train/validation/test subsets and return a
+        DataSplitter. If adata is already a DataSplitter, will raise an
+        error if one of VAL_SPLIT or TEST_SPLIT is not None.
+        """
+        if isinstance(adata, DataSplitter):
+            if adata.is_split:
+                raise ValueError("Data has been split already.")
+            adata = adata.TRAIN_SPLIT
+
         if not any_not_None(self.cfg.val_fraction, self.cfg.test_fraction):
             return DataSplitter(adata)
 
         train_idx = np.arange(adata.shape[0])
         stratify = (
             None if self.cfg.stratify_key is None
-            else BaseProcessor._get_repr_single(adata, self.cfg.stratify_key)
+            else BaseProcessor.get_repr(adata, self.cfg.stratify_key)
         )
         val_frac, test_frac = self.cfg.val_fraction, self.cfg.test_fraction
 
@@ -74,7 +87,7 @@ class Splitter(BaseConfigurable):
                 stratify=stratify,
             )
             data_splitter.VAL_SPLIT = adata[val_idx]
-            stratify = stratify[train_idx] if stratify is not None else None
+            stratify = stratify[train_idx] if stratify is not None else None  # type: ignore
 
         if self.cfg.test_fraction is not None:
             train_idx, test_idx = train_test_split(

@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
-from pydantic import Field, validator
+from pydantic import Field, validate_arguments, validator
 from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
 from umap import UMAP as _UMAP
@@ -40,6 +40,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
 
         self.save_processor_stats(adata)
 
+    @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def transform(self, adata: AnnData) -> None:
         """Applies a transform only. Uses the same key as x_key.
         """
