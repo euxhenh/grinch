@@ -18,22 +18,36 @@ class BasePredictor(BaseProcessor, abc.ABC):
     """A base class for estimators, clustering algorithms, etc."""
 
     class Config(BaseProcessor.Config):
-        ...
+        x_key: str = f"obsm.{OBSM.X_PCA}"
+        labels_key: str
+        save_stats: bool = True
+        kwargs: Dict[str, Any] = {}
 
-    @abc.abstractmethod
+    cfg: Config
+
+    def _process(self, adata: AnnData) -> None:
+        """Fits the data and stores predictions."""
+        x = self.get_repr(adata, self.cfg.x_key)
+        labels = self.processor.fit_predict(x)
+        self.set_repr(adata, self.cfg.labels_key, labels)
+
+        if self.cfg.save_stats:
+            self.save_processor_stats(adata)
+
     def predict(self, adata: AnnData) -> None:
-        raise NotImplementedError
+        """Calls predict on the underlying predictor."""
+        x = self.get_repr(adata, self.cfg.x_key)
+        labels = self.processor.predict(x)
+        self.set_repr(adata, self.cfg.labels_key, labels)
 
 
 class KMeans(BasePredictor):
 
     class Config(BasePredictor.Config):
-        x_key: str = f"obsm.{OBSM.X_PCA}"
         labels_key: str = f"obs.{OBS.KMEANS}"
         stats_key: str = f"uns.{UNS.KMEANS}"
         # KMeans args
         n_clusters: int = Field(8, ge=2)
-        kwargs: Dict[str, Any] = {}
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -50,19 +64,6 @@ class KMeans(BasePredictor):
             **self.cfg.kwargs,
         )
 
-    def _process(self, adata: AnnData) -> None:
-        """Fits the data and stores predictions."""
-        x = self.get_repr(adata, self.cfg.x_key)
-        labels = self.processor.fit_predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
-
-        self.save_processor_stats(adata)
-
-    def predict(self, adata: AnnData) -> None:
-        x = self.get_repr(adata, self.cfg.x_key)
-        labels = self.processor.predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
-
     @staticmethod
     def _processor_stats() -> List[str]:
         return BasePredictor._processor_stats() + ['cluster_centers_']
@@ -71,7 +72,6 @@ class KMeans(BasePredictor):
 class LogisticRegression(BasePredictor):
 
     class Config(BasePredictor.Config):
-        x_key: str
         y_key: str
         labels_key: str = f"obs.{OBS.LOG_REG}"
         stats_key: str = f"uns.{UNS.LOG_REG}"
@@ -80,7 +80,6 @@ class LogisticRegression(BasePredictor):
         C: float = Field(1.0, gt=0)  # inverse regularization trade-off
         max_iter: int = Field(500, gt=0)
         n_jobs: Optional[int] = Field(-1, ge=-1)
-        kwargs: Dict[str, Any] = {}
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -101,20 +100,16 @@ class LogisticRegression(BasePredictor):
         )
 
     def _process(self, adata: AnnData) -> None:
+        # Override process method since LogisticRegression does not have a
+        # fit_predict method and also requires labels to fit.
         x = self.get_repr(adata, self.cfg.x_key)
         y = self.get_repr(adata, self.cfg.y_key)
         self.processor.fit(x, y)
         labels = self.processor.predict(x)
         self.set_repr(adata, self.cfg.labels_key, labels)
 
-        self.save_processor_stats(adata)
-
-    def predict(self, adata: AnnData) -> None:
-        """Runs processor.predict and stores the labels.
-        """
-        x = self.get_repr(adata, self.cfg.x_key)
-        labels = self.processor.predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
+        if self.cfg.save_stats:
+            self.save_processor_stats(adata)
 
     @staticmethod
     def _processor_stats() -> List[str]:
