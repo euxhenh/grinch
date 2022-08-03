@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
-from pydantic import Field, validator
+from pydantic import Field, validate_arguments, validator
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 
@@ -34,6 +34,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
         if self.cfg.save_stats:
             self.save_processor_stats(adata)
 
+    @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def predict(self, adata: AnnData) -> None:
         """Calls predict on the underlying predictor."""
         x = self.get_repr(adata, self.cfg.x_key)
