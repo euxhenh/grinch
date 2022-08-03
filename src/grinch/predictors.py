@@ -19,6 +19,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
 
     class Config(BaseProcessor.Config):
         x_key: str = f"obsm.{OBSM.X_PCA}"
+        labels_key: str
         save_stats: bool = True
         kwargs: Dict[str, Any] = {}
 
