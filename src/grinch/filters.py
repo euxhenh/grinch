@@ -79,9 +79,7 @@ class FilterCells(BaseFilter):
             )
 
         if to_keep.sum() <= 1:
-            raise ValueError(
-                "Filtering options are too stringent. Less than 2 cells remained."
-            )
+            raise ValueError("Filtering options are too stringent. Less than 2 cells remained.")
 
         # Set these after the exception above
         adata.obs[OBS.N_COUNTS] = counts_per_cell.astype(np.float32)
@@ -128,9 +126,7 @@ class FilterGenes(BaseFilter):
             )
 
         if to_keep.sum() < 1:
-            raise ValueError(
-                "Filtering options are too stringent. Less than 1 gene remained."
-            )
+            raise ValueError("Filtering options are too stringent. Less than 1 gene remained.")
 
         # Set these after the exception above
         adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
