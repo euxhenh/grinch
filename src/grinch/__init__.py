@@ -1,6 +1,7 @@
 from .aliases import ADK, OBS, OBSM, UNS, VAR, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
 from .filters import FilterCells, FilterGenes
+from .indexer import Indexer
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
 from .pipeline import GRPipeline
@@ -20,6 +21,7 @@ __all__ = [
     'BaseConfig',
     'BaseConfigurable',
     'BasePredictor',
+    'Indexer',
     'KMeans',
     'LogisticRegression',
     'BaseProcessor',
