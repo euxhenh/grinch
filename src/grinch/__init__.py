@@ -1,6 +1,7 @@
 from .aliases import ADK, OBS, OBSM, UNS, VAR, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
 from .filters import FilterCells, FilterGenes
+from .group import GroupProcess
 from .indexer import Indexer
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
@@ -28,6 +29,7 @@ __all__ = [
     'BaseTransformer',
     'DataSplitter',
     'GRPipeline',
+    'GroupProcess',
     'Splitter',
     'FilterCells',
     'FilterGenes',

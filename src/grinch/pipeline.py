@@ -4,6 +4,7 @@ from anndata import AnnData
 from pydantic import validate_arguments
 
 from .conf import BaseConfigurable
+from .group import GroupProcess
 from .predictors import BasePredictor
 from .splitter import DataSplitter, Splitter
 from .transformers import BaseTransformer
@@ -58,6 +59,8 @@ class GRPipeline(BaseConfigurable):
                 case BaseTransformer():
                     processor.transform(ds.VAL_SPLIT)
                 case Splitter():
-                    raise TypeError("No splitters are allowed in this function call.")
-                case _:
+                    raise TypeError("Splitters cannot be used with the validation set.")
+                case GroupProcess():
+                    raise TypeError("GroupProcess cannot be used with the validation set.")
+                case _: # default to simple processing
                     processor(ds.VAL_SPLIT)
