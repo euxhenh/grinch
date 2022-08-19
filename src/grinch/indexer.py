@@ -4,6 +4,7 @@ from pydantic import validator
 from sklearn.utils import column_or_1d
 
 from .processors import BaseProcessor
+from .utils.validation import validate_axis
 
 
 class Indexer(BaseProcessor):
@@ -23,11 +24,7 @@ class Indexer(BaseProcessor):
 
         @validator('axis')
         def ensure_correct_axis(cls, axis):
-            if axis in ['obs', 0]:
-                return 0
-            elif axis in ['var', 1]:
-                return 1
-            raise ValueError(f"Could not interpret axis {axis}.")
+            return validate_axis(axis)
 
     cfg: Config
 

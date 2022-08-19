@@ -48,3 +48,13 @@ def check_has_processor(obj):
         raise ProcessorNotDefined(
             f"Object of type {obj.__class__} does not contain a processor object."
         )
+
+
+def validate_axis(axis):
+    """Checks if axis is 0, 1, 'obs', or 'var'.
+    """
+    if axis in ['obs', 0]:
+        return 0
+    elif axis in ['var', 1]:
+        return 1
+    raise ValueError(f"Could not interpret axis {axis}.")

@@ -18,7 +18,7 @@ class DataSplitter:
     TEST_SPLIT: Optional[AnnData] = None
 
     @property
-    def is_split(self):
+    def is_split(self) -> bool:
         return any_not_None(self.VAL_SPLIT, self.TEST_SPLIT)
 
 
