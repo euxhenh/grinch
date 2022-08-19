@@ -25,14 +25,9 @@ class BasePredictor(BaseProcessor, abc.ABC):
 
     cfg: Config
 
-    def _process(self, adata: AnnData) -> None:
-        """Fits the data and stores predictions."""
-        x = self.get_repr(adata, self.cfg.x_key)
-        labels = self.processor.fit_predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
-
-        if self.cfg.save_stats:
-            self.save_processor_stats(adata)
+    @staticmethod
+    def _processor_must_implement() -> List[str]:
+        return BaseProcessor._processor_must_implement() + ['predict']
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def predict(self, adata: AnnData) -> None:
@@ -42,9 +37,31 @@ class BasePredictor(BaseProcessor, abc.ABC):
         self.set_repr(adata, self.cfg.labels_key, labels)
 
 
-class KMeans(BasePredictor):
+class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
+    """A base class for unsupervised predictors, e.g., clustering."""
 
     class Config(BasePredictor.Config):
+        ...
+
+    cfg: Config
+
+    @staticmethod
+    def _processor_must_implement() -> List[str]:
+        return BasePredictor._processor_must_implement() + ['fit_predict']
+
+    def _process(self, adata: AnnData) -> None:
+        """Fits the data and stores predictions."""
+        x = self.get_repr(adata, self.cfg.x_key)
+        labels = self.processor.fit_predict(x)
+        self.set_repr(adata, self.cfg.labels_key, labels)
+
+        if self.cfg.save_stats:
+            self.save_processor_stats(adata)
+
+
+class KMeans(BaseUnsupervisedPredictor):
+
+    class Config(BaseUnsupervisedPredictor.Config):
         labels_key: str = f"obs.{OBS.KMEANS}"
         stats_key: str = f"uns.{UNS.KMEANS}"
         # KMeans args
@@ -70,10 +87,37 @@ class KMeans(BasePredictor):
         return BasePredictor._processor_stats() + ['cluster_centers_']
 
 
-class LogisticRegression(BasePredictor):
+class BaseSupervisedPredictor(BasePredictor, abc.ABC):
+    """A base class for unsupervised predictors, e.g., clustering."""
 
     class Config(BasePredictor.Config):
         y_key: str
+
+    cfg: Config
+
+    @staticmethod
+    def _processor_must_implement() -> List[str]:
+        return BasePredictor._processor_must_implement() + ['fit']
+
+    def _process(self, adata: AnnData) -> None:
+        # Override process method since LogisticRegression does not have a
+        # fit_predict method and also requires labels to fit.
+        x = self.get_repr(adata, self.cfg.x_key)
+        y = self.get_repr(adata, self.cfg.y_key)
+        if hasattr(self.processor, 'fit_predict'):
+            labels = self.processor.fit_predict(x, y)
+        else:
+            self.processor.fit(x, y)
+            labels = self.processor.predict(x)
+        self.set_repr(adata, self.cfg.labels_key, labels)
+
+        if self.cfg.save_stats:
+            self.save_processor_stats(adata)
+
+
+class LogisticRegression(BaseSupervisedPredictor):
+
+    class Config(BaseSupervisedPredictor.Config):
         labels_key: str = f"obs.{OBS.LOG_REG}"
         stats_key: str = f"uns.{UNS.LOG_REG}"
         # LogisticRegression kwargs
@@ -99,18 +143,6 @@ class LogisticRegression(BasePredictor):
             random_state=self.cfg.seed,
             **self.cfg.kwargs,
         )
-
-    def _process(self, adata: AnnData) -> None:
-        # Override process method since LogisticRegression does not have a
-        # fit_predict method and also requires labels to fit.
-        x = self.get_repr(adata, self.cfg.x_key)
-        y = self.get_repr(adata, self.cfg.y_key)
-        self.processor.fit(x, y)
-        labels = self.processor.predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
-
-        if self.cfg.save_stats:
-            self.save_processor_stats(adata)
 
     @staticmethod
     def _processor_stats() -> List[str]:
