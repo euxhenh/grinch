@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from sklearn.utils import column_or_1d
@@ -43,7 +43,7 @@ def true_inside(x, v1, v2) -> np.ndarray:
     return (v1 <= x) & (x <= v2)
 
 
-def group_indices(x) -> List[np.ndarray]:
+def group_indices(x) -> Tuple[np.ndarray, List[np.ndarray]]:
     """Returns an index array pointing to unique elements in x.
 
     Parameters
