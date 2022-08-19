@@ -62,5 +62,5 @@ class GRPipeline(BaseConfigurable):
                     raise TypeError("Splitters cannot be used with the validation set.")
                 case GroupProcess():
                     raise TypeError("GroupProcess cannot be used with the validation set.")
-                case _: # default to simple processing
+                case _:  # default to simple processing
                     processor(ds.VAL_SPLIT)
