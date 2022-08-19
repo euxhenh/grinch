@@ -34,7 +34,8 @@ class AnnDataKeys:
         X_UMAP = auto()
 
     class VARM:
-        ...
+        LOG_REG_COEF = auto()
+        TTEST = auto()
 
     class UNS:
         X_PCA = auto()

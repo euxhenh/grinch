@@ -34,7 +34,7 @@ class GroupProcess(BaseProcessor):
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        # We change this to inplace so that we can concatenate the
+        # We change this to not inplace so that we can concatenate the
         # resulting adatas into a single adata.
         self.cfg_not_inplace = self.cfg.processor.copy(update={'inplace': False})
 
@@ -46,6 +46,7 @@ class GroupProcess(BaseProcessor):
         adata_list = []
         self.processor_dict = {}
 
+        # TODO multithread
         for label, group in zip(unq_labels, groups):
             processor = self.cfg_not_inplace.initialize()
             if self.cfg.axis == 0:

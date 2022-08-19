@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression as _LogisticRegression
 
 from .aliases import OBS, OBSM, UNS
 from .processors import BaseProcessor
-from .utils.validation import pop_args
+from .utils.validation import check_has_processor, pop_args
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ class BasePredictor(BaseProcessor, abc.ABC):
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def predict(self, adata: AnnData) -> None:
         """Calls predict on the underlying predictor."""
+        check_has_processor(self)
+
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.predict(x)
         self.set_repr(adata, self.cfg.labels_key, labels)
@@ -50,6 +52,7 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         return BasePredictor._processor_must_implement() + ['fit_predict']
 
     def _process(self, adata: AnnData) -> None:
+        check_has_processor(self)
         """Fits the data and stores predictions."""
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
@@ -100,6 +103,7 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
         return BasePredictor._processor_must_implement() + ['fit']
 
     def _process(self, adata: AnnData) -> None:
+        check_has_processor(self)
         # Override process method since LogisticRegression does not have a
         # fit_predict method and also requires labels to fit.
         x = self.get_repr(adata, self.cfg.x_key)
