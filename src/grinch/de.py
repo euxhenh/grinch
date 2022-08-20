@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
-from sklearn.utils import column_or_1d, indexable
+from sklearn.utils import indexable
 
 from .aliases import VARM
 from .processors import BaseProcessor
