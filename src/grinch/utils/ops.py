@@ -1,14 +1,12 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
-import numpy.typing as npt
-import scipy.sparse as sp
 from sklearn.utils import column_or_1d
 
 from ..custom_types import NP1D_Any, NP_bool
 
 
-def true_inside(x: npt.ArrayLike, v1: float, v2: float) -> NP_bool:
+def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
     """Returns a boolean array a with a[i] = True if x[i] is between v1 and
     v2 (inclusive). If any of v1 or v2 is None, will cap at -np.inf and
     np.inf respectively.
@@ -35,11 +33,8 @@ def true_inside(x: npt.ArrayLike, v1: float, v2: float) -> NP_bool:
     array([False,  True,  True])
     >>> true_inside(np.array([1, 2, 3]), None, None)
     array([ True,  True,  True])
-    >>> true_inside(np.matrix([[1], [2], [3]]), None, 2)
-    array([ True,  True, False])
     """
-    if sp.issparse(x):
-        x = x.toarray()
+    x = column_or_1d(x)
     if v1 is None:
         v1 = -np.inf
     if v2 is None:
@@ -48,7 +43,7 @@ def true_inside(x: npt.ArrayLike, v1: float, v2: float) -> NP_bool:
     return (v1 <= x) & (x <= v2)
 
 
-def group_indices(x: npt.ArrayLike, as_mask: bool = False) -> Tuple[NP1D_Any, List[NP1D_Any]]:
+def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_Any, List[NP1D_Any]]:
     """Returns an index array pointing to unique elements in x.
 
     Parameters
@@ -78,7 +73,7 @@ def group_indices(x: npt.ArrayLike, as_mask: bool = False) -> Tuple[NP1D_Any, Li
     array([0, 1, 0, 0, 0])
     """
     x = column_or_1d(x)
-    if len(x) == 0:
+    if x.size == 0:
         raise ValueError("Encountered 0-sized array.")
     argidx = np.argsort(x)
     sorted_x = x[argidx]

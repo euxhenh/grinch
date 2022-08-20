@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
+from sklearn.utils import column_or_1d, indexable
 
 from .aliases import VARM
 from .processors import BaseProcessor
@@ -58,6 +59,7 @@ class TTest(BaseProcessor):
             raise ValueError(f"Found only one unique value under key '{self.cfg.group_key}'")
 
         x = self.get_repr(adata, self.cfg.x_key)
+        x = indexable(x)
         for label, group in zip(unq_labels, groups):
             x1 = x[group]
             x2 = x[~group]
@@ -69,7 +71,7 @@ class TTest(BaseProcessor):
             if self.cfg.is_logged:
                 log2fc = mean1 - mean2
                 # Convert base
-                if self.cfg.base != 2:
+                if self.cfg.base is not None and self.cfg.base != 2:
                     base = np.e if self.cfg.base == 'e' else int(self.cfg.base)
                     log2fc *= np.log2(base)
             else:

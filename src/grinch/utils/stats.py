@@ -15,7 +15,7 @@ def _var(
     axis: Optional[int] = None,
     ddof: int = 0,
     mean: Optional[int | npt.ArrayLike] = None
-) -> int | npt.ArrayLike:
+) -> int | np.ndarray:
     """Computes variance of a given array.
 
     Parameters
@@ -53,10 +53,6 @@ def _var(
     True
     >>> _var([1])
     0.0
-    >>> _var([1], ddof=1)
-    nan
-    >>> _var(sp.csr_matrix(np.array([1])), ddof=1)
-    nan
     """
     if not isinstance(x, (np.ndarray, sp.spmatrix)):
         x = np.asarray(x)
@@ -79,7 +75,7 @@ def mean_var(
     x: npt.ArrayLike,
     axis: Optional[int] = None,
     ddof: int = 0
-) -> Tuple[int | npt.ArrayLike, int | npt.ArrayLike]:
+) -> Tuple[int | np.ndarray, int | np.ndarray]:
     """Returns both mean and variance.
 
     Parameters
@@ -101,7 +97,7 @@ def ttest(
     a: npt.ArrayLike,
     b: npt.ArrayLike,
     axis: Optional[int] = 0
-) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """Performs a Welch's t-test (unequal sample sizes, unequal vars).
     Extends scipy's ttest_ind to support sparse matrices.
 
@@ -140,7 +136,8 @@ def ttest(
 
     m1, v1 = mean_var(a, axis=axis, ddof=1)
     m2, v2 = mean_var(b, axis=axis, ddof=1)
-    assert m1.shape == v1.shape == m2.shape == v2.shape
+    if isinstance(m1, np.ndarray):
+        assert m1.shape == v1.shape == m2.shape == v2.shape  # type: ignore
 
     df, denom = _unequal_var_ttest_denom(v1, n1, v2, n2)
     res = _ttest_ind_from_stats(m1, m2, denom, df, alternative="two-sided")
