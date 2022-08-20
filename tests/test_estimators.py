@@ -15,13 +15,13 @@ X = np.array([
     [0, 1, 5, 6, 5],
     [2, 1, 7, 9, 8],
     [0, 1, 5, 6, 7],
-], dtype=np.float)
+], dtype=np.float32)
 
 X_test = np.array([
     [0, -1, 5, 6, 5],
     [5, 6, 0, 1, 0],
     [1, 0, 5, 5, 5]
-])
+], dtype=np.float32)
 
 
 X_mods = [X, sp.csr_matrix(X), to_view(X)]

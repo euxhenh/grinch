@@ -15,7 +15,7 @@ X = np.array([
     [0, 3, 9, 9, 9],
     [0, 0, 1, 0, 0],
     [0, 1, 5, 3, 1],
-], dtype=np.float)
+], dtype=np.float32)
 
 X_mods = [X, to_view(X)]
 

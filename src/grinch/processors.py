@@ -7,8 +7,9 @@ from typing import Any, List, Optional
 from anndata import AnnData
 from pydantic import validate_arguments, validator
 
-from .aliases import ALLOWED_KEYS, REP, REP_KEY
+from .aliases import ALLOWED_KEYS
 from .conf import BaseConfigurable
+from .custom_types import REP, REP_KEY
 from .utils.validation import check_has_processor
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class BaseProcessor(BaseConfigurable):
     __________
     inplace: bool
         If False, will make and return a copy of adata.
-    *_key: aliases.REP_KEY
+    *_key: custom_types.REP_KEY
         Any Config member parameter that ends in '_key' will be checked by
         pydantic validators to conform with adata column names.
     """

@@ -1,10 +1,12 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from sklearn.utils import column_or_1d
 
+from ..custom_types import NP1D_bool, NP1D_int, NP_bool
 
-def true_inside(x, v1, v2) -> np.ndarray:
+
+def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
     """Returns a boolean array a with a[i] = True if x[i] is between v1 and
     v2 (inclusive). If any of v1 or v2 is None, will cap at -np.inf and
     np.inf respectively.
@@ -31,8 +33,6 @@ def true_inside(x, v1, v2) -> np.ndarray:
     array([False,  True,  True])
     >>> true_inside(np.array([1, 2, 3]), None, None)
     array([ True,  True,  True])
-    >>> true_inside(np.matrix([[1], [2], [3]]), None, 2)
-    array([ True,  True, False])
     """
     x = column_or_1d(x)
     if v1 is None:
@@ -43,12 +43,15 @@ def true_inside(x, v1, v2) -> np.ndarray:
     return (v1 <= x) & (x <= v2)
 
 
-def group_indices(x) -> Tuple[np.ndarray, List[np.ndarray]]:
+def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_int, List[NP1D_int | NP1D_bool]]:
     """Returns an index array pointing to unique elements in x.
 
     Parameters
     __________
     x: array-like
+    as_mask: bool
+        If True, will return masks where the indices point to the elements
+        inside the group.
 
     Returns
     _______
@@ -62,17 +65,26 @@ def group_indices(x) -> Tuple[np.ndarray, List[np.ndarray]]:
     (array([1, 2, 3, 4]), [array([0, 4]), array([3, 5]), array([2, 6, 7]), array([1, 8])])
     >>> group_indices([1, 1, 1])
     (array([1]), [array([0, 1, 2])])
+    >>> group_indices([1, 4, 2, 2, 1], as_mask=True)[1][0].astype(int)
+    array([1, 0, 0, 0, 1])
+    >>> group_indices([1, 4, 2, 2, 1], as_mask=True)[1][1].astype(int)
+    array([0, 0, 1, 1, 0])
+    >>> group_indices([1, 4, 2, 2, 1], as_mask=True)[1][2].astype(int)
+    array([0, 1, 0, 0, 0])
     """
     x = column_or_1d(x)
-    if len(x) == 0:
+    if x.size == 0:
         raise ValueError("Encountered 0-sized array.")
     argidx = np.argsort(x)
-    sorted_x = np.asarray(x)[argidx]
-    # Make sure this is a copy and not a view of x
-    if sorted_x.base is not None:
-        sorted_x = sorted_x.copy()
-
+    sorted_x = x[argidx]
     unique_items, first_indices = np.unique(sorted_x, return_index=True)
     groups = np.split(argidx, first_indices[1:])
     assert len(unique_items) == len(groups)
+
+    if as_mask:
+        _groups = [np.zeros(len(x), dtype=bool) for _ in range(len(groups))]
+        for group, _group in zip(groups, _groups):
+            _group[group] = True
+        groups = _groups
+
     return unique_items, groups
