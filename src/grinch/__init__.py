@@ -1,5 +1,6 @@
-from .aliases import ADK, OBS, OBSM, UNS, VAR, AnnDataKeys
+from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
+from .de import TTest
 from .filters import FilterCells, FilterGenes
 from .group import GroupProcess
 from .indexer import Indexer
@@ -17,6 +18,7 @@ __all__ = [
     'OBS',
     'OBSM',
     'VAR',
+    'VARM',
     'UNS',
     'AnnDataKeys',
     'BaseConfig',
@@ -38,6 +40,7 @@ __all__ = [
     'UMAP',
     'Report',
     'Reporter',
+    'TTest',
     'Log1P',
     'NormalizeTotal',
     'instantiate_config',

@@ -1,10 +1,14 @@
 from typing import List, Tuple
 
 import numpy as np
+import numpy.typing as npt
+import scipy.sparse as sp
 from sklearn.utils import column_or_1d
 
+from ..custom_types import NP1D_Any, NP_bool
 
-def true_inside(x, v1, v2) -> np.ndarray:
+
+def true_inside(x: npt.ArrayLike, v1: float, v2: float) -> NP_bool:
     """Returns a boolean array a with a[i] = True if x[i] is between v1 and
     v2 (inclusive). If any of v1 or v2 is None, will cap at -np.inf and
     np.inf respectively.
@@ -34,7 +38,8 @@ def true_inside(x, v1, v2) -> np.ndarray:
     >>> true_inside(np.matrix([[1], [2], [3]]), None, 2)
     array([ True,  True, False])
     """
-    x = column_or_1d(x)
+    if sp.issparse(x):
+        x = x.toarray()
     if v1 is None:
         v1 = -np.inf
     if v2 is None:
@@ -43,7 +48,7 @@ def true_inside(x, v1, v2) -> np.ndarray:
     return (v1 <= x) & (x <= v2)
 
 
-def group_indices(x, as_mask: bool = False) -> Tuple[np.ndarray, List[np.ndarray]]:
+def group_indices(x: npt.ArrayLike, as_mask: bool = False) -> Tuple[NP1D_Any, List[NP1D_Any]]:
     """Returns an index array pointing to unique elements in x.
 
     Parameters

@@ -1,6 +1,3 @@
-from typing import Any, Dict, List, Optional, TypeAlias
-
-
 class auto:
     """Initialize a variable with a lowercase string representation of its
     name."""
@@ -53,6 +50,3 @@ VARM = AnnDataKeys.VARM
 UNS = AnnDataKeys.UNS
 
 ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers']
-
-REP_KEY: TypeAlias = Optional[str | List[str] | Dict[str, str]]
-REP: TypeAlias = Dict[str, Any] | List[Any] | Any

@@ -4,33 +4,33 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
-from scipy.stats import ttest_ind
 
 from .aliases import VARM
 from .processors import BaseProcessor
 from .utils.ops import group_indices
+from .utils.stats import ttest
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class TestSummary:
-    names: Optional[np.ndarray] = field(None)
-    pvals: np.ndarray
-    qvals: Optional[np.ndarray] = field(None)
+    names: Optional[np.ndarray] = field(default=None)
+    pvals: Optional[np.ndarray] = field(default=None)
+    qvals: Optional[np.ndarray] = field(default=None)
     # Group means
-    mean1: np.ndarray
-    mean2: np.ndarray
-    log2fc: np.ndarray
+    mean1: Optional[np.ndarray] = field(default=None)
+    mean2: Optional[np.ndarray] = field(default=None)
+    log2fc: Optional[np.ndarray] = field(default=None)
     # Number of points in each group
-    n1: int
-    n2: int
+    n1: Optional[int] = field(default=None)
+    n2: Optional[int] = field(default=None)
 
     def to_array(self):
-        to_stack = [self.pvals, self.mean1, self.mean2, self.log2fc]
+        to_stack = [self.pvals, self.log2fc, self.mean1, self.mean2]
         if self.qvals is not None:
             to_stack.append(self.qvals)
-        return np.hstack(to_stack)
+        return np.vstack(to_stack).T
 
 
 class TTest(BaseProcessor):
@@ -43,7 +43,7 @@ class TTest(BaseProcessor):
         is_logged: bool = False
         # If the data is logged, this should point to the base of the
         # logarithm used.
-        base: str | float = 'e'
+        base: Optional[str | float] = 'e'
 
     cfg: Config
 
@@ -61,16 +61,16 @@ class TTest(BaseProcessor):
         for label, group in zip(unq_labels, groups):
             x1 = x[group]
             x2 = x[~group]
-            mean1 = x1.mean(axis=0)
-            mean2 = x2.mean(axis=0)
+            mean1 = np.ravel(x1.mean(axis=0))
+            mean2 = np.ravel(x2.mean(axis=0))
 
-            _, pvals = ttest_ind(x1, x2, equal_var=False)
+            _, pvals = ttest(x1, x2)
 
             if self.cfg.is_logged:
                 log2fc = mean1 - mean2
-                # Conver base
+                # Convert base
                 if self.cfg.base != 2:
-                    base = np.e if self.cfg.base == 'e' else self.cfg.base
+                    base = np.e if self.cfg.base == 'e' else int(self.cfg.base)
                     log2fc *= np.log2(base)
             else:
                 log2fc = np.log2((mean1 + 1) / (mean2 + 1))
@@ -80,8 +80,8 @@ class TTest(BaseProcessor):
                 mean1=mean1,
                 mean2=mean2,
                 log2fc=log2fc,
-                n1=len(x1),
-                n2=len(x2),
+                n1=x1.shape[0],
+                n2=x2.shape[0],
             )
 
             key = f"{self.cfg.summary_prefix_key}{self.cfg.splitter}{label}"
