@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from sklearn.utils import column_or_1d
 
-from ..custom_types import NP1D_int, NP_bool
+from ..custom_types import NP1D_bool, NP1D_int, NP_bool
 
 
 def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
@@ -43,7 +43,7 @@ def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
     return (v1 <= x) & (x <= v2)
 
 
-def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_int, List[NP1D_int]]:
+def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_int, List[NP1D_int | NP1D_bool]]:
     """Returns an index array pointing to unique elements in x.
 
     Parameters

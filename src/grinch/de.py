@@ -59,7 +59,7 @@ class TTest(BaseProcessor):
             raise ValueError(f"Found only one unique value under key '{self.cfg.group_key}'")
 
         x = self.get_repr(adata, self.cfg.x_key)
-        x = indexable(x)
+        x, = indexable(x)
         for label, group in zip(unq_labels, groups):
             x1 = x[group]
             x2 = x[~group]
