@@ -39,7 +39,7 @@ def test_ttest(X):
 
     ttest(adata)
     pvals = adata.varm[f'{VARM.TTEST}:0'][:, 0]
-    log2fc = adata.varm[f'{VARM.TTEST}:0'][:, 1]
+    log2fc = adata.varm[f'{VARM.TTEST}:0'][:, 2]
 
     assert pvals[0] < 0.05
     assert pvals[1] < 0.05
