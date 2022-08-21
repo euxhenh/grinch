@@ -1,10 +1,12 @@
 import logging
 from dataclasses import dataclass, field
+from functools import wraps
 from typing import Optional
 
 import numpy as np
 from anndata import AnnData
 from sklearn.utils import indexable
+from statsmodels.stats.multitest import multipletests
 
 from .aliases import VARM
 from .processors import BaseProcessor
@@ -14,9 +16,20 @@ from .utils.stats import ttest
 logger = logging.getLogger(__name__)
 
 
+@wraps(multipletests)
+def _correct(pvals, method='fdr_bh'):
+    """Simple wrapper."""
+    return multipletests(
+        pvals=pvals,
+        alpha=0.05,
+        method=method,
+        is_sorted=False,
+        returnsorted=False,
+    )
+
+
 @dataclass
 class TestSummary:
-    names: Optional[np.ndarray] = field(default=None)
     pvals: Optional[np.ndarray] = field(default=None)
     qvals: Optional[np.ndarray] = field(default=None)
     # Group means
@@ -27,10 +40,15 @@ class TestSummary:
     n1: Optional[int] = field(default=None)
     n2: Optional[int] = field(default=None)
 
+    def __post_init__(self):
+        """Init qvals using a default correction of fdr_bg if qvals not
+        passed explicitly.
+        """
+        if self.qvals is None:
+            self.qvals = _correct(self.pvals)[1]
+
     def to_array(self):
-        to_stack = [self.pvals, self.log2fc, self.mean1, self.mean2]
-        if self.qvals is not None:
-            to_stack.append(self.qvals)
+        to_stack = [self.pvals, self.qvals, self.log2fc, self.mean1, self.mean2]
         return np.vstack(to_stack).T
 
 
@@ -45,6 +63,7 @@ class TTest(BaseProcessor):
         # If the data is logged, this should point to the base of the
         # logarithm used.
         base: Optional[str | float] = 'e'
+        correction: str = 'fdr_bh'
 
     cfg: Config
 
@@ -67,6 +86,7 @@ class TTest(BaseProcessor):
             mean2 = np.ravel(x2.mean(axis=0))
 
             _, pvals = ttest(x1, x2)
+            qvals = _correct(pvals, method=self.cfg.correction)[1]
 
             if self.cfg.is_logged:
                 log2fc = mean1 - mean2
@@ -79,6 +99,7 @@ class TTest(BaseProcessor):
 
             ts = TestSummary(
                 pvals=pvals,
+                qvals=qvals,
                 mean1=mean1,
                 mean2=mean2,
                 log2fc=log2fc,
