@@ -32,13 +32,13 @@ class AnnDataKeys:
 
     class VARM:
         LOG_REG_COEF = auto()
-        TTEST = auto()
 
     class UNS:
         X_PCA = auto()
         X_TRUNCATED_SVD = auto()
         KMEANS = auto()
         LOG_REG = auto()
+        TTEST = auto()
 
 
 # Create shorter aliases, since these will be used a lot
