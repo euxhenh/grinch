@@ -2,6 +2,7 @@ import abc
 import logging
 from functools import partial
 from itertools import starmap
+from operator import itemgetter
 from typing import Any, List, Optional
 
 from anndata import AnnData
@@ -10,6 +11,7 @@ from pydantic import validate_arguments, validator
 from .aliases import ALLOWED_KEYS
 from .conf import BaseConfigurable
 from .custom_types import REP, REP_KEY
+from .utils.ops import compose
 from .utils.validation import check_has_processor
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,10 @@ class BaseProcessor(BaseConfigurable):
                 )
             if len(parts := val.split('.')) > 2:
                 # TODO Allow more dots for uns dictionaries.
-                raise ValueError("There can only be one dot '.' in representation keys.")
+                if parts[0] != 'uns':
+                    raise ValueError(
+                        "There can only be one dot '.' in non-uns representation keys."
+                    )
             if parts[0] not in ALLOWED_KEYS:
                 raise ValueError(f"AnnData annotation key should be one of {ALLOWED_KEYS}.")
             if len(parts[1]) >= 120:
@@ -126,8 +131,8 @@ class BaseProcessor(BaseConfigurable):
 
     @staticmethod
     def _processor_must_implement() -> List[str]:
-        """Upon assignment, will check if the processor contains the field
-        listed in this list.
+        """Upon assignment, will check if the processor contains the fields
+        contained in this list.
         """
         return []
 
@@ -175,11 +180,11 @@ class BaseProcessor(BaseConfigurable):
         if key == 'X':
             return adata.X
 
-        read_class, read_key = key.split('.')
+        read_class, *read_keys = key.split('.')
+        # We only support dictionary style access for read_keys
+        rec_itemgetter = compose(*(itemgetter(rk) for rk in read_keys))
         klas = getattr(adata, read_class)
-        if read_key not in klas:
-            raise ValueError(f"Could not find {read_key} in adata.{read_class}.")
-        return klas[read_key]
+        return rec_itemgetter(klas)
 
     @staticmethod
     def get_repr(adata: AnnData, key: REP_KEY) -> REP:
@@ -203,13 +208,19 @@ class BaseProcessor(BaseConfigurable):
         if key is None:
             raise ValueError("Cannot save representation if 'key' is None.")
 
-        save_class, save_key = key.split('.')
-        try:
-            getattr(adata, save_class)[save_key] = value
-        except Exception:
-            # Try initializing to an empty dictionary on fail
-            setattr(adata, save_class, {})
-            getattr(adata, save_class)[save_key] = value
+        save_class, *save_keys = key.split('.')
+        klas = getattr(adata, save_class)
+        # Iterate over all save keys and initialize empty dictionaries if
+        # the keys are not found.
+        while len(save_keys) > 1:
+            save_key = save_keys.pop(0)
+            if save_key not in klas:
+                klas[save_key] = {}
+            klas = klas[save_key]
+        # Final key
+        save_key = save_keys.pop(0)
+        assert len(save_keys) == 0
+        klas[save_key] = value
 
     @staticmethod
     def set_repr(adata: AnnData, key: REP_KEY, value: REP) -> None:

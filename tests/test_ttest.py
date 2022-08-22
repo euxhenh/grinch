@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import VARM
+from grinch import UNS
 
 from ._utils import to_view
 
@@ -29,7 +29,6 @@ def test_ttest(X):
         {
             "_target_": "src.grinch.TTest.Config",
             "group_key": "obs.label",
-            "splitter": ":",
         }
     )
     cfg = instantiate(cfg)
@@ -38,8 +37,8 @@ def test_ttest(X):
     adata.obs['label'] = label
 
     ttest(adata)
-    pvals = adata.varm[f'{VARM.TTEST}:0'][:, 0]
-    log2fc = adata.varm[f'{VARM.TTEST}:0'][:, 2]
+    pvals = adata.uns[UNS.TTEST]['0'][:, 0]
+    log2fc = adata.uns[UNS.TTEST]['0'][:, 2]
 
     assert pvals[0] < 0.05
     assert pvals[1] < 0.05

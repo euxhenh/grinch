@@ -9,7 +9,7 @@ from pydantic import validator
 from sklearn.utils import indexable
 from statsmodels.stats.multitest import multipletests
 
-from .aliases import VARM
+from .aliases import UNS
 from .processors import BaseProcessor
 from .utils.ops import group_indices
 from .utils.stats import ttest
@@ -61,15 +61,14 @@ class TestSummary:
         where rows are the tests performed.
         """
         to_stack = [self.pvals, self.qvals, self.log2fc, self.mean1, self.mean2]
-        return np.vstack(to_stack).T.astype(dtype) # type: ignore
+        return np.vstack(to_stack).T.astype(dtype)  # type: ignore
 
 
 class TTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
-        summary_prefix_key: str = f"varm.{VARM.TTEST}"
-        splitter: str = ':'
+        summary_prefix_key: str = f"uns.{UNS.TTEST}"
         group_key: str
         is_logged: bool = False
         # If the data is logged, this should point to the base of the
@@ -130,5 +129,5 @@ class TTest(BaseProcessor):
                 log2fc=log2fc,
             )
 
-            key = f"{self.cfg.summary_prefix_key}{self.cfg.splitter}{label}"
+            key = f"{self.cfg.summary_prefix_key}.{label}"
             self.set_repr(adata, key, ts.to_array())

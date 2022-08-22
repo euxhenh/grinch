@@ -1,9 +1,22 @@
+from functools import reduce
 from typing import List, Optional, Tuple
 
 import numpy as np
 from sklearn.utils import column_or_1d
 
 from ..custom_types import NP1D_bool, NP1D_int, NP_bool
+
+
+def IDENTITY(x):
+    """Identity function."""
+    return x
+
+
+def compose(*funcs):
+    """Composes functions left to right, i.e., the first function on the
+    list will be applied first."""
+    composed = reduce(lambda f, g: lambda x: g(f(x)), funcs, IDENTITY)
+    return composed
 
 
 def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
