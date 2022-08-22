@@ -8,7 +8,7 @@ from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 
 from .aliases import OBS, OBSM, UNS
-from .processors import BaseProcessor
+from .base_processor import BaseProcessor
 from .utils.validation import check_has_processor, pop_args
 
 logger = logging.getLogger(__name__)
