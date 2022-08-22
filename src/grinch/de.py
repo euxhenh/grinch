@@ -34,9 +34,9 @@ class TestSummary:
     pvals: np.ndarray
     qvals: np.ndarray
     # Group means
-    mean1: Optional[np.ndarray] = field(default=None)
-    mean2: Optional[np.ndarray] = field(default=None)
-    log2fc: Optional[np.ndarray] = field(default=None)
+    mean1: np.ndarray = field(default=None)
+    mean2: np.ndarray = field(default=None)
+    log2fc: np.ndarray = field(default=None)
 
     def __post_init__(self):
         """Init qvals using a default correction of fdr_bg if qvals is not
