@@ -45,3 +45,30 @@ def test_groupby(adata):
             != adata.obs[f'g-{x//2}/{OBS.KMEANS}'][x + 1]
 
     assert_equal(adata.obs_names.to_numpy().astype(str), obs_names)
+
+
+@pytest.mark.parametrize("adata", [adata])
+def test_groupby_noprefix(adata):
+    cfg = OmegaConf.create({
+        "_target_": "src.grinch.KMeans.Config",
+        "x_key": "X",
+        "n_clusters": 2,
+    })
+    # cfg = instantiate(cfg)
+    gcfg = OmegaConf.create({
+        "_target_": "src.grinch.GroupProcess.Config",
+        "processor": cfg,
+        "group_key": "obs.mem",
+        "group_prefix": "",
+    })
+    # gcfg = instantiate(gcfg, _convert_='partial')
+    gcfg = instantiate(gcfg)
+    groupprocess = gcfg.initialize()
+
+    obs_names = adata.obs_names.to_numpy().copy().astype(str)
+    groupprocess(adata)
+
+    for x in range(0, 6, 2):
+        assert adata.obs[OBS.KMEANS][x] != adata.obs[OBS.KMEANS][x + 1]
+
+    assert_equal(adata.obs_names.to_numpy().astype(str), obs_names)
