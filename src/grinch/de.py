@@ -126,13 +126,7 @@ class TTest(BaseProcessor):
             qvals = _correct(pvals, method=self.cfg.correction)[1]
             log2fc = _compute_log2fc(mean1, mean2, self.cfg.base, self.cfg.is_logged)
 
-            ts = TestSummary(
-                pvals=pvals,
-                qvals=qvals,
-                mean1=mean1,
-                mean2=mean2,
-                log2fc=log2fc,
-            )
+            ts = TestSummary(pvals=pvals, qvals=qvals, mean1=mean1, mean2=mean2, log2fc=log2fc)
 
             key = f"{self.cfg.summary_prefix_key}.{label}"
             self.set_repr(adata, key, ts.to_array())

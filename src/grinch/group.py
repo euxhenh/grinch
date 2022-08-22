@@ -18,6 +18,7 @@ class GroupProcess(BaseProcessor):
         # Key to group by, must be recognized by np.unique.
         group_key: str
         axis: int | str = 0
+        group_prefix: str = 'g-{label}/'
 
         @validator('axis')
         def ensure_correct_axis(cls, axis):
@@ -28,6 +29,12 @@ class GroupProcess(BaseProcessor):
             if not processor.inplace:
                 logger.warn('Group processor not `inplace` mode will have no effect.')
             return processor
+
+        @staticmethod
+        def replace_label(group_prefix, label):
+            if "{label}" in group_prefix:
+                return group_prefix.format(label=label)
+            return group_prefix
 
     cfg: Config
 
@@ -48,7 +55,10 @@ class GroupProcess(BaseProcessor):
 
         # TODO multithread
         for label, group in zip(unq_labels, groups):
-            processor = self.cfg_not_inplace.initialize()
+            cfg = self.cfg_not_inplace.copy(update={
+                'save_key_prefix': self.cfg.replace_label(self.cfg.group_prefix, label)
+            })
+            processor = cfg.initialize()
             if self.cfg.axis == 0:
                 _adata = processor(adata[group])
             else:
@@ -57,7 +67,10 @@ class GroupProcess(BaseProcessor):
 
             adata_list.append(_adata)
 
-        concat_adata = anndata.concat(adata_list)
+        # Outer join will fill missing values with nan's.
+        # uns_merge = same will only merge uns keys which are the same.
+        concat_adata = anndata.concat(adata_list, join='outer', uns_merge='same')
+        # Reorder so that they have original order
         if self.cfg.axis:
             concat_adata = concat_adata[adata.obs_names]
         else:
