@@ -10,7 +10,7 @@ from pydantic import validate_arguments, validator
 
 from .aliases import ALLOWED_KEYS
 from .conf import BaseConfigurable
-from .custom_types import REP, REP_KEY
+from .custom_types import REP, REP_KEY, optional_staticmethod
 from .utils.ops import compose
 from .utils.validation import check_has_processor
 
@@ -46,10 +46,15 @@ class BaseProcessor(BaseConfigurable):
     *_key: custom_types.REP_KEY
         Any Config member parameter that ends in '_key' will be checked by
         pydantic validators to conform with adata column names.
+    save_key_prefix: str
+        Will prepend this prefix to all (initial) save_keys. This is useful
+        for example for GroupProcess, which prepends the 'group{label}'
+        prefix to all saved reps.
     """
 
     class Config(BaseConfigurable.Config):
         inplace: bool = True
+        save_key_prefix: str = ''
 
         @staticmethod
         def _validate_single_rep_key(val: str):
@@ -201,7 +206,7 @@ class BaseProcessor(BaseConfigurable):
                 raise ValueError(f"'{key}' format not understood.")
 
     @staticmethod
-    def _set_repr(adata: AnnData, key: str, value: Any):
+    def _set_repr(adata: AnnData, key: str, value: Any, save_key_prefix: str = ''):
         """Save value under the key pointed to by key. Also saves
         config under `uns` if `save_config` is True.
         """
@@ -210,6 +215,8 @@ class BaseProcessor(BaseConfigurable):
 
         save_class, *save_keys = key.split('.')
         klas = getattr(adata, save_class)
+        # Add prefix to the first save key
+        save_keys[0] = f'{save_key_prefix}{save_keys[0]}'
         # Iterate over all save keys and initialize empty dictionaries if
         # the keys are not found.
         while len(save_keys) > 1:
@@ -222,9 +229,18 @@ class BaseProcessor(BaseConfigurable):
         assert len(save_keys) == 0
         klas[save_key] = value
 
-    @staticmethod
-    def set_repr(adata: AnnData, key: REP_KEY, value: REP) -> None:
-        single_set_func = partial(BaseProcessor._set_repr, adata)
+    @optional_staticmethod('BaseProcessor', {'cfg.save_key_prefix': 'save_key_prefix'})
+    def set_repr(
+        adata: AnnData,
+        key: REP_KEY,
+        value: REP,
+        save_key_prefix: str = ''
+    ) -> None:
+        single_set_func = partial(
+            BaseProcessor._set_repr,
+            adata,
+            save_key_prefix=save_key_prefix,
+        )
 
         """Saves values under the key that save_key points to."""
         match key, value:

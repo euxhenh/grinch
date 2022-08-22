@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @wraps(multipletests)
 def _correct(pvals, method='fdr_bh'):
-    """Simple wrapper."""
+    """Simple wrapper for multiplesets."""
     return multipletests(
         pvals=pvals,
         alpha=0.05,
@@ -27,6 +27,19 @@ def _correct(pvals, method='fdr_bh'):
         is_sorted=False,
         returnsorted=False,
     )
+
+
+def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
+    """Computes log2 fold change and converts base if data is already logged."""
+    if is_logged:
+        log2fc = mean1 - mean2
+        # Convert base
+        if base is not None and base != 2:
+            base = np.e if base == 'e' else float(base)
+            log2fc *= np.log2(base)
+    else:
+        log2fc = np.log2((mean1 + 1) / (mean2 + 1))
+    return log2fc
 
 
 @dataclass
@@ -111,23 +124,9 @@ class TTest(BaseProcessor):
 
             _, pvals = ttest(x1, x2)
             qvals = _correct(pvals, method=self.cfg.correction)[1]
+            log2fc = _compute_log2fc(mean1, mean2, self.cfg.base, self.cfg.is_logged)
 
-            if self.cfg.is_logged:
-                log2fc = mean1 - mean2
-                # Convert base
-                if self.cfg.base is not None and self.cfg.base != 2:
-                    base = np.e if self.cfg.base == 'e' else float(self.cfg.base)
-                    log2fc *= np.log2(base)
-            else:
-                log2fc = np.log2((mean1 + 1) / (mean2 + 1))
-
-            ts = TestSummary(
-                pvals=pvals,
-                qvals=qvals,
-                mean1=mean1,
-                mean2=mean2,
-                log2fc=log2fc,
-            )
+            ts = TestSummary(pvals=pvals, qvals=qvals, mean1=mean1, mean2=mean2, log2fc=log2fc)
 
             key = f"{self.cfg.summary_prefix_key}.{label}"
             self.set_repr(adata, key, ts.to_array())
