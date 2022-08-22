@@ -10,7 +10,7 @@ from sklearn.utils import indexable
 from statsmodels.stats.multitest import multipletests
 
 from .aliases import UNS
-from .processors import BaseProcessor
+from .base_processor import BaseProcessor
 from .utils.ops import group_indices
 from .utils.stats import ttest
 

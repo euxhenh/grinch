@@ -4,7 +4,7 @@ import anndata
 from anndata import AnnData
 from pydantic import validator
 
-from .processors import BaseProcessor
+from .base_processor import BaseProcessor
 from .utils.ops import group_indices
 from .utils.validation import validate_axis
 
