@@ -111,7 +111,7 @@ class TTest(BaseProcessor):
             mean2 = np.ravel(x2.mean(axis=0))
 
             _, pvals = ttest(x1, x2)
-            _, qvals = _correct(pvals, method=self.cfg.correction)
+            qvals = _correct(pvals, method=self.cfg.correction)[1]
 
             if self.cfg.is_logged:
                 log2fc = mean1 - mean2
@@ -128,8 +128,6 @@ class TTest(BaseProcessor):
                 mean1=mean1,
                 mean2=mean2,
                 log2fc=log2fc,
-                n1=x1.shape[0],
-                n2=x2.shape[0],
             )
 
             key = f"{self.cfg.summary_prefix_key}{self.cfg.splitter}{label}"
