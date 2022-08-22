@@ -34,9 +34,9 @@ class TestSummary:
     pvals: np.ndarray
     qvals: np.ndarray
     # Group means
-    mean1: np.ndarray = field(default=None)
-    mean2: np.ndarray = field(default=None)
-    log2fc: np.ndarray = field(default=None)
+    mean1: Optional[np.ndarray] = field(default=None)
+    mean2: Optional[np.ndarray] = field(default=None)
+    log2fc: Optional[np.ndarray] = field(default=None)
 
     def __post_init__(self):
         """Init qvals using a default correction of fdr_bg if qvals is not
@@ -61,7 +61,7 @@ class TestSummary:
         where rows are the tests performed.
         """
         to_stack = [self.pvals, self.qvals, self.log2fc, self.mean1, self.mean2]
-        return np.vstack(to_stack).T.astype(dtype)
+        return np.vstack(to_stack).T.astype(dtype) # type: ignore
 
 
 class TTest(BaseProcessor):
