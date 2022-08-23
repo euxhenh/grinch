@@ -14,8 +14,11 @@ NP1D_int = np.ndarray[Tuple[Any], np.dtype[np.int_]]
 NP2D_int = np.ndarray[Tuple[Any, Any], np.dtype[np.int_]]
 NP1D_bool = np.ndarray[Tuple[Any], np.dtype[np.bool_]]
 NP2D_bool = np.ndarray[Tuple[Any, Any], np.dtype[np.bool_]]
+NP1D_float = np.ndarray[Tuple[Any], np.dtype[np.float_]]
+NP2D_float = np.ndarray[Tuple[Any, Any], np.dtype[np.float_]]
 NP_bool = npt.NDArray[np.bool_]
 NP_int = npt.NDArray[np.int_]
+NP_float = npt.NDArray[np.float_]
 
 
 def optional_staticmethod(klas: str, special_args):

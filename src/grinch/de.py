@@ -9,6 +9,7 @@ from sklearn.utils import check_consistent_length, indexable
 
 from .aliases import UNS
 from .base_processor import BaseProcessor
+from .custom_types import NP1D_float
 from .utils.ops import group_indices
 from .utils.stats import _correct, ttest
 
@@ -36,12 +37,12 @@ class TestSummary(BaseModel):
         extra = Extra.ignore
         validate_all = True
 
-    pvals: np.ndarray
-    qvals: np.ndarray
+    pvals: NP1D_float
+    qvals: NP1D_float
     # Group means
-    mean1: Optional[np.ndarray]
-    mean2: Optional[np.ndarray]
-    log2fc: Optional[np.ndarray]
+    mean1: Optional[NP1D_float]
+    mean2: Optional[NP1D_float]
+    log2fc: Optional[NP1D_float]
 
     @validator('*', pre=True)
     def to_np(cls, v):
@@ -61,9 +62,10 @@ class TestSummary(BaseModel):
         not_none_arrs = self._tuple(exclude_none=True)
         check_consistent_length(*not_none_arrs)
 
-    def _tuple(self, exclude_none: bool = False) -> Tuple:
+    def _tuple(self, exclude_none: bool = False) -> Tuple[NP1D_float, ...]:
         """Converts self to tuple. To be used internally only."""
-        return tuple(self.dict(exclude_none=exclude_none).values())
+        data: Dict[str, NP1D_float] = self.dict(exclude_none=exclude_none)
+        return tuple(data.values())
 
     def df(self) -> pd.DataFrame:
         """Converts self to a pandas dataframe."""
@@ -75,9 +77,8 @@ class TestSummary(BaseModel):
         be replaced with arrays filled with np.nan. We do this to maintain
         shape consistency of the returned array.
         """
-        to_stack = self._tuple()
         to_stack = [(i if i is not None else np.full_like(self.pvals, np.nan))
-                    for i in to_stack]
+                    for i in self._tuple()]
         return np.vstack(to_stack).T.astype(dtype)  # type: ignore
 
     @classmethod
