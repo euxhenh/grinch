@@ -88,7 +88,7 @@ def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_int, List[NP1D_int | N
     x = column_or_1d(x)
     if x.size == 0:
         raise ValueError("Encountered 0-sized array.")
-    argidx = np.argsort(x)
+    argidx = np.argsort(x, kind='stable')
     sorted_x = x[argidx]
     unique_items, first_indices = np.unique(sorted_x, return_index=True)
     groups = np.split(argidx, first_indices[1:])
