@@ -39,6 +39,7 @@ class AnnDataKeys:
         KMEANS = auto()
         LOG_REG = auto()
         TTEST = auto()
+        GSEA = auto()
 
 
 # Create shorter aliases, since these will be used a lot

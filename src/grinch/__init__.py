@@ -1,7 +1,7 @@
 from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .base_processor import BaseProcessor
 from .conf import BaseConfig, BaseConfigurable
-from .de import TTest
+from .de import TTest, TestSummary
 from .filters import FilterCells, FilterGenes
 from .group import GroupProcess
 from .indexer import Indexer
@@ -41,6 +41,7 @@ __all__ = [
     'Report',
     'Reporter',
     'TTest',
+    'TestSummary',
     'Log1P',
     'NormalizeTotal',
     'instantiate_config',
