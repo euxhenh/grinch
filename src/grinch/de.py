@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import validator
+from pydantic import Field
 from sklearn.utils import indexable
 from statsmodels.stats.multitest import multipletests
 
@@ -101,21 +101,8 @@ class TTest(BaseProcessor):
         is_logged: bool = False
         # If the data is logged, this should point to the base of the
         # logarithm used.
-        base: Optional[float | str] = 'e'
+        base: Optional[float | str] = Field('e', gt=0, regex='e')
         correction: str = 'fdr_bh'
-
-        @validator('base')
-        def valid_base(cls, base):
-            """Make sure the base is valid. Accepted are 'e', or any
-            positive float.
-            """
-            if isinstance(base, str):
-                if base != 'e':
-                    raise ValueError(f"Found invalid base '{base}'.")
-                return base
-            if base <= 0:
-                raise ValueError("Negative bases are not allowed.")
-            return base
 
     cfg: Config
 
