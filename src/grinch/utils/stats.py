@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import Optional, Tuple
 
 import numpy as np
@@ -8,6 +9,7 @@ from scipy.stats._stats_py import (
     _ttest_ind_from_stats,
     _unequal_var_ttest_denom,
 )
+from statsmodels.stats.multitest import multipletests
 
 
 def _var(
@@ -142,3 +144,15 @@ def ttest(
     df, denom = _unequal_var_ttest_denom(v1, n1, v2, n2)
     res = _ttest_ind_from_stats(m1, m2, denom, df, alternative="two-sided")
     return Ttest_indResult(*res)
+
+
+@wraps(multipletests)
+def _correct(pvals, method='fdr_bh'):
+    """Simple wrapper for multiplesets."""
+    return multipletests(
+        pvals=pvals,
+        alpha=0.05,
+        method=method,
+        is_sorted=False,
+        returnsorted=False,
+    )

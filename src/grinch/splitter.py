@@ -31,14 +31,12 @@ class Splitter(BaseConfigurable):
         shuffle: bool = True
         stratify_key: Optional[str] = None
 
-        @validator('val_fraction')
-        def sum_less_than_one(cls, val_frac, values):
-            test_frac = values.get('test_fraction', None)
-            if not all_not_None(val_frac, test_frac):
-                return val_frac
-            if val_frac + test_frac >= 1:
-                raise ValueError("Validation and test fraction sum should be less than one.")
-            return val_frac
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+            if all_not_None(self.val_fraction, self.test_fraction):
+                if self.val_fraction + self.test_fraction >= 1:
+                    raise ValueError("Val and test fraction should sum less than one.")
 
         @validator('stratify_key')
         def rep_format_is_correct(cls, val):

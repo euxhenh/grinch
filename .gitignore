@@ -2,9 +2,7 @@
 /**/.vscode
 /**/.ipynb_checkpoints
 /**/__pycache__
-tmp
-tmp.py
-tmp.yaml
+tmp*
 tags
 .mypy*
 grinch.egg*
