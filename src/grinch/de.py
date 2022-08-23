@@ -4,6 +4,7 @@ from functools import wraps
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 from anndata import AnnData
 from pydantic import validator
 from sklearn.utils import indexable
@@ -57,23 +58,37 @@ class TestSummary:
         """
         if self.qvals is None:
             self.qvals = _correct(self.pvals)[1]
-        if self.mean1 is None:
-            self.mean1 = np.full_like(self.pvals, np.nan)
-        if self.mean2 is None:
-            self.mean2 = np.full_like(self.pvals, np.nan)
-        if self.log2fc is None:
-            self.log2fc = np.full_like(self.pvals, np.nan)
 
     def __array__(self, dtype=None):
         """Allows np.array or np.asarray to convert this dataclass to the
         appropriate container."""
         return self.to_array(dtype=dtype)
 
+    def to_df(self) -> pd.DataFrame:
+        """Converts self to a pandas dataframe."""
+        data = {
+            'pvals': self.pvals,
+            'qvals': self.qvals,
+        }
+        for arr_name in ['mean1', 'mean2', 'log2fc']:
+            arr = getattr(self, arr_name)
+            if arr is not None:
+                data[arr_name] = arr
+
+        return pd.DataFrame(data=data)
+
     def to_array(self, dtype=None) -> np.ndarray:
         """Stacks all numeric vectors in the dataclass and returns an array
-        where rows are the tests performed.
+        where rows are the tests performed. Any arrays that are None will
+        be replaced with arrays filled with np.nan. We do this to maintain
+        shape consistency of the returned array.
         """
-        to_stack = [self.pvals, self.qvals, self.log2fc, self.mean1, self.mean2]
+        to_stack = [self.pvals, self.qvals]
+        for arr in [self.mean1, self.mean2, self.log2fc]:
+            if arr is None:
+                to_stack.append(np.full_like(self.pvals, np.nan))
+            else:
+                to_stack.append(arr)
         return np.vstack(to_stack).T.astype(dtype)  # type: ignore
 
 
@@ -129,4 +144,4 @@ class TTest(BaseProcessor):
             ts = TestSummary(pvals=pvals, qvals=qvals, mean1=mean1, mean2=mean2, log2fc=log2fc)
 
             key = f"{self.cfg.summary_prefix_key}.{label}"
-            self.set_repr(adata, key, ts.to_array())
+            self.set_repr(adata, key, ts.to_df())

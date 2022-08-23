@@ -37,8 +37,8 @@ def test_ttest(X):
     adata.obs['label'] = label
 
     ttest(adata)
-    pvals = adata.uns[UNS.TTEST]['0'][:, 0]
-    log2fc = adata.uns[UNS.TTEST]['0'][:, 2]
+    pvals = adata.uns[UNS.TTEST]['0']['pvals'].to_numpy()
+    log2fc = adata.uns[UNS.TTEST]['0']['log2fc'].to_numpy()
 
     assert pvals[0] < 0.05
     assert pvals[1] < 0.05
