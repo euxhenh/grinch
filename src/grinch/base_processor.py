@@ -207,8 +207,7 @@ class BaseProcessor(BaseConfigurable):
 
     @staticmethod
     def _set_repr(adata: AnnData, key: str, value: Any, save_key_prefix: str = ''):
-        """Save value under the key pointed to by key. Also saves
-        config under `uns` if `save_config` is True.
+        """Save value under the key pointed to by key.
         """
         if key is None:
             raise ValueError("Cannot save representation if 'key' is None.")
