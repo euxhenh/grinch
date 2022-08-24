@@ -109,11 +109,7 @@ class DETestSummary(BaseModel):
             return arr >= cond.cutoff
         return arr <= cond.cutoff
 
-    def where(
-        self,
-        *conds: Iterable[FilterCondition],
-        as_mask: bool = False
-    ) -> NP1D_int | NP1D_bool:
+    def where(self, *conds: FilterCondition, as_mask: bool = False) -> NP1D_int | NP1D_bool:
         """Given a condition which conists of a key field, a threshold,
         return a mask or list of indices which satisfy the conditions.
         """
