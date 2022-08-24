@@ -6,10 +6,10 @@ import numpy as np
 from anndata import AnnData
 from pydantic import Field, validator
 
+from ..custom_types import NP1D_str
+from ..utils.ops import group_indices
+from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
-from .custom_types import NP1D_str
-from .utils.ops import group_indices
-from .utils.validation import validate_axis
 
 logger = logging.getLogger(__name__)
 

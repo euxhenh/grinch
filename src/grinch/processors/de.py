@@ -6,12 +6,12 @@ from anndata import AnnData
 from pydantic import Field
 from sklearn.utils import indexable
 
-from .aliases import UNS
+from ..aliases import UNS
+from ..custom_types import NP2D_float
+from ..de_test_summary import DETestSummary
+from ..utils.ops import group_indices
+from ..utils.stats import _correct, ttest
 from .base_processor import BaseProcessor
-from .custom_types import NP2D_float
-from .de_test_summary import DETestSummary
-from .utils.ops import group_indices
-from .utils.stats import _correct, ttest
 
 logger = logging.getLogger(__name__)
 

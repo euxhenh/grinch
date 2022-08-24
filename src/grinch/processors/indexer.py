@@ -3,8 +3,8 @@ from anndata import AnnData
 from pydantic import validator
 from sklearn.utils import column_or_1d
 
+from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
-from .utils.validation import validate_axis
 
 
 class Indexer(BaseProcessor):

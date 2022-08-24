@@ -8,11 +8,11 @@ from anndata import AnnData
 from pydantic import validator
 from sklearn.utils.validation import column_or_1d
 
-from .aliases import UNS
+from ..aliases import UNS
+from ..custom_types import NP1D_int, NP1D_str
+from ..de_test_summary import DETestSummary, FilterCondition
+from ..utils.validation import pop_args
 from .base_processor import BaseProcessor
-from .custom_types import NP1D_int, NP1D_str
-from .de_test_summary import DETestSummary, FilterCondition
-from .utils.validation import pop_args
 
 logger = logging.getLogger(__name__)
 

@@ -5,10 +5,13 @@ from pydantic import Field, validate_arguments
 from tqdm.auto import tqdm
 
 from .conf import BaseConfigurable
-from .group import GroupProcess
-from .predictors import BasePredictor
-from .splitter import DataSplitter, Splitter
-from .transformers import BaseTransformer
+from .processors import (
+    BasePredictor,
+    BaseTransformer,
+    DataSplitter,
+    GroupProcess,
+    Splitter,
+)
 
 
 class GRPipeline(BaseConfigurable):

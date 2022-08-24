@@ -1,19 +1,27 @@
 from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
-from .base_processor import BaseProcessor
 from .conf import BaseConfig, BaseConfigurable
-from .de import TTest
 from .de_test_summary import DETestSummary, FilterCondition
-from .enrich import GSEA
 from .filters import FilterCells, FilterGenes
-from .group import GroupProcess
-from .indexer import Indexer
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
 from .pipeline import GRPipeline
-from .predictors import BasePredictor, KMeans, LogisticRegression
+from .processors import (
+    GSEA,
+    PCA,
+    UMAP,
+    BasePredictor,
+    BaseProcessor,
+    BaseTransformer,
+    DataSplitter,
+    GroupProcess,
+    Indexer,
+    KMeans,
+    LogisticRegression,
+    Splitter,
+    TruncatedSVD,
+    TTest,
+)
 from .reporter import Report, Reporter
-from .splitter import DataSplitter, Splitter
-from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
     'ADK',

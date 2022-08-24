@@ -6,9 +6,9 @@ from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.model_selection import train_test_split
 
+from ..conf import BaseConfigurable
+from ..utils.validation import all_not_None, any_not_None
 from .base_processor import BaseProcessor
-from .conf import BaseConfigurable
-from .utils.validation import all_not_None, any_not_None
 
 
 @dataclass(eq=False)

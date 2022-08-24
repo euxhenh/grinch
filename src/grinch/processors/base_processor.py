@@ -8,11 +8,11 @@ from typing import Any, List, Optional
 from anndata import AnnData
 from pydantic import validate_arguments, validator
 
-from .aliases import ALLOWED_KEYS
-from .conf import BaseConfigurable
-from .custom_types import REP, REP_KEY, optional_staticmethod
-from .utils.ops import compose
-from .utils.validation import check_has_processor
+from ..aliases import ALLOWED_KEYS
+from ..conf import BaseConfigurable
+from ..custom_types import REP, REP_KEY, optional_staticmethod
+from ..utils.ops import compose
+from ..utils.validation import check_has_processor
 
 logger = logging.getLogger(__name__)
 
