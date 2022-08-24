@@ -22,7 +22,7 @@ class FilterCondition(BaseModel):
     greater_is_better: bool = False
 
 
-class TestSummary(BaseModel):
+class DETestSummary(BaseModel):
     """A summary dataclas for DE test results.
 
     Parameters
@@ -89,14 +89,14 @@ class TestSummary(BaseModel):
         return np.vstack(to_stack).T.astype(dtype)  # type: ignore
 
     @classmethod
-    def from_dict(cls, val: Dict) -> 'TestSummary':
+    def from_dict(cls, val: Dict) -> 'DETestSummary':
         """Constructs an instance of TestSummary given a dict. Extra fields
         are ignored.
         """
         return cls(**val)
 
     @classmethod
-    def from_df(cls, val: pd.DataFrame) -> 'TestSummary':
+    def from_df(cls, val: pd.DataFrame) -> 'DETestSummary':
         """Constructs an instance of TestSummary given a df."""
         return cls.from_dict(val.to_dict('list'))
 
@@ -104,7 +104,7 @@ class TestSummary(BaseModel):
         """Helper function for self.where that takes a single condition."""
         arr = getattr(self, cond.key, None)
         if arr is None:  # Includes the case when self.key has not been set.
-            raise KeyError(f"Key '{cond.key}' not found in TestSummary.")
+            raise KeyError(f"Key '{cond.key}' not found in DETestSummary.")
         if cond.greater_is_better:
             return arr >= cond.cutoff
         return arr <= cond.cutoff

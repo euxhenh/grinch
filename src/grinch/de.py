@@ -9,7 +9,7 @@ from sklearn.utils import indexable
 from .aliases import UNS
 from .base_processor import BaseProcessor
 from .custom_types import NP2D_float
-from .test_summary import TestSummary
+from .de_test_summary import TestSummary
 from .utils.ops import group_indices
 from .utils.stats import _correct, ttest
 

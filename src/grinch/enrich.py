@@ -11,7 +11,7 @@ from sklearn.utils.validation import column_or_1d
 from .aliases import UNS
 from .base_processor import BaseProcessor
 from .custom_types import NP1D_int, NP1D_str
-from .test_summary import FilterCondition, TestSummary
+from .de_test_summary import DETestSummary, FilterCondition
 from .utils.validation import pop_args
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class GSEA(BaseProcessor):
     read_key: str
         Must point to a dict of dataframes in anndata, or to a single
         dataframe. Each of these dataframes will be converted to a
-        TestSummary.
+        DETestSummary.
     save_key: str
         Will point to a dict of dataframes if read_key also points to a
         dict, or to a single dataframe otherwise.
@@ -66,20 +66,20 @@ class GSEA(BaseProcessor):
 
     def _process_test(
         self,
-        test: pd.DataFrame | TestSummary,
+        test: pd.DataFrame | DETestSummary,
         gene_list_all: NP1D_str
     ) -> pd.DataFrame:
-        """Process a single DataFrame or TestSummary object."""
+        """Process a single DataFrame or DETestSummary object."""
         if isinstance(test, pd.DataFrame):
-            test = TestSummary.from_df(test)
-        elif not isinstance(test, TestSummary):
+            test = DETestSummary.from_df(test)
+        elif not isinstance(test, DETestSummary):
             raise TypeError(
-                f"Expected a DataFrame or TestSummary object but found {type(test)}.")
+                f"Expected a DataFrame or DETestSummary object but found {type(test)}.")
 
         if len(gene_list_all) != len(test):
             raise ValueError(
-                "Expected gene_list to be of same length as TestSummary, but "
-                f"found gene_list of length {len(gene_list_all)} and TestSummary "
+                "Expected gene_list to be of same length as DETestSummary, but "
+                f"found gene_list of length {len(gene_list_all)} and DETestSummary "
                 f"of length {len(test)}."
             )
 

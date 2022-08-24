@@ -2,6 +2,7 @@ from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .base_processor import BaseProcessor
 from .conf import BaseConfig, BaseConfigurable
 from .de import TTest
+from .de_test_summary import DETestSummary, FilterCondition
 from .enrich import GSEA
 from .filters import FilterCells, FilterGenes
 from .group import GroupProcess
@@ -12,7 +13,6 @@ from .pipeline import GRPipeline
 from .predictors import BasePredictor, KMeans, LogisticRegression
 from .reporter import Report, Reporter
 from .splitter import DataSplitter, Splitter
-from .test_summary import FilterCondition, TestSummary
 from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
@@ -43,7 +43,7 @@ __all__ = [
     'Report',
     'Reporter',
     'TTest',
-    'TestSummary',
+    'DETestSummary',
     'FilterCondition',
     'GSEA',
     'Log1P',
