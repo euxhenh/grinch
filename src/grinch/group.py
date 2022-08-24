@@ -7,6 +7,7 @@ from anndata import AnnData
 from pydantic import Field, validator
 
 from .base_processor import BaseProcessor
+from .custom_types import NP1D_str
 from .utils.ops import group_indices
 from .utils.validation import validate_axis
 
@@ -96,8 +97,8 @@ class GroupProcess(BaseProcessor):
                 self.get_repr(concat_adata, 'obs_names')
                 if self.cfg.axis == 0
                 else self.get_repr(concat_adata, 'var_names')
-            )
-            names_to_keep = names_to_keep[np.isin(names_to_keep, concat_names)]
+            )  # type: ignore
+            names_to_keep = names_to_keep[np.isin(names_to_keep, concat_names)]  # type: ignore
 
         concat_adata = (
             concat_adata[names_to_keep]
