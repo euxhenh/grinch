@@ -54,7 +54,7 @@ class GSEA(BaseProcessor):
 
     def _gsea(self, gene_list: List[str] | NP1D_str) -> pd.DataFrame:
         """Wrapper around gp.enrichr."""
-        if hasattr(gene_list, 'tolist'):
+        if hasattr(gene_list, 'tolist') and not isinstance(gene_list, list):  # 2nd if for mypy
             gene_list = gene_list.tolist()
 
         return gp.enrichr(
@@ -90,9 +90,9 @@ class GSEA(BaseProcessor):
 
     def _process(self, adata: AnnData) -> None:
         tests = self.get_repr(adata, self.cfg.read_key)
-        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key).astype(str)
+        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
+        gene_list_all = column_or_1d(gene_list_all).astyle(str)
         gene_list_all = np.char.upper(gene_list_all)
-        gene_list_all: NP1D_str = column_or_1d(gene_list_all)
 
         if len(gene_list_all) != adata.shape[1]:
             logger.warn(
