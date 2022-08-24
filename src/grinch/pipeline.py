@@ -1,7 +1,8 @@
 from typing import Dict
 
 from anndata import AnnData
-from pydantic import validate_arguments
+from pydantic import Field, validate_arguments
+from tqdm.auto import tqdm
 
 from .conf import BaseConfigurable
 from .group import GroupProcess
@@ -14,6 +15,7 @@ class GRPipeline(BaseConfigurable):
 
     class Config(BaseConfigurable.Config):
         processors: Dict[str, BaseConfigurable.Config]  # Maps a processor name to a config
+        verbose: bool = Field(True, exclude=True)
 
     cfg: Config
 
@@ -36,7 +38,8 @@ class GRPipeline(BaseConfigurable):
         """
         ds = DataSplitter(adata) if not isinstance(adata, DataSplitter) else adata
 
-        for processor in self.processors:
+        it = tqdm(self.processors) if self.cfg.verbose else self.processors
+        for processor in it:
             if not isinstance(processor, Splitter):
                 self._apply(ds, processor)
             else:

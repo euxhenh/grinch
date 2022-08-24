@@ -7,6 +7,7 @@ from anndata import AnnData
 from pydantic import Field, validator
 
 from .base_processor import BaseProcessor
+from .custom_types import NP1D_str
 from .utils.ops import group_indices
 from .utils.validation import validate_axis
 
@@ -51,6 +52,14 @@ class GroupProcess(BaseProcessor):
         # resulting adatas into a single adata.
         self.cfg_not_inplace = self.cfg.processor.copy(update={'inplace': False})
 
+    def _get_names_along_axis(self, adata: AnnData) -> NP1D_str:
+        """Gets obs_names or var_names depending on self.cfg.axis."""
+        return (
+            adata.obs_names.to_numpy().astype(str)
+            if self.cfg.axis == 0
+            else adata.var_names.to_numpy().astype(str)
+        )
+
     def _process(self, adata: AnnData) -> None:
         # Determine groups to process separately
         group_labels = self.get_repr(adata, self.cfg.group_key)
@@ -83,21 +92,13 @@ class GroupProcess(BaseProcessor):
         # uns_merge = same will only merge uns keys which are the same.
         concat_adata = anndata.concat(adata_list, join='outer', uns_merge='same')
         # Reorder so that they have original order
-        names_to_keep = (
-            self.get_repr(adata, 'obs_names')
-            if self.cfg.axis == 0
-            else self.get_repr(adata, 'var_names')
-        )
+        names_to_keep = self._get_names_along_axis(adata)
 
         if concat_adata.shape != adata.shape:
             # Since some adatas may have been dropped, we only take obs and
             # vars which exist in concat adata.
-            concat_names = (
-                self.get_repr(concat_adata, 'obs_names')
-                if self.cfg.axis == 0
-                else self.get_repr(concat_adata, 'var_names')
-            )  # type: ignore
-            names_to_keep = names_to_keep[np.isin(names_to_keep, concat_names)]  # type: ignore
+            concat_names = self._get_names_along_axis(concat_adata)
+            names_to_keep = names_to_keep[np.isin(names_to_keep, concat_names)]
 
         concat_adata = (
             concat_adata[names_to_keep]
