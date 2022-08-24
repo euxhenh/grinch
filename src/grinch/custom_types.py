@@ -16,12 +16,13 @@ NP1D_bool = np.ndarray[Tuple[Any], np.dtype[np.bool_]]
 NP2D_bool = np.ndarray[Tuple[Any, Any], np.dtype[np.bool_]]
 NP1D_float = np.ndarray[Tuple[Any], np.dtype[np.float_]]
 NP2D_float = np.ndarray[Tuple[Any, Any], np.dtype[np.float_]]
+NP1D_str = np.ndarray[Tuple[Any], np.dtype[np.str_]]
 NP_bool = npt.NDArray[np.bool_]
 NP_int = npt.NDArray[np.int_]
 NP_float = npt.NDArray[np.float_]
 
 
-def optional_staticmethod(klas: str, special_args):
+def optional_staticmethod(klas: str, special_args: Dict[str, str]):
     """Marks a method as optionally static. If the method is called from an
     instance of the class, will assume it is not static and will parse any
     self.keys specified in args. Otherwise will set each to None, and call

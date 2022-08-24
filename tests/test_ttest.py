@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import UNS, TestSummary
+from grinch import UNS, DETestSummary
 
 from ._utils import assert_allclose, to_view
 
@@ -39,7 +39,7 @@ def test_ttest(X):
     ttest(adata)
     pvals = adata.uns[UNS.TTEST]['0']['pvals'].to_numpy()
     log2fc = adata.uns[UNS.TTEST]['0']['log2fc'].to_numpy()
-    dd = TestSummary.from_df(adata.uns[UNS.TTEST]['0'])
+    dd = DETestSummary.from_df(adata.uns[UNS.TTEST]['0'])
     assert_allclose(dd.pvals, pvals)
     assert_allclose(dd.log2fc, log2fc)
 
