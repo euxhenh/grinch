@@ -91,7 +91,7 @@ class GSEA(BaseProcessor):
     def _process(self, adata: AnnData) -> None:
         tests = self.get_repr(adata, self.cfg.read_key)
         gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
-        gene_list_all = column_or_1d(gene_list_all).astyle(str)
+        gene_list_all = column_or_1d(gene_list_all).astype(str)
         gene_list_all = np.char.upper(gene_list_all)
 
         if len(gene_list_all) != adata.shape[1]:
