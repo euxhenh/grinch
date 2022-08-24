@@ -9,7 +9,7 @@ from sklearn.utils import indexable
 from .aliases import UNS
 from .base_processor import BaseProcessor
 from .custom_types import NP2D_float
-from .de_test_summary import TestSummary
+from .de_test_summary import DETestSummary
 from .utils.ops import group_indices
 from .utils.stats import _correct, ttest
 
@@ -30,7 +30,7 @@ class TTest(BaseProcessor):
 
     cfg: Config
 
-    def _ttest(self, x1: NP2D_float, x2: NP2D_float) -> TestSummary:
+    def _ttest(self, x1: NP2D_float, x2: NP2D_float) -> DETestSummary:
         """Perform a single ttest."""
         mean1 = np.ravel(x1.mean(axis=0))
         mean2 = np.ravel(x2.mean(axis=0))
@@ -39,7 +39,7 @@ class TTest(BaseProcessor):
         qvals = _correct(pvals, method=self.cfg.correction)[1]
         log2fc = _compute_log2fc(mean1, mean2, self.cfg.base, self.cfg.is_logged)
 
-        return TestSummary(pvals=pvals, qvals=qvals, mean1=mean1, mean2=mean2, log2fc=log2fc)
+        return DETestSummary(pvals=pvals, qvals=qvals, mean1=mean1, mean2=mean2, log2fc=log2fc)
 
     def _process(self, adata: AnnData) -> None:
         group_labels = self.get_repr(adata, self.cfg.group_key)
@@ -52,7 +52,7 @@ class TTest(BaseProcessor):
         x, = indexable(x)
 
         for label, group in zip(unq_labels, groups):
-            ts: TestSummary = self._ttest(x[group], x[~group])
+            ts: DETestSummary = self._ttest(x[group], x[~group])
             key = f"{self.cfg.save_key}.{label}"
             self.set_repr(adata, key, ts.df())
 
