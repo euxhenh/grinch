@@ -59,7 +59,7 @@ class BaseProcessor(BaseConfigurable):
         @staticmethod
         def _validate_single_rep_key(val: str):
             """Validates the format of a single key (str)."""
-            if val is None or val == 'X':
+            if val is None or val in ['X', 'obs_names', 'var_names']:
                 return val
             if '.' not in val:
                 raise ValueError(
@@ -184,6 +184,10 @@ class BaseProcessor(BaseConfigurable):
 
         if key == 'X':
             return adata.X
+        if key == 'obs_names':
+            return adata.obs_names.to_numpy().astype(str)
+        if key == 'var_names':
+            return adata.var_names.to_numpy().astype(str)
 
         read_class, *read_keys = key.split('.')
         # We only support dictionary style access for read_keys
