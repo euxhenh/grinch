@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -111,7 +111,7 @@ class DETestSummary(BaseModel):
 
     def where(
         self,
-        *conds: Tuple[FilterCondition, ...],
+        *conds: Iterable[FilterCondition],
         as_mask: bool = False
     ) -> NP1D_int | NP1D_bool:
         """Given a condition which conists of a key field, a threshold,
