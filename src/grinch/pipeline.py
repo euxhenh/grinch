@@ -1,3 +1,4 @@
+import logging
 from typing import Dict
 
 from anndata import AnnData
@@ -12,6 +13,8 @@ from .processors import (
     GroupProcess,
     Splitter,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GRPipeline(BaseConfigurable):
@@ -43,6 +46,7 @@ class GRPipeline(BaseConfigurable):
 
         it = tqdm(self.processors) if self.cfg.verbose else self.processors
         for processor in it:
+            logger.info(f"Running processor {processor.__class__.__name__}")
             if not isinstance(processor, Splitter):
                 self._apply(ds, processor)
             else:
