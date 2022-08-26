@@ -1,5 +1,4 @@
 import logging
-import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any, Dict, List, Optional
@@ -65,11 +64,12 @@ class GSEA(BaseProcessor):
         gene_names_key: str = "var_names"
         kwargs: Dict[str, Any] = {}
 
-        max_workers: Optional[int] = Field(None, gt=1, lt=2 * mp.cpu_count())
+        # Set max to 4; don't want to DDOS
+        max_workers: Optional[int] = Field(None, ge=1, le=4)
 
         @validator('max_workers')
         def init_max_workers(cls, val):
-            return mp.cpu_count() if val is None else val
+            return 4 if val is None else val
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -133,6 +133,13 @@ class GSEA(BaseProcessor):
         # Apply all filters
         gene_idx: NP1D_int = test.where(*filter_by.values(), as_mask=False)
         gene_list = gene_list_all[gene_idx]
+        if len(gene_list) == 0:  # empty list
+            logger.warn('Encountered empty gene list.')
+            # Empty dataframe
+            return pd.DataFrame(columns=[
+                'Gene_set', 'Term', 'Overlap', 'P-value', 'Adjusted P-value',
+                'Old P-value', 'Old Adjusted P-value', 'Odds Ratio', 'Combined Score',
+                'Genes'])
         return GSEA._gsea(gene_list)
 
     def _process(self, adata: AnnData) -> None:

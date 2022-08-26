@@ -1,4 +1,5 @@
 from collections import namedtuple
+from dataclasses import dataclass
 from functools import wraps
 from typing import Dict, Hashable, List, Optional, Tuple
 
@@ -10,8 +11,9 @@ from scipy.stats._stats_py import (
     _ttest_ind_from_stats,
     _unequal_var_ttest_denom,
 )
-from sklearn.utils import indexable, check_consistent_length
+from sklearn.utils import check_consistent_length, indexable
 from statsmodels.stats.multitest import multipletests
+from tqdm.auto import tqdm
 
 from ..custom_types import NP1D_float, NP1D_int
 from .ops import group_indices
@@ -167,7 +169,7 @@ def ttest_from_mean_var(
 
 @wraps(multipletests)
 def _correct(pvals, method='fdr_bh'):
-    """Simple wrapper for multiplesets."""
+    """Simple wrapper for multipletests."""
     return multipletests(
         pvals=pvals,
         alpha=0.05,
@@ -190,7 +192,17 @@ def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
     return log2fc
 
 
-SumVector = namedtuple('SumVector', ['n', 'sums', 'sum_of_squares'])
+@dataclass
+class StatVector:
+    n: int
+    sums: NP1D_float
+    sum_of_squares: NP1D_float
+
+    def __add__(self, other: 'StatVector'):
+        n = self.n + other.n
+        sums = self.sums + other.sums
+        sum_of_squares = self.sum_of_squares + other.sum_of_squares
+        return StatVector(n, sums, sum_of_squares)
 
 
 class PartMeanVar:
@@ -202,26 +214,27 @@ class PartMeanVar:
     performed in a one-vs-all fashion for multiple groups.
     """
 
-    def __init__(self, X, y: NP1D_int):
+    def __init__(self, X, y: NP1D_int, show_progress_bar: bool = True):
         X, = indexable(X)
-        assert X.ndim == 2
+        if X.ndim != 2:
+            raise ValueError("PartMeanVar currently only supports 2D arrays.")
         check_consistent_length(X, y)
-        self.n_samples_, self.n_features_ = X.shape
 
-        self.sum_vectors: Dict[Hashable, SumVector] = {}
         unq_labels, groups = group_indices(y)
+        if show_progress_bar:
+            unq_labels = tqdm(unq_labels, desc='Fitting data')
+
+        # support sparse matrices as well
+        def square_func(x): return x.power(2) if sp.issparse(X) else lambda x: x**2
+        # maps label to a StatVector
+        self.sum_vectors: Dict[Hashable, StatVector] = {}
+
         for label, group in zip(unq_labels, groups):
             xg = X[group]
-            rowsum = np.ravel(xg.sum(axis=0))
-            if isinstance(X, sp.spmatrix):
-                rowsum_of_squares = xg.power(2).sum(axis=0)
-            else:
-                rowsum_of_squares = (xg**2).sum(axis=0)
-            rowsum_of_squares = np.ravel(rowsum_of_squares)
-            self.sum_vectors[label] = SumVector(
+            self.sum_vectors[label] = StatVector(
                 n=xg.shape[0],
-                sums=rowsum,
-                sum_of_squares=rowsum_of_squares
+                sums=np.ravel(xg.sum(axis=0)),
+                sum_of_squares=np.ravel(square_func(xg).sum(axis=0))
             )
 
     def compute(
@@ -229,7 +242,7 @@ class PartMeanVar:
         labels: List[Hashable],
         ddof: int = 0,
         exclude: bool = False
-    ) -> Tuple[int, NP1D_float | float, NP1D_float | float]:
+    ) -> Tuple[int, NP1D_float, NP1D_float]:
         """Computes mean and variance of the submatrix defined by labels.
         If exclude is True, will compute the mean and variance of the
         submatrix that is formed by removing labels.
@@ -237,26 +250,24 @@ class PartMeanVar:
         if exclude:
             labels = list(set(self.sum_vectors).difference(labels))
         if len(labels) == 0:
-            raise ValueError("Found zero labels.")
+            raise ValueError("No labels found.")
         if len(diff := set(labels).difference(self.sum_vectors)) != 0:
             raise ValueError(f"Found labels {diff} not in dictionary.")
 
-        n = 0
-        rowsum = np.zeros_like(self.sum_vectors[labels[0]].sums)
-        rowsum_of_squares = np.zeros_like(self.sum_vectors[labels[0]].sum_of_squares)
+        accumul = StatVector(
+            n=0,
+            sums=np.zeros_like(self.sum_vectors[labels[0]].sums, dtype=float),
+            sum_of_squares=np.zeros_like(self.sum_vectors[labels[0]].sum_of_squares, dtype=float)
+        )
 
         for label in labels:
-            sumvector = self.sum_vectors[label]
-            n += sumvector.n
-            rowsum += sumvector.sums
-            rowsum_of_squares += sumvector.sum_of_squares
+            accumul += self.sum_vectors[label]
 
-        if ddof >= n:
-            raise ValueError(f"Degrees of freedome are greater than {n=}.")
+        if ddof >= accumul.n:
+            raise ValueError(f"Degrees of freedom are greater than n={accumul.n}.")
 
-        Ex = rowsum / n
-        Ex2 = rowsum_of_squares / n
-        var = Ex2 - np.square(Ex)
-        var = var * np.divide(n, n - ddof)
+        Ex = accumul.sums / accumul.n
+        Ex2 = accumul.sum_of_squares / accumul.n
+        var = (Ex2 - np.square(Ex)) * np.divide(accumul.n, accumul.n - ddof)
 
-        return n, Ex, var
+        return accumul.n, Ex, var
