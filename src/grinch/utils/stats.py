@@ -225,7 +225,7 @@ class PartMeanVar:
             unq_labels = tqdm(unq_labels, desc='Fitting data')
 
         # support sparse matrices as well
-        def square_func(x): return x.power(2) if sp.issparse(X) else lambda x: x**2
+        def square_func(x): return x.power(2) if sp.issparse(X) else x**2
         # maps label to a StatVector
         self.sum_vectors: Dict[Hashable, StatVector] = {}
 
