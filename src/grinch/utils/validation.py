@@ -25,6 +25,11 @@ def all_not_None(*args):
     return sum(arg is None for arg in args) == 0
 
 
+def only_one_not_None(*args):
+    """Returns True if there is exactly one item that is not None."""
+    return sum(arg is not None for arg in args) == 1
+
+
 @validate_arguments
 def pop_args(args: List[str], kwargs: Dict[str, Any]):
     """Pop any arg in args from kwargs. Meant to be used with estimators

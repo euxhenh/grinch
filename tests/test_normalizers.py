@@ -62,7 +62,7 @@ def test_normalize_median(X):
         [0, 0, 0, 0],
     ])
     assert_allclose(X_normalized, adata.X)
-    assert_allclose(X, adata.layers['pre_NormalizeTotal'])
+    assert_allclose(X, adata.layers['pre_normalizetotal'])
 
 
 @pytest.mark.parametrize("X", X_mods)
@@ -79,4 +79,4 @@ def test_log1p(X):
     log1p(adata)
     X_logged = np.log1p(X)
     assert_allclose(X_logged, adata.X)
-    assert_allclose(X, adata.layers['pre_Log1P'])
+    assert_allclose(X, adata.layers['pre_log1p'])

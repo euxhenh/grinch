@@ -1,5 +1,6 @@
 from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
+from .dataloader import DataLoader
 from .de_test_summary import DETestSummary, FilterCondition
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
@@ -33,6 +34,7 @@ __all__ = [
     'AnnDataKeys',
     'BaseConfig',
     'BaseConfigurable',
+    'DataLoader',
     'BasePredictor',
     'Indexer',
     'KMeans',

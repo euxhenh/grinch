@@ -54,3 +54,21 @@ def test_ttest(X):
     assert log2fc[2] < 2
     assert log2fc[3] > 2
     assert log2fc[4] > 2
+
+    pvals = adata.uns[UNS.TTEST]['1']['pvals'].to_numpy()
+    log2fc = adata.uns[UNS.TTEST]['1']['log2fc'].to_numpy()
+    dd = DETestSummary.from_df(adata.uns[UNS.TTEST]['1'])
+    assert_allclose(dd.pvals, pvals)
+    assert_allclose(dd.log2fc, log2fc)
+
+    assert pvals[0] < 0.05
+    assert pvals[1] < 0.05
+    assert pvals[2] > 0.5
+    assert pvals[3] < 0.05
+    assert pvals[4] < 0.05
+
+    assert log2fc[0] > 2
+    assert log2fc[1] > 2
+    assert log2fc[2] < 2
+    assert log2fc[3] < 2
+    assert log2fc[4] < 2

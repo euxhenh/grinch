@@ -1,5 +1,7 @@
+from collections import namedtuple
+from dataclasses import dataclass
 from functools import wraps
-from typing import Optional, Tuple
+from typing import Dict, Hashable, List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +11,12 @@ from scipy.stats._stats_py import (
     _ttest_ind_from_stats,
     _unequal_var_ttest_denom,
 )
+from sklearn.utils import check_consistent_length, indexable
 from statsmodels.stats.multitest import multipletests
+from tqdm.auto import tqdm
+
+from ..custom_types import NP1D_float, NP1D_int
+from .ops import group_indices
 
 
 def _var(
@@ -141,6 +148,20 @@ def ttest(
     if isinstance(m1, np.ndarray):
         assert m1.shape == v1.shape == m2.shape == v2.shape  # type: ignore
 
+    return ttest_from_mean_var(n1, m1, v1, n2, m2, v2)
+
+
+def ttest_from_mean_var(
+    n1: int,
+    m1: NP1D_float | float,
+    v1: NP1D_float | float,
+    n2: int,
+    m2: NP1D_float | float,
+    v2: NP1D_float | float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Performs a two sided t_test given means and variances.
+    n1, m1, v1: number of points, mean, and variance respectively.
+    """
     df, denom = _unequal_var_ttest_denom(v1, n1, v2, n2)
     res = _ttest_ind_from_stats(m1, m2, denom, df, alternative="two-sided")
     return Ttest_indResult(*res)
@@ -148,7 +169,7 @@ def ttest(
 
 @wraps(multipletests)
 def _correct(pvals, method='fdr_bh'):
-    """Simple wrapper for multiplesets."""
+    """Simple wrapper for multipletests."""
     return multipletests(
         pvals=pvals,
         alpha=0.05,
@@ -156,3 +177,97 @@ def _correct(pvals, method='fdr_bh'):
         is_sorted=False,
         returnsorted=False,
     )
+
+
+def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
+    """Computes log2 fold change and converts base if data is already logged."""
+    if is_logged:
+        log2fc = mean1 - mean2
+        # Convert base
+        if base is not None and base != 2:
+            base = np.e if base == 'e' else float(base)
+            log2fc *= np.log2(base)
+    else:
+        log2fc = np.log2((mean1 + 1) / (mean2 + 1))
+    return log2fc
+
+
+@dataclass
+class StatVector:
+    n: int
+    sums: NP1D_float
+    sum_of_squares: NP1D_float
+
+    def __add__(self, other: 'StatVector'):
+        n = self.n + other.n
+        sums = self.sums + other.sums
+        sum_of_squares = self.sum_of_squares + other.sum_of_squares
+        return StatVector(n, sums, sum_of_squares)
+
+
+class PartMeanVar:
+    """A class for efficiently computing means and variances of partitions
+    of a data matrix and unions of partitions. E.g., given a matrix of
+    shape (m, n) row-partitioned into three submatrices A, B, and C, we can
+    efficiently compute mean of [A, B], or [A, C] by caching sums of
+    entries over each partition. This can be useful for DE analysis
+    performed in a one-vs-all fashion for multiple groups.
+    """
+
+    def __init__(self, X, y: NP1D_int, show_progress_bar: bool = True):
+        X, = indexable(X)
+        if X.ndim != 2:
+            raise ValueError("PartMeanVar currently only supports 2D arrays.")
+        check_consistent_length(X, y)
+
+        unq_labels, groups = group_indices(y)
+        if show_progress_bar:
+            unq_labels = tqdm(unq_labels, desc='Fitting data')
+
+        # support sparse matrices as well
+        def square_func(x): return x.power(2) if sp.issparse(X) else x**2
+        # maps label to a StatVector
+        self.sum_vectors: Dict[Hashable, StatVector] = {}
+
+        for label, group in zip(unq_labels, groups):
+            xg = X[group]
+            self.sum_vectors[label] = StatVector(
+                n=xg.shape[0],
+                sums=np.ravel(xg.sum(axis=0)),
+                sum_of_squares=np.ravel(square_func(xg).sum(axis=0))
+            )
+
+    def compute(
+        self,
+        labels: List[Hashable],
+        ddof: int = 0,
+        exclude: bool = False
+    ) -> Tuple[int, NP1D_float, NP1D_float]:
+        """Computes mean and variance of the submatrix defined by labels.
+        If exclude is True, will compute the mean and variance of the
+        submatrix that is formed by removing labels.
+        """
+        if exclude:
+            labels = list(set(self.sum_vectors).difference(labels))
+        if len(labels) == 0:
+            raise ValueError("No labels found.")
+        if len(diff := set(labels).difference(self.sum_vectors)) != 0:
+            raise ValueError(f"Found labels {diff} not in dictionary.")
+
+        accumul = StatVector(
+            n=0,
+            sums=np.zeros_like(self.sum_vectors[labels[0]].sums, dtype=float),
+            sum_of_squares=np.zeros_like(self.sum_vectors[labels[0]].sum_of_squares, dtype=float)
+        )
+
+        for label in labels:
+            accumul += self.sum_vectors[label]
+
+        if ddof >= accumul.n:
+            raise ValueError(f"Degrees of freedom are greater than n={accumul.n}.")
+
+        Ex = accumul.sums / accumul.n
+        Ex2 = accumul.sum_of_squares / accumul.n
+        var = (Ex2 - np.square(Ex)) * np.divide(accumul.n, accumul.n - ddof)
+
+        return accumul.n, Ex, var

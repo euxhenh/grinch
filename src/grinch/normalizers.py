@@ -33,12 +33,9 @@ class BaseNormalizer(BaseConfigurable):
 
         @validator('input_layer_name')
         def resolve_input_layer_name(cls, value):
-            return f'pre_{cls.init_type.__name__}' if value is None else value
+            return f'pre_{cls.init_type.__name__}'.lower() if value is None else value
 
     cfg: Config
-
-    def __init__(self, cfg: Config, /):
-        super().__init__(cfg)
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> Optional[AnnData]:
