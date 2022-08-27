@@ -21,7 +21,7 @@ X_mods = [X, sp.csr_matrix(X), sp.csc_matrix(X), to_view(X)]
 def test_indexer_obs(X):
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.Indexer.Config",
+            "_target_": "src.grinch.InplaceIndexer.Config",
             "mask_key": "obs.mask",
         }
     )
@@ -42,7 +42,7 @@ def test_indexer_obs(X):
 def test_indexer_var(X):
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.Indexer.Config",
+            "_target_": "src.grinch.InplaceIndexer.Config",
             "axis": 'var',
             "mask_key": "var.mask",
         }
@@ -65,7 +65,7 @@ def test_indexer_var(X):
 def test_indexer_obs_no_mask(X):
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.Indexer.Config",
+            "_target_": "src.grinch.InplaceIndexer.Config",
             "mask_key": "uns.mask",
             "as_bool": False,
         }
@@ -87,7 +87,7 @@ def test_indexer_obs_no_mask(X):
 def test_indexer_var_no_mask(X):
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.Indexer.Config",
+            "_target_": "src.grinch.InplaceIndexer.Config",
             "axis": 'var',
             "mask_key": "uns.mask",
             "as_bool": False,

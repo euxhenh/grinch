@@ -7,7 +7,7 @@ from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
 
-class Indexer(BaseProcessor):
+class InplaceIndexer(BaseProcessor):
     """Inexes adata over obs or var axis using a mask stored in obs/var or
     an uns list of indices.
     """

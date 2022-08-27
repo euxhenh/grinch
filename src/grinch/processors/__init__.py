@@ -2,7 +2,7 @@ from .base_processor import BaseProcessor
 from .de import TTest
 from .enrich import GSEA
 from .group import GroupProcess
-from .indexer import Indexer
+from .indexer import InplaceIndexer
 from .predictors import (
     BasePredictor,
     BaseSupervisedPredictor,
@@ -18,7 +18,7 @@ __all__ = [
     'TTest',
     'GSEA',
     'GroupProcess',
-    'Indexer',
+    'InplaceIndexer',
     'BasePredictor',
     'BaseUnsupervisedPredictor',
     'BaseSupervisedPredictor',
