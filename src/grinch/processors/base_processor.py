@@ -66,12 +66,8 @@ class BaseProcessor(BaseConfigurable):
                     "Representation keys must equal 'X' or must contain a "
                     "dot '.' that points to the AnnData column to use."
                 )
-            if len(parts := val.split('.')) > 2:
-                # TODO Allow more dots for uns dictionaries.
-                if parts[0] != 'uns':
-                    raise ValueError(
-                        "There can only be one dot '.' in non-uns representation keys."
-                    )
+            if len(parts := val.split('.')) > 2 and parts[0] != 'uns':
+                raise ValueError("There can only be one dot '.' in non-uns representation keys.")
             if parts[0] not in ALLOWED_KEYS:
                 raise ValueError(f"AnnData annotation key should be one of {ALLOWED_KEYS}.")
             if len(parts[1]) >= 120:
@@ -184,10 +180,8 @@ class BaseProcessor(BaseConfigurable):
 
         if key == 'X':
             return adata.X
-        if key == 'obs_names':
-            return adata.obs_names.to_numpy().astype(str)
-        if key == 'var_names':
-            return adata.var_names.to_numpy().astype(str)
+        if key in ['obs_names', 'var_names']:
+            return getattr(adata, key).to_numpy().astype(str)
 
         read_class, *read_keys = key.split('.')
         # We only support dictionary style access for read_keys
@@ -239,11 +233,7 @@ class BaseProcessor(BaseConfigurable):
         value: REP,
         save_key_prefix: str = ''
     ) -> None:
-        single_set_func = partial(
-            BaseProcessor._set_repr,
-            adata,
-            save_key_prefix=save_key_prefix,
-        )
+        single_set_func = partial(BaseProcessor._set_repr, adata, save_key_prefix=save_key_prefix)
 
         """Saves values under the key that save_key points to."""
         match key, value:

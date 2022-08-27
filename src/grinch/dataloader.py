@@ -25,6 +25,6 @@ class DataLoader(BaseConfigurable):
         worker(adata)
 
         if os.path.exists(self.cfg.write_path):
-            logger.warn(f"Object {self.cfg.write_path} exists. Overwriting...")
+            logger.warning(f"Object {self.cfg.write_path} exists. Overwriting...")
 
         adata.write_h5ad(self.cfg.write_path)

@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field
+from pydantic import Field, validator
 from sklearn.utils import column_or_1d
 from tqdm.auto import tqdm
 
@@ -21,18 +21,61 @@ logger = logging.getLogger(__name__)
 
 
 class TTest(BaseProcessor):
+    """A class for performing differential expression analysis by using a
+    t-Test to determine if a gene is differentially expressed in one group
+    vs the other. An efficient implementation of mean and var computation
+    is used to quickly run all one-vs-all tests.
+
+    Parameters
+    __________
+    x_key: str
+        Points to the data matrix that will be used to run t-tests. The
+        first (0) axis should consist of observations and the second axis
+        should consist of the genes.
+    save_key: str
+        Points to a location where the test results will be saved. This
+        should start with 'uns' as we are storing a dictionary of
+        dataframes.
+    group_key: str
+        The column to look for group labels. Must be 1D.
+    is_logged: bool
+        Will only affect the computation of log2 fold-change.
+    base: str or float
+        Will only affect the computation of log2 fold-change. Is ignored if
+        data is not logged. Should point to the base that was used to take
+        the log of the data in order to convert to base 2 for fold-change.
+    correction: str
+        P-value correction to use.
+    show_progress_bar: bool
+        Whether to draw a tqdm progress bar.
+    replace_nan: bool
+        If True, will not allow nan's in the TTest Summary dataframes.
+        These will be replaced with appropriate values (1 for p-values).
+    """
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
         save_key: str = f"uns.{UNS.TTEST}"
         group_key: str
+
         is_logged: bool = True
         # If the data is logged, this should point to the base of the
         # logarithm used. Can be 'e' or a positive float.
         base: Optional[float | str] = Field('e', gt=0, regex='e')
         correction: str = 'fdr_bh'
-        show_progress_bar: bool = Field(True, exclude=True)
         replace_nan: bool = True
+
+        show_progress_bar: bool = Field(True, exclude=True)
+
+        @validator('save_key')
+        def _starts_with_uns(cls, save_key):
+            if save_key.split('.')[0] != 'uns':
+                raise ValueError("Anndata column for ttest should be 'uns'.")
+            return save_key
+
+        @validator('base')
+        def _remove_base_if_not_logged(cls, base, values):
+            return None if not values['is_logged'] else base
 
     cfg: Config
 
@@ -45,28 +88,23 @@ class TTest(BaseProcessor):
         not_none_mask = ~np.isnan(pvals)
 
         qvals = np.full_like(pvals, 1.0 if self.cfg.replace_nan else np.nan)
+        # only correct not nan's.
         qvals[not_none_mask] = _correct(pvals[not_none_mask], method=self.cfg.correction)[1]
-
-        log2fc = np.full_like(pvals, 0.0 if self.cfg.replace_nan else np.nan)
-        log2fc[not_none_mask] = _compute_log2fc(
-            m1[not_none_mask],
-            m2[not_none_mask],
-            self.cfg.base,
-            self.cfg.is_logged,
-        )
-
         if self.cfg.replace_nan:
             pvals[~not_none_mask] = 1.0
+
+        log2fc = _compute_log2fc(m1, m2, self.cfg.base, self.cfg.is_logged)
 
         return DETestSummary(pvals=pvals, qvals=qvals, mean1=m1, mean2=m2, log2fc=log2fc)
 
     def _process(self, adata: AnnData) -> None:
         group_labels = column_or_1d(self.get_repr(adata, self.cfg.group_key))
         unq_labels = np.unique(group_labels)
-        if len(unq_labels) == 1:
+        if len(unq_labels) <= 1:
             raise ValueError(f"Found only one unique value under key '{self.cfg.group_key}'")
 
         x = self.get_repr(adata, self.cfg.x_key)
+        # efficient mean and variance computation
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
 
         to_iter = (

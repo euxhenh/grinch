@@ -65,7 +65,7 @@ class GSEA(BaseProcessor):
         kwargs: Dict[str, Any] = {}
 
         # Set max to 4; don't want to DDOS
-        max_workers: Optional[int] = Field(None, ge=1, le=4)
+        max_workers: Optional[int] = Field(None, ge=1, le=4, exclude=True)
 
         @validator('max_workers')
         def init_max_workers(cls, val):
@@ -86,13 +86,7 @@ class GSEA(BaseProcessor):
         """Wrapper around gp.enrichr."""
         if hasattr(gene_list, 'tolist') and not isinstance(gene_list, list):  # 2nd if for mypy
             gene_list = gene_list.tolist()
-
-        return gp.enrichr(
-            gene_list=gene_list,
-            gene_sets=gene_sets,
-            no_plot=True,
-            **kwargs,
-        ).results
+        return gp.enrichr(gene_list=gene_list, gene_sets=gene_sets, no_plot=True, **kwargs).results
 
     @staticmethod
     def _process_de_test(
@@ -120,8 +114,7 @@ class GSEA(BaseProcessor):
         if isinstance(test, pd.DataFrame):
             test = DETestSummary.from_df(test)
         elif not isinstance(test, DETestSummary):
-            raise TypeError(
-                f"Expected a DataFrame or DETestSummary object but found {type(test)}.")
+            raise TypeError(f"Expected DataFrame or DETestSummary but found {type(test)}.")
 
         if len(gene_list_all) != len(test):
             raise ValueError(
@@ -134,7 +127,7 @@ class GSEA(BaseProcessor):
         gene_idx: NP1D_int = test.where(*filter_by.values(), as_mask=False)
         gene_list = gene_list_all[gene_idx]
         if len(gene_list) == 0:  # empty list
-            logger.warn('Encountered empty gene list.')
+            logger.warning('Encountered empty gene list.')
             # Empty dataframe
             return pd.DataFrame(columns=[
                 'Gene_set', 'Term', 'Overlap', 'P-value', 'Adjusted P-value',
@@ -149,7 +142,7 @@ class GSEA(BaseProcessor):
         gene_list_all = np.char.upper(gene_list_all)
 
         if len(gene_list_all) != adata.shape[1]:
-            logger.warn(
+            logger.warning(
                 "Gene list has a different dimension than AnnData's column dimension. "
                 "Please make sure 'read_key' is what you intended to use."
             )

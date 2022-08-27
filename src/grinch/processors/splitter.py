@@ -40,9 +40,7 @@ class Splitter(BaseConfigurable):
 
         @validator('stratify_key')
         def rep_format_is_correct(cls, val):
-            if val is not None:
-                return BaseProcessor._validate_single_rep_key(val)
-            return val
+            return BaseProcessor._validate_single_rep_key(val) if val is not None else val
 
     cfg: Config
 
@@ -71,8 +69,7 @@ class Splitter(BaseConfigurable):
         val_frac, test_frac = self.cfg.val_fraction, self.cfg.test_fraction
 
         if all_not_None(val_frac, test_frac):
-            # Update test frac to reflect original fraction after
-            # validation split.
+            # Update test frac to reflect original fraction after validation split.
             test_frac = test_frac / (1 - val_frac)  # type: ignore
 
         data_splitter = DataSplitter()

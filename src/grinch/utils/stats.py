@@ -1,4 +1,3 @@
-from collections import namedtuple
 from dataclasses import dataclass
 from functools import wraps
 from typing import Dict, Hashable, List, Optional, Tuple
@@ -193,16 +192,22 @@ def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
 
 
 @dataclass
-class StatVector:
-    n: int
-    sums: NP1D_float
-    sum_of_squares: NP1D_float
+class _StatVector:
+    n: int  # number of points accumulated so far
+    sums: NP1D_float  # sum of vectors
+    sum_of_squares: NP1D_float  # sum of vectors-squared
 
-    def __add__(self, other: 'StatVector'):
+    def __add__(self, other: '_StatVector'):
         n = self.n + other.n
         sums = self.sums + other.sums
         sum_of_squares = self.sum_of_squares + other.sum_of_squares
-        return StatVector(n, sums, sum_of_squares)
+        return _StatVector(n, sums, sum_of_squares)
+
+    def __iadd__(self, other: '_StatVector'):
+        self.n += other.n
+        self.sums += other.sums
+        self.sum_of_squares += other.sum_of_squares
+        return self
 
 
 class PartMeanVar:
@@ -227,11 +232,11 @@ class PartMeanVar:
         # support sparse matrices as well
         def square_func(x): return x.power(2) if sp.issparse(X) else x**2
         # maps label to a StatVector
-        self.sum_vectors: Dict[Hashable, StatVector] = {}
+        self.sum_vectors: Dict[Hashable, _StatVector] = {}
 
         for label, group in zip(unq_labels, groups):
             xg = X[group]
-            self.sum_vectors[label] = StatVector(
+            self.sum_vectors[label] = _StatVector(
                 n=xg.shape[0],
                 sums=np.ravel(xg.sum(axis=0)),
                 sum_of_squares=np.ravel(square_func(xg).sum(axis=0))
@@ -254,7 +259,7 @@ class PartMeanVar:
         if len(diff := set(labels).difference(self.sum_vectors)) != 0:
             raise ValueError(f"Found labels {diff} not in dictionary.")
 
-        accumul = StatVector(
+        accumul = _StatVector(
             n=0,
             sums=np.zeros_like(self.sum_vectors[labels[0]].sums, dtype=float),
             sum_of_squares=np.zeros_like(self.sum_vectors[labels[0]].sum_of_squares, dtype=float)

@@ -1,3 +1,4 @@
+from . import custom_types as typing
 from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
 from .dataloader import DataLoader
@@ -12,7 +13,9 @@ from .processors import (
     UMAP,
     BasePredictor,
     BaseProcessor,
+    BaseSupervisedPredictor,
     BaseTransformer,
+    BaseUnsupervisedPredictor,
     DataSplitter,
     GroupProcess,
     Indexer,
@@ -25,6 +28,7 @@ from .processors import (
 from .reporter import Report, Reporter
 
 __all__ = [
+    'typing',
     'ADK',
     'OBS',
     'OBSM',
@@ -36,6 +40,8 @@ __all__ = [
     'BaseConfigurable',
     'DataLoader',
     'BasePredictor',
+    'BaseSupervisedPredictor',
+    'BaseUnsupervisedPredictor',
     'Indexer',
     'KMeans',
     'LogisticRegression',

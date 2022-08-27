@@ -30,11 +30,7 @@ class FilterCondition(BaseModel):
             raise ValueError("Only one of 'cutoff' or 'top_k' must be specified.")
         return top_k
 
-    def _take_top_k(
-        self,
-        arr: NP1D_float,
-        as_mask: bool = True
-    ) -> NP1D_int | NP1D_bool:
+    def _take_top_k(self, arr: NP1D_float, as_mask: bool = True) -> NP1D_int | NP1D_bool:
         """Takes the top k elements from arr and returns a mask or index
         array. If these elements need to be sorted, pass ordered=True.
         """
@@ -55,11 +51,7 @@ class FilterCondition(BaseModel):
         mask[idx] = True
         return mask
 
-    def _take_cutoff(
-        self,
-        arr: NP1D_float,
-        as_mask: bool = True
-    ) -> NP1D_int | NP1D_bool:
+    def _take_cutoff(self, arr: NP1D_float, as_mask: bool = True) -> NP1D_int | NP1D_bool:
         """Takes the elements which are greater than or less than cutoff
         depending on the value of greater_is_better.
         """
