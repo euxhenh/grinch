@@ -3,6 +3,8 @@ _target_: grinch.GRPipeline.Config
 data_readpath: 'data/ZeiselBrainData.h5ad'
 data_writepath: 'data/ZeiselBrainData_prepd.h5ad'
 
+no_data_write: true
+
 processors:
   - _target_: grinch.FilterCells.Config
     min_counts: 50
