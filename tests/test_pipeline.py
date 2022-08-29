@@ -50,10 +50,10 @@ def test_pipeline_end_to_end_single_dataset(X):
 
     cfg = OmegaConf.create({
         "_target_": "src.grinch.GRPipeline.Config",
-        "processors": {f"s{i}": c for i, c in enumerate(processor_configs)},
+        "processors": processor_configs,
         "seed": 42,
     })
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     pipeline = cfg.initialize()
     adata = AnnData(X)
 

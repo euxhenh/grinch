@@ -1,34 +1,25 @@
-_target_: grinch.DataLoader.Config
+_target_: grinch.GRPipeline.Config
 
-data_path: 'data/ZeiselBrainData.h5ad'
-write_path: 'data/ZeiselBrainData_prepd.h5ad'
+data_readpath: 'data/ZeiselBrainData.h5ad'
+data_writepath: 'data/ZeiselBrainData_prepd.h5ad'
 
-worker:
-  _target_: grinch.GRPipeline.Config
-  processors:
-    filter_cells:
-      _target_: grinch.FilterCells.Config
-      min_counts: 50
-    filter_genes:
-      _target_: grinch.FilterGenes.Config
-      min_counts: 10
-    normalize_total:
-      _target_: grinch.NormalizeTotal.Config
-      total_counts: 100000
-    log1p:
-      _target_: grinch.Log1P.Config
-    pca:
-      _target_: grinch.PCA.Config
-      n_components: 50
-    umap:
-      _target_: grinch.UMAP.Config
-      x_key: obsm.x_pca
-    kmeans:
-      _target_: grinch.KMeans.Config
-    de_genes:
-      _target_: grinch.TTest.Config
-      group_key: obs.kmeans
-      is_logged: true
-    annotation:
-      _target_: grinch.GSEA.Config
-
+processors:
+  - _target_: grinch.FilterCells.Config
+    min_counts: 50
+  - _target_: grinch.FilterGenes.Config
+    min_counts: 10
+  - _target_: grinch.NormalizeTotal.Config
+    total_counts: 100000
+  - _target_: grinch.Log1P.Config
+  - _target_: grinch.PCA.Config
+    n_components: 50
+  - _target_: grinch.UMAP.Config
+    x_key: obsm.x_pca
+  - _target_: grinch.KMeans.Config
+  - _target_: grinch.TTest.Config
+    group_key: obs.kmeans
+    is_logged: true
+  - _target_: grinch.GSEA.Config
+  - _target_: grinch.Splitter.Config
+    val_fraction: 0.3
+    test_fraction: 0.2

@@ -1,3 +1,5 @@
+import logging
+import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -10,6 +12,8 @@ from ..conf import BaseConfigurable
 from ..utils.validation import all_not_None, any_not_None
 from .base_processor import BaseProcessor
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(eq=False)
 class DataSplitter:
@@ -20,6 +24,26 @@ class DataSplitter:
     @property
     def is_split(self) -> bool:
         return any_not_None(self.VAL_SPLIT, self.TEST_SPLIT)
+
+    def write_h5ad(self, path: str) -> None:
+        """Writes anndata to path. If any of VAL or TEST splits are not
+        None, will instead write both to a folder with the name specified
+        in path.
+        """
+        if not any_not_None(self.VAL_SPLIT, self.TEST_SPLIT):
+            self.TRAIN_SPLIT.write_h5ad(path)
+            return
+
+        if path.endswith('.h5ad'):
+            path = path.rsplit('.', 1)[0]
+        os.makedirs(path, exist_ok=True)
+
+        for split in ['TRAIN_SPLIT', 'VAL_SPLIT', 'TEST_SPLIT']:
+            if (sp := getattr(self, split)) is not None:
+                path_to_write = os.path.join(path, split + '.h5ad')
+                if os.path.exists(path_to_write):
+                    logger.warning(f"Object {path_to_write} exists. This will be overwritten.")
+                sp.write_h5ad(path_to_write)
 
 
 class Splitter(BaseConfigurable):
