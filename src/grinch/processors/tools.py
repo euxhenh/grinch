@@ -35,7 +35,7 @@ class ReplaceNAN(BaseProcessor):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = self.get_repr(adata, self.cfg.read_key)
+        x = np.asarray(self.get_repr(adata, self.cfg.read_key))
         mask = np.isnan(x)
 
         if self.cfg.save_key is not None:
