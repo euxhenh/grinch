@@ -40,6 +40,7 @@ class AnnDataKeys:
         LOG_REG = auto()
         TTEST = auto()
         GSEA = auto()
+        BIMODALTEST = auto()
 
 
 # Create shorter aliases, since these will be used a lot

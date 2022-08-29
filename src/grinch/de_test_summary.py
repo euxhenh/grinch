@@ -1,3 +1,4 @@
+import abc
 from typing import Dict, Literal, Optional, Tuple, overload
 
 import numpy as np
@@ -11,8 +12,8 @@ from .filter_condition import FilterCondition, StackedFilterCondition
 from .utils.stats import _correct
 
 
-class DETestSummary(BaseModel):
-    """A summary dataclas for DE test results.
+class TestSummary(BaseModel, abc.ABC):
+    """A base class for Test summaries.
 
     Parameters
     __________
@@ -21,24 +22,15 @@ class DETestSummary(BaseModel):
     qvals: 1D array
         corrected p-values of the test. If these are not passed explicitly,
         they will be automatically computed using 'fdr_bh' correction.
-    mean1, mean2: 1D array
-        Mean of genes in group 1 vs the rest (group 2).
-    log2fc: 1D array
-        Log fold change of base 2.
     """
+    pvals: NP1D_float
+    qvals: Optional[NP1D_float]
 
     class Config:
         arbitrary_types_allowed = True
         validate_assignment = True
         extra = Extra.ignore
         validate_all = True
-
-    pvals: NP1D_float
-    qvals: Optional[NP1D_float]
-    # Group means
-    mean1: Optional[NP1D_float]
-    mean2: Optional[NP1D_float]
-    log2fc: Optional[NP1D_float]
 
     @validator('*', pre=True)
     def _to_np(cls, v):
@@ -53,6 +45,8 @@ class DETestSummary(BaseModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         not_none_arrs = self._tuple(exclude_none=True)
+        if len(not_none_arrs) == 0:
+            raise ValueError("No data is stored in this test summary.")
         check_consistent_length(*not_none_arrs)
 
     def __len__(self):
@@ -66,7 +60,7 @@ class DETestSummary(BaseModel):
     def _get_key(self, key):
         arr = getattr(self, key, None)
         if arr is None:  # Includes the case when self.key has not been set.
-            raise KeyError(f"Key '{key}' is None or not found in DETestSummary.")
+            raise KeyError(f"Key '{key}' is None or not found in {self.__class__.__name__}.")
         return key
 
     def df(self) -> pd.DataFrame:
@@ -79,19 +73,19 @@ class DETestSummary(BaseModel):
         be replaced with arrays filled with np.nan. We do this to maintain
         shape consistency of the returned array.
         """
-        to_stack = [(i if i is not None else np.full_like(self.pvals, np.nan))
-                    for i in self._tuple()]
+        cols = self._tuple()
+        to_stack = [(i if i is not None else np.full_like(cols[0], np.nan)) for i in cols]
         return np.vstack(to_stack).T.astype(dtype)  # type: ignore
 
     @classmethod
-    def from_dict(cls, val: Dict) -> 'DETestSummary':
+    def from_dict(cls, val: Dict) -> 'TestSummary':
         """Constructs an instance of TestSummary given a dict. Extra fields
         are ignored.
         """
         return cls(**val)
 
     @classmethod
-    def from_df(cls, val: pd.DataFrame) -> 'DETestSummary':
+    def from_df(cls, val: pd.DataFrame) -> 'TestSummary':
         """Constructs an instance of TestSummary given a df."""
         return cls.from_dict(val.to_dict('list'))
 
@@ -109,6 +103,30 @@ class DETestSummary(BaseModel):
         # Iterate over conditions and take logical-& of masks returned
         return StackedFilterCondition(*conds)(self, as_mask=as_mask)
 
-    def argsort(self, by: str = 'qvals', reverse: bool = False) -> NP1D_int:
+    def argsort(self, by: str, reverse: bool = False) -> NP1D_int:
         argidx = np.argsort(getattr(self, by))
         return argidx if not reverse else np.flip(argidx)
+
+
+class DETestSummary(TestSummary):
+    """A summary dataclas for DE test results.
+
+    Parameters
+    __________
+    mean1, mean2: 1D array
+        Mean of genes in group 1 vs the rest (group 2).
+    log2fc: 1D array
+        Log fold change of base 2.
+    """
+
+    # Group means
+    mean1: Optional[NP1D_float]
+    mean2: Optional[NP1D_float]
+    log2fc: Optional[NP1D_float]
+
+
+class BimodalTestSummary(TestSummary):
+    """A summary dataclass for bimodal test results.
+    """
+
+    statistic: Optional[NP1D_float]
