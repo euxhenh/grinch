@@ -1,14 +1,19 @@
 import logging
-from typing import Optional
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
+from typing import Iterable, Optional, Tuple
 
 import numpy as np
+import scipy.sparse as sp
 from anndata import AnnData
+from diptest import diptest
 from pydantic import Field, validator
-from sklearn.utils import column_or_1d
+from sklearn.utils import column_or_1d, check_array
 from tqdm.auto import tqdm
 
 from ..aliases import UNS
-from ..de_test_summary import DETestSummary
+from ..custom_types import NP1D_float
+from ..de_test_summary import BimodalTestSummary, DETestSummary
 from ..utils.stats import (
     PartMeanVar,
     _compute_log2fc,
@@ -104,6 +109,13 @@ class TTest(BaseProcessor):
             raise ValueError(f"Found only one unique value under key '{self.cfg.group_key}'")
 
         x = self.get_repr(adata, self.cfg.x_key)
+        x = check_array(
+            x,
+            accept_sparse='csr',
+            ensure_2d=True,
+            ensure_min_features=2,
+            ensure_min_samples=2,
+        )
         # efficient mean and variance computation
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
 
@@ -115,3 +127,50 @@ class TTest(BaseProcessor):
             ts: DETestSummary = self._ttest(pmv, label)
             key = f"{self.cfg.save_key}.{label}"
             self.set_repr(adata, key, ts.df())
+
+
+class BimodalTest(BaseProcessor):
+
+    class Config(BaseProcessor.Config):
+        x_key: str = "X"
+        save_key: str = f"uns.{UNS.BIMODALTEST}"
+        correction: str = 'fdr_bh'
+
+        max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(), exclude=True)
+
+        @validator('max_workers')
+        def init_max_workers(cls, val):
+            return 2 * mp.cpu_count() if val is None else val
+
+        @validator('save_key')
+        def _starts_with_uns(cls, save_key):
+            if save_key.split('.')[0] != 'uns':
+                raise ValueError("Anndata column for bimodaltest should be 'uns'.")
+            return save_key
+
+    cfg: Config
+
+    def _process(self, adata: AnnData) -> None:
+        x = self.get_repr(adata, self.cfg.x_key)
+        x = check_array(
+            x,
+            accept_sparse='csr',
+            ensure_2d=True,
+            ensure_min_features=2,
+            ensure_min_samples=2,
+        )
+
+        def _diptest_sp_wrapper(_x):
+            # slow to densify each column separately, but is memory efficient
+            return diptest(np.ravel(_x.toarray())) if sp.issparse(_x) else diptest(_x)
+
+        with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
+            test_results: Iterable[Tuple[float, float]] = executor.map(_diptest_sp_wrapper, x.T)
+        test_results = np.asarray(list(test_results))
+
+        # first dimension is the dip statistic, the second is the pvalue
+        stats, pvals = test_results[:, 0], test_results[:, 1]
+        qvals: NP1D_float = _correct(pvals, method=self.cfg.correction)[1]
+
+        bts = BimodalTestSummary(pvals=pvals, qvals=qvals, statistic=stats)
+        self.set_repr(adata, self.cfg.save_key, bts.df())

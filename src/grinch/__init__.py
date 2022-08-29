@@ -2,7 +2,8 @@ from . import custom_types as typing
 from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
 from .dataloader import DataLoader
-from .de_test_summary import DETestSummary, FilterCondition
+from .de_test_summary import BimodalTestSummary, DETestSummary, TestSummary
+from .filter_condition import FilterCondition, StackedFilterCondition
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
@@ -16,6 +17,7 @@ from .processors import (
     BaseSupervisedPredictor,
     BaseTransformer,
     BaseUnsupervisedPredictor,
+    BimodalTest,
     DataSplitter,
     GroupProcess,
     InplaceIndexer,
@@ -38,6 +40,7 @@ __all__ = [
     'AnnDataKeys',
     'BaseConfig',
     'BaseConfigurable',
+    'BimodalTestSummary',
     'DataLoader',
     'BasePredictor',
     'BaseSupervisedPredictor',
@@ -47,6 +50,7 @@ __all__ = [
     'LogisticRegression',
     'BaseProcessor',
     'BaseTransformer',
+    'BimodalTest',
     'DataSplitter',
     'GRPipeline',
     'GroupProcess',
@@ -60,7 +64,9 @@ __all__ = [
     'Reporter',
     'TTest',
     'DETestSummary',
+    'TestSummary',
     'FilterCondition',
+    'StackedFilterCondition',
     'GSEA',
     'Log1P',
     'NormalizeTotal',

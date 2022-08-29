@@ -1,5 +1,5 @@
 from .base_processor import BaseProcessor
-from .de import TTest
+from .de import BimodalTest, TTest
 from .enrich import GSEA
 from .group import GroupProcess
 from .indexer import InplaceIndexer
@@ -16,6 +16,7 @@ from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
 __all__ = [
     'BaseProcessor',
     'TTest',
+    'BimodalTest',
     'GSEA',
     'GroupProcess',
     'InplaceIndexer',
