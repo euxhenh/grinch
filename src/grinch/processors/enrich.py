@@ -75,6 +75,12 @@ class GSEA(BaseProcessor):
         def remove_explicit_args(cls, val):
             return pop_args(['gene_list', 'gene_sets', 'no_plot'], val)
 
+        @validator('filter_by')
+        def at_least_one_filter(cls, val):
+            if len(val) < 1:
+                raise ValueError("At least one filter should be provided.")
+            return val
+
     cfg: Config
 
     @staticmethod
@@ -138,8 +144,7 @@ class GSEA(BaseProcessor):
     def _process(self, adata: AnnData) -> None:
         # Get list of all gene names
         gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
-        gene_list_all = column_or_1d(gene_list_all).astype(str)
-        gene_list_all = np.char.upper(gene_list_all)
+        gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
 
         if len(gene_list_all) != adata.shape[1]:
             logger.warning(
@@ -147,13 +152,13 @@ class GSEA(BaseProcessor):
                 "Please make sure 'read_key' is what you intended to use."
             )
 
+        _gsea_f = partial(
+            GSEA._process_de_test,
+            gene_list_all=gene_list_all,
+            filter_by=self.cfg.filter_by
+        )
         tests = self.get_repr(adata, self.cfg.read_key)
         if isinstance(tests, dict):  # Dict of tests
-            _gsea_f = partial(
-                GSEA._process_de_test,
-                gene_list_all=gene_list_all,
-                filter_by=self.cfg.filter_by
-            )
             # We multithread this since gseapy makes http requests
             with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
                 gsea_test_summaries = executor.map(_gsea_f, tests.values())
@@ -162,8 +167,5 @@ class GSEA(BaseProcessor):
                 save_key = f'{self.cfg.save_key}.{label}'
                 self.set_repr(adata, save_key, gsea_test_summary)
         else:  # Single test
-            gsea_test_summary = GSEA._process_de_test(
-                tests,
-                gene_list_all=gene_list_all,
-                filter_by=self.cfg.filter_by)
+            gsea_test_summary = _gsea_f(tests)
             self.set_repr(adata, self.cfg.save_key, gsea_test_summary)
