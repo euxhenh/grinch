@@ -19,17 +19,23 @@ X_mods = [X, sp.csr_matrix(X), sp.csc_matrix(X), to_view(X)]
 
 @pytest.mark.parametrize("X", X_mods)
 def test_indexer_obs(X):
+    fcfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterCondition",
+            "key": "obs.pick",
+        }
+    )
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.InplaceIndexer.Config",
-            "mask_key": "obs.mask",
+            "filter_by": {'mask': fcfg}
         }
     )
     cfg = instantiate(cfg)
     index = cfg.initialize()
     adata = AnnData(X)
     X_original = adata.X.copy()
-    adata.obs['mask'] = [0, 1, 1]
+    adata.obs['pick'] = [0, 1, 1]
     index(adata)
     assert_allclose(X_original, X)
     assert_allclose(adata.X, np.array([
@@ -40,18 +46,24 @@ def test_indexer_obs(X):
 
 @pytest.mark.parametrize("X", X_mods)
 def test_indexer_var(X):
+    fcfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterCondition",
+            "key": "var.pick",
+        }
+    )
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.InplaceIndexer.Config",
+            "filter_by": {'mask': fcfg},
             "axis": 'var',
-            "mask_key": "var.mask",
         }
     )
     cfg = instantiate(cfg)
     index = cfg.initialize()
     adata = AnnData(X)
     X_original = adata.X.copy()
-    adata.var['mask'] = [2, 0, 1, 1]
+    adata.var['pick'] = [2, 0, 1, 1]
     index(adata)
     assert_allclose(X_original, X)
     assert_allclose(adata.X, np.array([
@@ -62,46 +74,42 @@ def test_indexer_var(X):
 
 
 @pytest.mark.parametrize("X", X_mods)
-def test_indexer_obs_no_mask(X):
+def test_indexer_obs_multiple(X):
+    fcfg1 = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterCondition",
+            "key": "obs.pick",
+        }
+    )
+    fcfg2 = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterCondition",
+            "key": "obs.pick2",
+        }
+    )
+    fcfg3 = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterCondition",
+            "key": "obs.pick3",
+            "cutoff": 0.5,
+            "greater_is_better": True,
+        }
+    )
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.InplaceIndexer.Config",
-            "mask_key": "uns.mask",
-            "as_bool": False,
+            "filter_by": {'mask': fcfg1, 'mask2': fcfg2, 'mask3': fcfg3}
         }
     )
     cfg = instantiate(cfg)
     index = cfg.initialize()
     adata = AnnData(X)
     X_original = adata.X.copy()
-    adata.uns['mask'] = [1, 0]
+    adata.obs['pick'] = [0, 1, 1]
+    adata.obs['pick2'] = [1, 1, 0]
+    adata.obs['pick3'] = [1, 1, 0]
     index(adata)
     assert_allclose(X_original, X)
     assert_allclose(adata.X, np.array([
         [0, 3, 2, 0],
-        [1, 4, 0, 2],
-    ]))
-
-
-@pytest.mark.parametrize("X", X_mods)
-def test_indexer_var_no_mask(X):
-    cfg = OmegaConf.create(
-        {
-            "_target_": "src.grinch.InplaceIndexer.Config",
-            "axis": 'var',
-            "mask_key": "uns.mask",
-            "as_bool": False,
-        }
-    )
-    cfg = instantiate(cfg)
-    index = cfg.initialize()
-    adata = AnnData(X)
-    X_original = adata.X.copy()
-    adata.uns['mask'] = [2, 1]
-    index(adata)
-    assert_allclose(X_original, X)
-    assert_allclose(adata.X, np.array([
-        [0, 4],
-        [2, 3],
-        [1, 2]
     ]))
