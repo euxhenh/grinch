@@ -25,6 +25,11 @@ class GRPipeline(BaseConfigurable):
         data_writepath: Optional[str]
         processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
+        # It may be desirable to write only the columns of adata without
+        # the data matrix so save memory. In that case, set no_data_write
+        # to True. This will replace the data matrix with a sparse matrix
+        # of all zeros.
+        no_data_write: bool = False
 
     cfg: Config
 
@@ -39,7 +44,7 @@ class GRPipeline(BaseConfigurable):
             self.processors.append(c.initialize())
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, adata: Optional[AnnData], *args, **kwargs) -> DataSplitter:
+    def __call__(self, adata: Optional[AnnData] = None, *args, **kwargs) -> DataSplitter:
         """Applies processor to the different data splits in DataSplitter.
         It differentiates between predictors (calls processor.predict),
         transformers (calls processor.transform) and it defaults to
@@ -61,7 +66,7 @@ class GRPipeline(BaseConfigurable):
                 ds = processor(ds)
 
         if self.cfg.data_writepath is not None:
-            ds.write_h5ad(self.cfg.data_writepath)
+            ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)
         return ds
 
     def _apply(self, ds: DataSplitter, processor: BaseConfigurable) -> None:
