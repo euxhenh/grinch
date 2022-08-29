@@ -53,7 +53,7 @@ def test_pipeline_end_to_end_single_dataset(X):
         "processors": processor_configs,
         "seed": 42,
     })
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     pipeline = cfg.initialize()
     adata = AnnData(X)
 

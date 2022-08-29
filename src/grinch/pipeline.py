@@ -1,6 +1,7 @@
 import logging
-from typing import List
+from typing import List, Optional
 
+import anndata
 from anndata import AnnData
 from pydantic import Field, validate_arguments
 from tqdm.auto import tqdm
@@ -20,7 +21,9 @@ logger = logging.getLogger(__name__)
 class GRPipeline(BaseConfigurable):
 
     class Config(BaseConfigurable.Config):
-        processors: List[BaseConfigurable.Config]  # Maps a processor name to a config
+        data_readpath: Optional[str]
+        data_writepath: Optional[str]
+        processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
 
     cfg: Config
@@ -36,12 +39,16 @@ class GRPipeline(BaseConfigurable):
             self.processors.append(c.initialize())
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, adata: AnnData | DataSplitter, *args, **kwargs) -> DataSplitter:
+    def __call__(self, adata: Optional[AnnData], *args, **kwargs) -> DataSplitter:
         """Applies processor to the different data splits in DataSplitter.
         It differentiates between predictors (calls processor.predict),
         transformers (calls processor.transform) and it defaults to
         processor.__call__ for all other processors.
         """
+        if adata is None:
+            if self.cfg.data_readpath is None:
+                raise ValueError("A path to adata or an adata object is required.")
+            adata: AnnData = anndata.read_h5ad(self.cfg.data_readpath)
         ds = DataSplitter(adata) if not isinstance(adata, DataSplitter) else adata
 
         it = tqdm(self.processors) if self.cfg.verbose else self.processors
@@ -53,6 +60,8 @@ class GRPipeline(BaseConfigurable):
                 # Perform a data split
                 ds = processor(ds)
 
+        if self.cfg.data_writepath is not None:
+            ds.write_h5ad(self.cfg.data_writepath)
         return ds
 
     def _apply(self, ds: DataSplitter, processor: BaseConfigurable) -> None:

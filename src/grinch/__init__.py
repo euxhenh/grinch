@@ -1,7 +1,6 @@
 from . import custom_types as typing
 from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
-from .dataloader import DataLoader
 from .de_test_summary import BimodalTestSummary, DETestSummary, TestSummary
 from .filter_condition import FilterCondition, StackedFilterCondition
 from .filters import FilterCells, FilterGenes
@@ -41,7 +40,6 @@ __all__ = [
     'BaseConfig',
     'BaseConfigurable',
     'BimodalTestSummary',
-    'DataLoader',
     'BasePredictor',
     'BaseSupervisedPredictor',
     'BaseUnsupervisedPredictor',
