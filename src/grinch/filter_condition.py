@@ -1,8 +1,8 @@
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, overload, Literal
 
 import numpy as np
-from pydantic import BaseModel, Extra, validate_arguments, validator
+from pydantic import BaseModel, Extra, Field, validate_arguments, validator
 from sklearn.utils import column_or_1d
 
 from .custom_types import NP1D_bool, NP1D_float, NP1D_int
@@ -31,6 +31,7 @@ class FilterCondition(BaseModel):
     top_k: Optional[int]
     greater_is_better: bool = False
     ordered: bool = False
+    dtype: Optional[str] = Field(None, regex='(float|bool)')
 
     class Config:
         validate_assignment = True
@@ -46,7 +47,7 @@ class FilterCondition(BaseModel):
     def __and__(self, other) -> 'StackedFilterCondition':
         return StackedFilterCondition(self, other)
 
-    def _take_top_k(self, arr: NP1D_float, as_mask: bool = True) -> NP1D_int | NP1D_bool:
+    def _take_top_k(self, arr: NP1D_float, as_mask: bool = True):
         """Takes the top k elements from arr and returns a mask or index
         array. If these elements need to be sorted, pass ordered=True.
         """
@@ -67,7 +68,7 @@ class FilterCondition(BaseModel):
         mask[idx] = True
         return mask
 
-    def _take_cutoff(self, arr: NP1D_float, as_mask: bool = True) -> NP1D_int | NP1D_bool:
+    def _take_cutoff(self, arr: NP1D_float, as_mask: bool = True):
         """Takes the elements which are greater than or less than cutoff
         depending on the value of greater_is_better.
         """
@@ -83,7 +84,7 @@ class FilterCondition(BaseModel):
             idx = idx[np.argsort(arr[idx])]  # Sort idx based on arr
         return np.flip(idx) if self.greater_is_better else idx
 
-    def _take_mask(self, arr: NP1D_float | NP1D_bool, as_mask: bool = True) -> NP1D_int | NP1D_bool:
+    def _take_mask(self, arr: NP1D_float | NP1D_bool, as_mask: bool = True):
         """Assumes arr is a mask."""
         if not arr.dtype == bool:
             logger.warning("Array type is not boolean. Converting to bool...")
@@ -104,13 +105,19 @@ class FilterCondition(BaseModel):
                 raise KeyError(f"Could not find '{read_key}' in object of type {type(obj)}.")
         return obj
 
+    @overload
+    def __call__(self, obj: Any, as_mask: Literal[True]) -> NP1D_bool: ...
+
+    @overload
+    def __call__(self, obj: Any, as_mask: Literal[False]) -> NP1D_int: ...
+
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, obj: Any, as_mask: bool = True) -> NP1D_int | NP1D_bool:
+    def __call__(self, obj, as_mask=True):
         """Applies filtering conditions and returns a mask or index array.
         """
         if self.key is not None:
             obj = self._get_repr(obj, self.key)
-        arr: NP1D_float | NP1D_bool = column_or_1d(obj)
+        arr: NP1D_float | NP1D_bool = column_or_1d(obj).astype(self.dtype)
         if self.cutoff is not None:
             return self._take_cutoff(arr.astype(float), as_mask=as_mask)
         elif self.top_k is not None:
@@ -139,7 +146,14 @@ class StackedFilterCondition:
     def __and__(self, other) -> 'StackedFilterCondition':
         return StackedFilterCondition(self, other)
 
-    def __call__(self, obj: Any, as_mask: bool = True) -> NP1D_int | NP1D_bool:
+    @overload
+    def __call__(self, obj: Any, as_mask: Literal[True]) -> NP1D_bool: ...
+
+    @overload
+    def __call__(self, obj: Any, as_mask: Literal[False]) -> NP1D_int: ...
+
+    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    def __call__(self, obj, as_mask=True):
         # Get first mask
         mask = self.fcs[0](obj, as_mask=True)
         # Get any remaining masks

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Literal, Optional, Tuple, overload
 
 import numpy as np
 import pandas as pd
@@ -95,7 +95,13 @@ class DETestSummary(BaseModel):
         """Constructs an instance of TestSummary given a df."""
         return cls.from_dict(val.to_dict('list'))
 
-    def where(self, *conds: FilterCondition, as_mask: bool = False) -> NP1D_int | NP1D_bool:
+    @overload
+    def where(self, *conds: FilterCondition, as_mask: Literal[True]) -> NP1D_bool: ...
+
+    @overload
+    def where(self, *conds: FilterCondition, as_mask: Literal[False]) -> NP1D_int: ...
+
+    def where(self, *conds, as_mask=False) -> NP1D_int | NP1D_bool:
         """Given a condition which conists of a key field, a threshold
         (cutoff or top_k), return a mask or list of indices which satisfy
         the conditions.
