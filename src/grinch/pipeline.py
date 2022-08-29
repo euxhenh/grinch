@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from typing import List
 
 from anndata import AnnData
 from pydantic import Field, validate_arguments
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class GRPipeline(BaseConfigurable):
 
     class Config(BaseConfigurable.Config):
-        processors: Dict[str, BaseConfigurable.Config]  # Maps a processor name to a config
+        processors: List[BaseConfigurable.Config]  # Maps a processor name to a config
         verbose: bool = Field(True, exclude=True)
 
     cfg: Config
@@ -30,7 +30,7 @@ class GRPipeline(BaseConfigurable):
 
         self.processors = []
 
-        for c in self.cfg.processors.values():
+        for c in self.cfg.processors:
             if self.cfg.seed is not None:
                 c = c.copy(update={'seed': self.cfg.seed})
             self.processors.append(c.initialize())
