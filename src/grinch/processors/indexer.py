@@ -4,7 +4,7 @@ from typing import Dict
 from anndata import AnnData
 from pydantic import Field, validator
 
-from ..custom_types import NP1D_bool
+from ..custom_types import REP, NP1D_bool
 from ..filter_condition import FilterCondition, StackedFilterCondition
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
@@ -55,3 +55,31 @@ class InplaceIndexer(BaseIndexer):
             adata._inplace_subset_obs(mask)
         else:
             adata._inplace_subset_var(mask)
+
+
+class IndexProcessor(BaseIndexer):
+    """Runs a processor on a subset of adata. Makes sure that no writes are
+    applied to the view of adata, but to the full adata.
+    """
+
+    class Config(BaseIndexer.Config):
+        processor: BaseProcessor.Config
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /):
+        super().__init__(cfg)
+
+        self.cfg.processor.inplace = True
+        self.processor = self.cfg.processor.initialize()
+
+    def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
+        # dont let the processor do the adata modifications, since we are
+        # passing a view
+        storage: Dict[str, REP] = self.processor(
+            adata[mask] if self.cfg.axis == 0 else adata[:, mask],
+            return_storage=True,
+        )
+
+        for k, v in storage.items():
+            self.store_item(k, v)

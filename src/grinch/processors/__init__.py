@@ -2,7 +2,7 @@ from .base_processor import BaseProcessor, adata_modifier
 from .de import BimodalTest, TTest
 from .enrich import GSEA
 from .group import GroupProcess
-from .indexer import InplaceIndexer
+from .indexer import BaseIndexer, IndexProcessor, InplaceIndexer
 from .predictors import (
     BasePredictor,
     BaseSupervisedPredictor,
@@ -21,7 +21,9 @@ __all__ = [
     'BimodalTest',
     'GSEA',
     'GroupProcess',
+    'BaseIndexer',
     'InplaceIndexer',
+    'IndexProcessor',
     'BasePredictor',
     'BaseUnsupervisedPredictor',
     'BaseSupervisedPredictor',

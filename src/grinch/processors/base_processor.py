@@ -4,7 +4,7 @@ import logging
 from functools import partial
 from itertools import islice, starmap
 from operator import itemgetter
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from anndata import AnnData
 from pydantic import validate_arguments, validator
@@ -36,7 +36,11 @@ def adata_modifier(f: Callable):
             "First argument to a 'setter_method' should be of explicit type AnnData."
         )
 
-    def _wrapper(self, adata: AnnData, *args, **kwargs) -> Optional[AnnData]:
+    def _wrapper(
+        self,
+        adata: AnnData,
+        *args, **kwargs
+    ) -> Optional[AnnData | Dict[str, REP] | Tuple[AnnData, Dict[str, REP]]]:
         # init empty storage dict
         self.storage = {}
         outp = f(self, adata, *args, **kwargs)
@@ -51,12 +55,19 @@ def adata_modifier(f: Callable):
         if 'no_data_matrix' in kwargs:
             adata = as_empty(adata) if kwargs['no_data_matrix'] else adata
 
+        return_storage = 'return_storage' in kwargs and kwargs['return_storage']
+
         if hasattr(self.cfg, 'save_stats') and self.cfg.save_stats:
             self.save_processor_stats()
-        if len(self.storage) > 0:
+        if len(self.storage) > 0 and not return_storage:
             self.set_repr(adata, list(self.storage), list(self.storage.values()))
 
-        return adata if not self.cfg.inplace else None
+        if not self.cfg.inplace and return_storage:
+            return adata, self.storage
+        elif return_storage:
+            return self.storage
+        elif not self.cfg.inplace:
+            return adata
 
     return _wrapper
 
@@ -207,7 +218,13 @@ class BaseProcessor(BaseConfigurable):
 
     @adata_modifier
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, adata: AnnData, *, no_data_matrix: bool = False):
+    def __call__(
+        self,
+        adata: AnnData,
+        *,
+        no_data_matrix: bool = False,
+        return_storage: bool = False
+    ):
         """Calls the processor with adata. Will copy adata if inplace was
         set to False.
         """
