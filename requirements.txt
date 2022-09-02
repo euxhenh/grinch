@@ -9,3 +9,4 @@ umap-learn
 statsmodels
 gseapy
 diptest
+phenotype_cover

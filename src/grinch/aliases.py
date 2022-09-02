@@ -22,6 +22,8 @@ class AnnDataKeys:
     class VAR:
         N_COUNTS = auto()
         N_CELLS = auto()
+        PCOVER_M = auto()
+        PCOVER_O = auto()
 
     class OBSM:
         X_EMB = auto()
@@ -41,6 +43,7 @@ class AnnDataKeys:
         TTEST = auto()
         GSEA = auto()
         BIMODALTEST = auto()
+        PCOVER = auto()
 
 
 # Create shorter aliases, since these will be used a lot

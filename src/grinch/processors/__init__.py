@@ -1,6 +1,7 @@
 from .base_processor import BaseProcessor, adata_modifier
 from .de import BimodalTest, TTest
 from .enrich import GSEA
+from .feature_selection import PhenotypeCover
 from .group import GroupProcess
 from .indexer import BaseIndexer, IndexProcessor, InplaceIndexer
 from .predictors import (
@@ -24,6 +25,7 @@ __all__ = [
     'BaseIndexer',
     'InplaceIndexer',
     'IndexProcessor',
+    'PhenotypeCover',
     'BasePredictor',
     'BaseUnsupervisedPredictor',
     'BaseSupervisedPredictor',
