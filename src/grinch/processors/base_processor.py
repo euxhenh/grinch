@@ -51,10 +51,10 @@ def adata_modifier(f: Callable):
         if 'no_data_matrix' in kwargs:
             adata = as_empty(adata) if kwargs['no_data_matrix'] else adata
 
-        if len(self.storage) > 0:
-            self.set_repr(adata, list(self.storage), list(self.storage.values()))
         if hasattr(self.cfg, 'save_stats') and self.cfg.save_stats:
             self.save_processor_stats()
+        if len(self.storage) > 0:
+            self.set_repr(adata, list(self.storage), list(self.storage.values()))
 
         return adata if not self.cfg.inplace else None
 

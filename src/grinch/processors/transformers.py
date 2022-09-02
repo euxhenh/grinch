@@ -21,6 +21,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     class Config(BaseProcessor.Config):
         x_key: str
         x_emb_key: str
+        save_stats: bool = True
         stats_key: Optional[str]
 
     cfg: Config
