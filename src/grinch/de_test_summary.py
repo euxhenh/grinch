@@ -7,7 +7,7 @@ from pydantic import BaseModel, Extra, validator
 from sklearn.utils import check_consistent_length
 from sklearn.utils.validation import column_or_1d
 
-from .custom_types import NP1D_bool, NP1D_float, NP1D_int
+from .custom_types import NP1D_Any, NP1D_bool, NP1D_float, NP1D_int
 from .filter_condition import FilterCondition, StackedFilterCondition
 from .utils.stats import _correct
 
@@ -33,12 +33,12 @@ class TestSummary(BaseModel, abc.ABC):
         validate_all = True
 
     @validator('*', pre=True)
-    def _to_np(cls, v):
+    def _to_np(cls, v) -> Optional[NP1D_Any]:
         # Convert to numpy before performing any validation
         return v if v is None else column_or_1d(v)
 
     @validator('qvals', pre=True)
-    def _init_qvals(cls, qvals, values):
+    def _init_qvals(cls, qvals, values) -> NP1D_float:
         """Make sure qvals are initialized."""
         return qvals if qvals is not None else _correct(values['pvals'])[1]
 
@@ -49,7 +49,7 @@ class TestSummary(BaseModel, abc.ABC):
             raise ValueError("No data is stored in this test summary.")
         check_consistent_length(*not_none_arrs)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.pvals)
 
     def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:

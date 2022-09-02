@@ -1,5 +1,6 @@
+import gc
 import logging
-from typing import Optional
+from typing import Dict, List
 
 import anndata
 import numpy as np
@@ -44,9 +45,9 @@ class GroupProcess(BaseProcessor):
         processor: BaseProcessor.Config
         # Key to group by, must be recognized by np.unique.
         group_key: str
-        axis: int | str = 0
-        group_prefix: str = 'g-{label}/'
-        min_points_per_group: Optional[int] = Field(None, ge=0)
+        axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
+        group_prefix: str = 'g-{group_key}.{label}.'
+        min_points_per_group: int = Field(default_factory=int, ge=0)
         # Whether to drop the groups which have less than
         # `min_points_per_group` points or not.
         drop_small_groups: bool = False
@@ -55,24 +56,50 @@ class GroupProcess(BaseProcessor):
         def ensure_correct_axis(cls, axis):
             return validate_axis(axis)
 
-        @validator('processor')
-        def ensure_not_inplace(cls, processor):
-            if not processor.inplace:
-                logger.warning('Group processor not `inplace` mode will have no effect.')
-            return processor
+        @validator('group_prefix')
+        def has_label_and_uns(cls, val, values):
+            if "{label}" in val and not values['group_key'].startswith('uns'):
+                raise ValueError("Non-uns group_key's cannot be used with a label prefix.")
+            return val
+
+        def updates_uns(self) -> bool:
+            return self.group_key.startswith('uns.')
 
         @staticmethod
-        def replace_label(group_prefix, label):
-            return group_prefix.format(label=label) if "{label}" in group_prefix else group_prefix
+        def safe_format(group_prefix, **kwargs: Dict[str, str]):
+            for k, v in kwargs.items():
+                if f"{{{k}}}" in group_prefix:  # { is escaped by doubling it {{
+                    group_prefix = group_prefix.replace(f"{{{k}}}", v)
+            return group_prefix
+
+        def update_processor_save_key_prefix(self, label):
+            SPLITTER = '.' if self.updates_uns() else '-'
+            upstream_prefix = self.save_key_prefix
+            if len(upstream_prefix) > 0:  # happens when GroupProcess modules are stacked
+                upstream_prefix += SPLITTER
+
+            current_prefix = self.safe_format(
+                self.group_prefix,
+                label=label,
+                group_key=self.group_key.rsplit('.', maxsplit=1)[-1],
+            )
+
+            prefix = f'{upstream_prefix}{current_prefix}'
+            if not self.updates_uns() and '.' in prefix:
+                logger.warning(
+                    "Non 'uns' group_key was entered, but 'group_prefix' "
+                    "contains dots. Replacing 'group_prefix' dots with dashes."
+                )
+                prefix = prefix.replace('.', '-')
+
+            self.processor.save_key_prefix = prefix
 
     cfg: Config
 
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        # We change this to not inplace so that we can concatenate the
-        # resulting adatas into a single adata.
-        self.cfg_not_inplace = self.cfg.processor.copy(update={'inplace': False})
+        self.cfg.processor.inplace = False
 
     def _get_names_along_axis(self, adata: AnnData) -> NP1D_str:
         """Gets obs_names or var_names depending on self.cfg.axis."""
@@ -82,54 +109,62 @@ class GroupProcess(BaseProcessor):
         )
 
     def _process(self, adata: AnnData) -> None:
+        # We will use the index to reorder adata, so these have to be unique
+        if self.cfg.axis == 0 and not adata.obs.index.is_unique:
+            adata.obs_names_make_unique()
+        elif self.cfg.axis == 1 and not adata.var.index.is_unique:
+            adata.var_names_make_unique()
+
         # Determine groups to process separately
         group_labels = self.get_repr(adata, self.cfg.group_key)
         if len(group_labels) != adata.shape[self.cfg.axis]:
             raise ValueError("Length of 'group_labels' should match the dimension of adata.")
         unq_labels, groups = group_indices(group_labels)
 
-        adata_list = []  # Will hold all group adatas.
-        self.processor_dict = {}  # Maps a group name to the fitted processor for that group.
+        adata_list: List[AnnData] = []  # Will hold group adatas without their data matrices.
 
         # TODO multithread
         for label, group in zip(unq_labels, groups):
-            cfg = self.cfg_not_inplace.copy(update={
-                'save_key_prefix': self.cfg.replace_label(self.cfg.group_prefix, label)
-            })
-            processor = cfg.initialize()
+            logger.info(
+                f"Running '{self.cfg.processor.init_type.__name__}' for group '{label}'."
+            )
+            self.cfg.update_processor_save_key_prefix(label)
+            processor: BaseProcessor = self.cfg.processor.initialize()
             _adata = adata[group] if self.cfg.axis == 0 else adata[:, group]
 
             # Determine if this group is small or not
-            if self.cfg.min_points_per_group is not None:
-                if len(group) < self.cfg.min_points_per_group:
-                    if not self.cfg.drop_small_groups:
-                        adata_list.append(_adata)
-                    continue
+            if len(group) < self.cfg.min_points_per_group:
+                if not self.cfg.drop_small_groups:
+                    adata_list.append(_adata)
+                continue
 
-            _adata = processor(_adata)
-            # Save the fitted processor
-            self.processor_dict[label] = processor
+            _adata = processor(_adata, no_data_matrix=True)
             adata_list.append(_adata)
 
         # Outer join will fill missing values with nan's.
         # uns_merge = same will only merge uns keys which are the same.
-        concat_adata = anndata.concat(adata_list, join='outer', uns_merge='same')
+        concat_adata = anndata.concat(adata_list, join='outer', uns_merge='first')
         # Reorder so that obs or vars have original order
-        names_to_keep = self._get_names_along_axis(adata)
+        original_order = self._get_names_along_axis(adata)
 
         if concat_adata.shape != adata.shape:
             # Since some adatas may have been dropped, we only take obs and
             # vars which exist in concat adata.
             concat_names = self._get_names_along_axis(concat_adata)
-            names_to_keep = names_to_keep[np.isin(names_to_keep, concat_names)]
+            original_order = original_order[np.isin(original_order, concat_names)]
+            logger.info(f"Dropping {len(original_order) - len(concat_names)} points.")
 
         concat_adata = (
-            concat_adata[names_to_keep] if self.cfg.axis == 0
-            else concat_adata[:, names_to_keep]
+            concat_adata[original_order] if self.cfg.axis == 0
+            else concat_adata[:, original_order]
         )
 
         adata._init_as_actual(
-            X=concat_adata.X,
+            # concat_adata has no data matrix, so we take this from adata
+            X=(
+                adata[original_order].X if self.cfg.axis == 0
+                else adata[:, original_order].X
+            ),
             obs=concat_adata.obs,
             var=concat_adata.var,
             uns=concat_adata.uns,
@@ -138,6 +173,10 @@ class GroupProcess(BaseProcessor):
             varp=concat_adata.varp,
             obsp=concat_adata.obsp,
             raw=concat_adata.raw,
+            dtype=concat_adata.X.dtype,
             layers=concat_adata.layers,
             filename=concat_adata.filename,
         )
+
+        del concat_adata, adata_list, _adata
+        gc.collect()

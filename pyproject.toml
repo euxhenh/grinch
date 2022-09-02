@@ -25,3 +25,6 @@ skip=['.bzr',
       'venv',
       'python_venv']
 skip_gitignore=true
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules"
