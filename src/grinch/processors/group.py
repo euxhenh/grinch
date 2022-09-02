@@ -8,7 +8,7 @@ from anndata import AnnData
 from pydantic import Field, validator
 
 from ..custom_types import NP1D_str
-from ..utils.ops import group_indices
+from ..utils.ops import group_indices, order_by
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
@@ -151,8 +151,12 @@ class GroupProcess(BaseProcessor):
             # Since some adatas may have been dropped, we only take obs and
             # vars which exist in concat adata.
             concat_names = self._get_names_along_axis(concat_adata)
-            original_order = original_order[np.isin(original_order, concat_names)]
+            original_order = order_by(concat_names, original_order, unique_x=True)
+            X = adata[original_order].X if self.cfg.axis == 0 else adata[:, original_order].X
             logger.info(f"Dropping {len(original_order) - len(concat_names)} points.")
+        else:
+            # doesn't create view
+            X = adata.X
 
         concat_adata = (
             concat_adata[original_order] if self.cfg.axis == 0
@@ -161,10 +165,7 @@ class GroupProcess(BaseProcessor):
 
         adata._init_as_actual(
             # concat_adata has no data matrix, so we take this from adata
-            X=(
-                adata[original_order].X if self.cfg.axis == 0
-                else adata[:, original_order].X
-            ),
+            X=X,
             obs=concat_adata.obs,
             var=concat_adata.var,
             uns=concat_adata.uns,
