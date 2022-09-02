@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import warnings
 
 import hydra
 from hydra.utils import instantiate
@@ -21,21 +20,15 @@ try:
 except ImportError:
     src_dir = os.path.dirname(os.path.realpath(__file__))
 
-root_dir = os.path.join(src_dir, os.pardir, os.pardir)
-
-if 'conf' in os.listdir(root_dir):
-    CONF_DIR = os.path.join(root_dir, 'conf')
-else:
-    warnings.warn('Could not find default conf directory.')
-    CONF_DIR = '.'
-
-CONF_DIR = os.path.abspath(CONF_DIR)
+root_dir = os.path.abspath(os.path.join(src_dir, os.pardir, os.pardir))
 
 
 def instantiate_config(config_name):
+    head, tail = os.path.split(config_name)
+    config_dir = os.path.join(root_dir, head)
     # context initialization
-    with hydra.initialize_config_dir(version_base=None, config_dir=CONF_DIR):
-        cfg = hydra.compose(config_name=config_name)
+    with hydra.initialize_config_dir(version_base=None, config_dir=config_dir):
+        cfg = hydra.compose(config_name=tail)
     return instantiate(cfg, _convert_='all')
 
 

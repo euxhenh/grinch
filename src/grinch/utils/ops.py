@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from sklearn.utils import column_or_1d
 
-from ..custom_types import NP1D_bool, NP1D_int, NP_bool
+from ..custom_types import NP1D_Any, NP1D_bool, NP1D_int, NP_bool
 
 
 def IDENTITY(x):
@@ -14,7 +14,14 @@ def IDENTITY(x):
 
 def compose(*funcs):
     """Composes functions left to right, i.e., the first function on the
-    list will be applied first."""
+    list will be applied first.
+
+    Examples
+    ________
+    >>> f = compose(sum, lambda x: x + 10)
+    >>> f([1, 2, 3])
+    16
+    """
     composed = reduce(lambda f, g: lambda x: g(f(x)), funcs, IDENTITY)
     return composed
 
@@ -101,3 +108,42 @@ def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_int, List[NP1D_int | N
         groups = _groups
 
     return unique_items, groups
+
+
+def order_by(x: NP1D_Any, y: NP1D_Any, unique_x: bool = False) -> NP1D_Any:
+    """Orders the elements of 'x' so that they follow the order of the
+    elements in y. It is assumed that x is a subset of y and that y has no
+    duplicates.
+
+    Parameters
+    __________
+    x: ndarray
+        The array to order.
+    y: ndarray
+        The reference array. The relative order of the elements in x will
+        follow the same relative order of elements in y.
+    unique_x: bool
+        If True, can speed up the calculations by assuming no duplicates in
+        x.
+
+    Examples
+    ________
+    >>> order_by(np.array([5, 6, 0, 8, 6]), np.array([0, 5, 3, 9, 6, 8]))
+    array([0, 5, 6, 6, 8])
+    >>> order_by(np.array([5, 6, 0, 8]), np.array([0, 5, 3, 9, 6, 8]), unique_x=True)
+    array([0, 5, 6, 8])
+    """
+    # Fast common corner case
+    if np.array_equal(x, y):
+        return x
+
+    restricted_y = y[np.in1d(y, x, assume_unique=unique_x)]
+    if unique_x:
+        return restricted_y
+
+    unq_x, counts_x = np.unique(x, return_counts=True)
+    unq_y, inv_y = np.unique(restricted_y, return_inverse=True)
+    if not np.array_equal(unq_x, unq_y):
+        raise ValueError("'x' is not a subset of 'y'.")
+
+    return np.repeat(restricted_y, counts_x[inv_y])

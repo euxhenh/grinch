@@ -18,10 +18,14 @@ processors:
   - _target_: grinch.UMAP.Config
     x_key: obsm.x_pca
   - _target_: grinch.KMeans.Config
-  - _target_: grinch.TTest.Config
-    group_key: obs.kmeans
-    is_logged: true
+  - _target_: grinch.GroupProcess.Config
+    group_key: obs.level1class
+    processor:
+      _target_: grinch.TTest.Config
+      group_key: obs.level2class
+      is_logged: true
   - _target_: grinch.GSEA.Config
+    read_key: uns.ttest
   - _target_: grinch.Splitter.Config
     val_fraction: 0.3
     test_fraction: 0.2

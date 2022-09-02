@@ -10,7 +10,7 @@ from umap import UMAP as _UMAP
 
 from ..aliases import OBSM, UNS
 from ..utils.validation import check_has_processor, pop_args
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, adata_modifier
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +33,11 @@ class BaseTransformer(BaseProcessor, abc.ABC):
         """Gets the data representation to use and applies the transformer.
         """
         check_has_processor(self)
-
         x = self.get_repr(adata, self.cfg.x_key)
         x_emb = self.processor.fit_transform(x)
-        self.set_repr(adata, self.cfg.x_emb_key, x_emb)
+        self.store_item(self.cfg.x_emb_key, x_emb)
 
-        self.save_processor_stats(adata)
-
+    @adata_modifier
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def transform(self, adata: AnnData) -> None:
         """Applies a transform only. Uses the same key as x_key.
@@ -48,7 +46,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
 
         x = self.get_repr(adata, self.cfg.x_key)
         x_emb = self.processor.transform(x)
-        self.set_repr(adata, self.cfg.x_emb_key, x_emb)
+        self.store_item(self.cfg.x_emb_key, x_emb)
 
 
 class PCA(BaseTransformer):

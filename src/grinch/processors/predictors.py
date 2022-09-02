@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression as _LogisticRegression
 
 from ..aliases import OBS, OBSM, UNS
 from ..utils.validation import check_has_processor, pop_args
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, adata_modifier
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
     def _processor_must_implement() -> List[str]:
         return BaseProcessor._processor_must_implement() + ['predict']
 
+    @adata_modifier
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def predict(self, adata: AnnData) -> None:
         """Calls predict on the underlying predictor."""
@@ -36,7 +37,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
 
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
+        self.store_item(self.cfg.labels_key, labels)
 
 
 class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
@@ -56,10 +57,7 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         """Fits the data and stores predictions."""
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
-
-        if self.cfg.save_stats:
-            self.save_processor_stats(adata)
+        self.store_item(self.cfg.labels_key, labels)
 
 
 class KMeans(BaseUnsupervisedPredictor):
@@ -113,10 +111,7 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
         else:
             self.processor.fit(x, y)
             labels = self.processor.predict(x)
-        self.set_repr(adata, self.cfg.labels_key, labels)
-
-        if self.cfg.save_stats:
-            self.save_processor_stats(adata)
+        self.store_item(self.cfg.labels_key, labels)
 
 
 class LogisticRegression(BaseSupervisedPredictor):

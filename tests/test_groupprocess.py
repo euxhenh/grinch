@@ -32,6 +32,7 @@ def test_groupby(adata):
         "_target_": "src.grinch.GroupProcess.Config",
         "processor": cfg,
         "group_key": "obs.mem",
+        "group_prefix": "g-{group_key}-"
     })
     # gcfg = instantiate(gcfg, _convert_='partial')
     gcfg = instantiate(gcfg)
@@ -41,8 +42,8 @@ def test_groupby(adata):
     groupprocess(adata)
 
     for x in range(0, 6, 2):
-        assert adata.obs[f'g-{x//2}/{OBS.KMEANS}'][x] \
-            != adata.obs[f'g-{x//2}/{OBS.KMEANS}'][x + 1]
+        assert adata.obs[f'g-mem-{OBS.KMEANS}'][x] \
+            != adata.obs[f'g-mem-{OBS.KMEANS}'][x + 1]
 
     assert_equal(adata.obs_names.to_numpy().astype(str), obs_names)
 

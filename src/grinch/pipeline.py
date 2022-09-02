@@ -1,4 +1,5 @@
 import logging
+import traceback
 from typing import List, Optional
 
 import anndata
@@ -40,7 +41,7 @@ class GRPipeline(BaseConfigurable):
 
         for c in self.cfg.processors:
             if self.cfg.seed is not None:
-                c = c.copy(update={'seed': self.cfg.seed})
+                c.seed = self.cfg.seed
             self.processors.append(c.initialize())
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -58,12 +59,21 @@ class GRPipeline(BaseConfigurable):
 
         it = tqdm(self.processors) if self.cfg.verbose else self.processors
         for processor in it:
-            logger.info(f"Running processor {processor.__class__.__name__}")
-            if not isinstance(processor, Splitter):
-                self._apply(ds, processor)
-            else:
-                # Perform a data split
-                ds = processor(ds)
+            logger.info(f"Running '{processor.__class__.__name__}'.")
+            try:
+                if not isinstance(processor, Splitter):
+                    self._apply(ds, processor)
+                else:
+                    ds = processor(ds)  # Perform a data split
+            except Exception:
+                print(traceback.format_exc())
+                logger.warning("Error occured in pipeline.")
+                if self.cfg.data_writepath is not None:
+                    logger.warning("Saving anndata columns under 'data/_incomp.h5ad'.")
+                    ds.write_h5ad('data/_incomp.h5ad', no_data_write=True)
+                else:
+                    logger.warning("Returning incomplete adata.")
+                return ds
 
         if self.cfg.data_writepath is not None:
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)

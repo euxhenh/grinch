@@ -66,7 +66,7 @@ class TTest(BaseProcessor):
         is_logged: bool = True
         # If the data is logged, this should point to the base of the
         # logarithm used. Can be 'e' or a positive float.
-        base: Optional[float | str] = Field('e', gt=0, regex='e')
+        base: Optional[float | str] = Field('e', gt=0, regex='^e$')
         correction: str = 'fdr_bh'
         replace_nan: bool = True
 
@@ -126,7 +126,7 @@ class TTest(BaseProcessor):
         for label in to_iter:
             ts: DETestSummary = self._ttest(pmv, label)
             key = f"{self.cfg.save_key}.{label}"
-            self.set_repr(adata, key, ts.df())
+            self.store_item(key, ts.df())
 
 
 class BimodalTest(BaseProcessor):
@@ -135,6 +135,7 @@ class BimodalTest(BaseProcessor):
         x_key: str = "X"
         save_key: str = f"uns.{UNS.BIMODALTEST}"
         correction: str = 'fdr_bh'
+        skip_zeros: bool = False
 
         max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(), exclude=True)
 
@@ -162,7 +163,12 @@ class BimodalTest(BaseProcessor):
 
         def _diptest_sp_wrapper(_x):
             # slow to densify each column separately, but is memory efficient
-            return diptest(np.ravel(_x.toarray())) if sp.issparse(_x) else diptest(_x)
+            arr = np.ravel(_x.toarray()) if sp.issparse(_x) else _x
+            if self.cfg.skip_zeros:
+                arr = arr[arr != 0]
+            if len(arr) <= 3:  # diptest is not defined for n <= 3
+                return (np.nan, 1)
+            return diptest(arr)
 
         with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
             test_results: Iterable[Tuple[float, float]] = executor.map(_diptest_sp_wrapper, x.T)
@@ -173,4 +179,4 @@ class BimodalTest(BaseProcessor):
         qvals: NP1D_float = _correct(pvals, method=self.cfg.correction)[1]
 
         bts = BimodalTestSummary(pvals=pvals, qvals=qvals, statistic=stats)
-        self.set_repr(adata, self.cfg.save_key, bts.df())
+        self.store_item(self.cfg.save_key, bts.df())

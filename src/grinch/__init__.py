@@ -24,6 +24,8 @@ from .processors import (
     LogisticRegression,
     Splitter,
     TruncatedSVD,
+    ReplaceNAN,
+    StoreAsMask,
     TTest,
 )
 from .reporter import Report, Reporter
@@ -68,5 +70,7 @@ __all__ = [
     'GSEA',
     'Log1P',
     'NormalizeTotal',
+    'ReplaceNAN',
+    'StoreAsMask',
     'instantiate_config',
 ]

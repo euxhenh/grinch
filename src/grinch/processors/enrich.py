@@ -1,13 +1,12 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 import gseapy as gp
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import Field, validator
+from pydantic import validator
 from sklearn.utils.validation import column_or_1d
 
 from ..aliases import UNS
@@ -48,10 +47,6 @@ class GSEA(BaseProcessor):
         any other key 'var.*'.
     kwargs: dict
         These will be passed to gp.enrichr.
-    max_workers: int
-        Number of threads to launch for enrichment analysis. If None, will
-        set to number of CPU's on the machine. Max allowed numer of workers
-        is 2 * number of CPU's.
     """
 
     class Config(BaseProcessor.Config):
@@ -63,13 +58,6 @@ class GSEA(BaseProcessor):
         filter_by: Dict[str, FilterCondition] = DEFAULT_FILTERS
         gene_names_key: str = "var_names"
         kwargs: Dict[str, Any] = {}
-
-        # Set max to 4; don't want to DDOS
-        max_workers: Optional[int] = Field(None, ge=1, le=4, exclude=True)
-
-        @validator('max_workers')
-        def init_max_workers(cls, val):
-            return 4 if val is None else val
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -141,6 +129,21 @@ class GSEA(BaseProcessor):
                 'Genes'])
         return GSEA._gsea(gene_list)
 
+    def _process_dict(
+        self,
+        test_dict: Dict[str, Dict | pd.DataFrame | DETestSummary],
+        prefix: str,
+        func: Callable
+    ) -> None:
+        """Recursively processes a dict."""
+        for k, v in test_dict.items():
+            if isinstance(v, dict):
+                self._process_dict(v, prefix=f'{k}.', func=func)
+            else:
+                gsea_test_summary: pd.DataFrame = func(v)
+                save_key = f'{self.cfg.save_key}.{prefix}{k}'
+                self.store_item(save_key, gsea_test_summary)
+
     def _process(self, adata: AnnData) -> None:
         # Get list of all gene names
         gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
@@ -159,13 +162,7 @@ class GSEA(BaseProcessor):
         )
         tests = self.get_repr(adata, self.cfg.read_key)
         if isinstance(tests, dict):  # Dict of tests
-            # We multithread this since gseapy makes http requests
-            with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
-                gsea_test_summaries = executor.map(_gsea_f, tests.values())
-
-            for label, gsea_test_summary in zip(tests, gsea_test_summaries):
-                save_key = f'{self.cfg.save_key}.{label}'
-                self.set_repr(adata, save_key, gsea_test_summary)
+            self._process_dict(tests, prefix='', func=_gsea_f)
         else:  # Single test
             gsea_test_summary = _gsea_f(tests)
-            self.set_repr(adata, self.cfg.save_key, gsea_test_summary)
+            self.store_item(self.cfg.save_key, gsea_test_summary)

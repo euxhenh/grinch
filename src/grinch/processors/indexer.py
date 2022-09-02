@@ -1,7 +1,7 @@
 from typing import Dict
 
 from anndata import AnnData
-from pydantic import validator
+from pydantic import Field, validator
 
 from ..filter_condition import FilterCondition, StackedFilterCondition
 from ..utils.validation import validate_axis
@@ -16,7 +16,7 @@ class InplaceIndexer(BaseProcessor):
     class Config(BaseProcessor.Config):
         filter_by: Dict[str, FilterCondition]
         # Can be 0, 1 or 'obs', 'var'
-        axis: int | str = 0
+        axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
 
         @validator('axis')
         def ensure_correct_axis(cls, axis):

@@ -4,31 +4,16 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-import scipy.sparse as sp
 from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.model_selection import train_test_split
 
 from ..conf import BaseConfigurable
+from ..utils.adata import as_empty
 from ..utils.validation import all_not_None, any_not_None
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
-
-
-def _as_empty(adata: AnnData) -> AnnData:
-    return AnnData(
-        X=sp.csr_matrix(adata.shape),
-        obs=adata.obs,
-        var=adata.var,
-        obsm=adata.obsm,
-        varm=adata.varm,
-        uns=adata.uns,
-        raw=adata.raw,
-        filename=adata.filename,
-        obsp=adata.obsp,
-        varp=adata.varp,
-    )
 
 
 @dataclass(eq=False)
@@ -47,7 +32,7 @@ class DataSplitter:
         in path.
         """
         if not any_not_None(self.VAL_SPLIT, self.TEST_SPLIT):
-            to_write = _as_empty(self.TRAIN_SPLIT) if no_data_write else self.TRAIN_SPLIT
+            to_write = as_empty(self.TRAIN_SPLIT) if no_data_write else self.TRAIN_SPLIT
             to_write.write_h5ad(path)
             return
 
@@ -60,7 +45,7 @@ class DataSplitter:
                 path_to_write = os.path.join(path, split + '.h5ad')
                 if os.path.exists(path_to_write):
                     logger.warning(f"Object {path_to_write} exists. This will be overwritten.")
-                to_write = _as_empty(sp) if no_data_write else sp
+                to_write = as_empty(sp) if no_data_write else sp
                 to_write.write_h5ad(path_to_write)
 
 
