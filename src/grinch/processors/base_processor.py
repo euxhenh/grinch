@@ -68,6 +68,7 @@ def adata_modifier(f: Callable):
             return self.storage
         elif not self.cfg.inplace:
             return adata
+        return None
 
     return _wrapper
 
