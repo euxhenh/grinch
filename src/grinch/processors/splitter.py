@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
+import scipy.sparse as sp
 from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.model_selection import train_test_split
@@ -14,6 +15,21 @@ from ..utils.validation import all_not_None, any_not_None
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
+
+
+def _as_empty(adata: AnnData) -> AnnData:
+    return AnnData(
+        X=sp.csr_matrix(adata.shape),
+        obs=adata.obs,
+        var=adata.var,
+        obsm=adata.obsm,
+        varm=adata.varm,
+        uns=adata.uns,
+        raw=adata.raw,
+        filename=adata.filename,
+        obsp=adata.obsp,
+        varp=adata.varp,
+    )
 
 
 @dataclass(eq=False)
