@@ -1,17 +1,17 @@
+import abc
 from typing import Dict
 
 from anndata import AnnData
 from pydantic import Field, validator
 
+from ..custom_types import NP1D_bool
 from ..filter_condition import FilterCondition, StackedFilterCondition
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
 
-class InplaceIndexer(BaseProcessor):
-    """Inexes adata over obs or var axis using a mask stored in obs/var or
-    an uns list of indices.
-    """
+class BaseIndexer(BaseProcessor, abc.ABC):
+    """A base class for indexing operations."""
 
     class Config(BaseProcessor.Config):
         filter_by: Dict[str, FilterCondition]
@@ -32,8 +32,25 @@ class InplaceIndexer(BaseProcessor):
 
     def _process(self, adata: AnnData) -> None:
         sfc = StackedFilterCondition(*self.cfg.filter_by.values())
-        mask = sfc(adata, as_mask=True)
+        mask: NP1D_bool = sfc(adata, as_mask=True)
+        return self._process_mask(adata, mask)
 
+    @abc.abstractmethod
+    def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
+        raise NotImplementedError
+
+
+class InplaceIndexer(BaseIndexer):
+    """Inplace indexes adata over obs or var axis using a mask stored in
+    obs/var or an uns list of indices.
+    """
+
+    class Config(BaseIndexer.Config):
+        ...
+
+    cfg: Config
+
+    def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
         if self.cfg.axis == 0:
             adata._inplace_subset_obs(mask)
         else:

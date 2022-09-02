@@ -3,7 +3,6 @@ import logging
 from typing import Dict, List
 
 import anndata
-import numpy as np
 from anndata import AnnData
 from pydantic import Field, validator
 
