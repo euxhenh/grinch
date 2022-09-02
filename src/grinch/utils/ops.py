@@ -1,5 +1,5 @@
 from functools import reduce
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple, overload
 
 import numpy as np
 from sklearn.utils import column_or_1d
@@ -63,7 +63,15 @@ def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
     return (v1 <= x) & (x <= v2)
 
 
-def group_indices(x, as_mask: bool = False) -> Tuple[NP1D_int, List[NP1D_int | NP1D_bool]]:
+@overload
+def group_indices(x, as_mask: Literal[False] = False) -> Tuple[NP1D_Any, List[NP1D_int]]: ...
+
+
+@overload
+def group_indices(x, as_mask: Literal[True]) -> Tuple[NP1D_Any, List[NP1D_bool]]: ...
+
+
+def group_indices(x, as_mask=False):
     """Returns an index array pointing to unique elements in x.
 
     Parameters
