@@ -16,7 +16,7 @@ class PhenotypeCover(BaseProcessor):
         x_key: str = "X"
         y_key: str
         feature_mask_key: str = f"var.{VAR.PCOVER_M}"
-        feature_order_key: str = f"var.{VAR.PCOVER_O}"
+        feature_importance_key: str = f"var.{VAR.PCOVER_I}"
 
         save_stats: bool = True
         stats_key: str = f"uns.{UNS.PCOVER}"
@@ -25,6 +25,7 @@ class PhenotypeCover(BaseProcessor):
         coverage: int
         multiplier: Optional[int] = None
         ordered: bool = True
+        # If 0, run until coverage complete
         max_iters: int = Field(default_factory=int, ge=0)
 
         verbose: bool = Field(True, exclude=True)
@@ -56,7 +57,7 @@ class PhenotypeCover(BaseProcessor):
         self.store_item(self.cfg.feature_mask_key, mask)
         order = np.zeros(X.shape[1], dtype=int)
         order[features] = np.arange(len(features), 0, -1)
-        self.store_item(self.cfg.feature_order_key, order)
+        self.store_item(self.cfg.feature_importance_key, order)
 
     @staticmethod
     def _processor_stats() -> List[str]:

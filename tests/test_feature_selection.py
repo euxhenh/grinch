@@ -34,5 +34,5 @@ def test_phenotype_cover(X):
     adata.obs['anns'] = [0, 1, 0, 1]
     gpc(adata)
     assert_allclose([False, False, True, False], adata.var[f"{VAR.PCOVER_M}"])
-    assert_allclose([0, 0, 1, 0], adata.var[f"{VAR.PCOVER_O}"])
+    assert_allclose([0, 0, 1, 0], adata.var[f"{VAR.PCOVER_I}"])
     assert_allclose(adata.uns[f"{UNS.PCOVER}"]['n_elements_remaining_per_iter_'], [0])
