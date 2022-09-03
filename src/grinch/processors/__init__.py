@@ -11,6 +11,7 @@ from .predictors import (
     KMeans,
     LogisticRegression,
 )
+from .repeat import RepeatProcessor
 from .splitter import DataSplitter, Splitter
 from .tools import ReplaceNAN, StoreAsMask
 from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
@@ -32,6 +33,7 @@ __all__ = [
     'KMeans',
     'LogisticRegression',
     'DataSplitter',
+    'RepeatProcessor',
     'Splitter',
     'PCA',
     'UMAP',

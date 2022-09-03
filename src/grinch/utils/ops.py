@@ -26,6 +26,23 @@ def compose(*funcs):
     return composed
 
 
+def safe_format(prefix, **kwargs):
+    """List Str.format() but will not raise an error if it does not find
+    the key in the string.
+
+    Examples
+    ________
+    >>> safe_format("hello", somevar="someval")
+    'hello'
+    >>> safe_format("hello_{somevar}", somevar="someval")
+    'hello_someval'
+    """
+    for k, v in kwargs.items():
+        if f"{{{k}}}" in prefix:  # { is escaped by doubling it {{
+            prefix = prefix.replace(f"{{{k}}}", str(v))
+    return prefix
+
+
 def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
     """Returns a boolean array a with a[i] = True if x[i] is between v1 and
     v2 (inclusive). If any of v1 or v2 is None, will cap at -np.inf and

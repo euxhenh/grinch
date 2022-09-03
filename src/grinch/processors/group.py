@@ -1,13 +1,13 @@
 import gc
 import logging
-from typing import Dict, List
+from typing import List
 
 import anndata
 from anndata import AnnData
 from pydantic import Field, validator
 
 from ..custom_types import NP1D_str
-from ..utils.ops import group_indices, order_by
+from ..utils.ops import group_indices, order_by, safe_format
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
@@ -64,26 +64,11 @@ class GroupProcess(BaseProcessor):
         def updates_uns(self) -> bool:
             return self.group_key.startswith('uns.')
 
-        @staticmethod
-        def safe_format(group_prefix, **kwargs: Dict[str, str]):
-            for k, v in kwargs.items():
-                if f"{{{k}}}" in group_prefix:  # { is escaped by doubling it {{
-                    group_prefix = group_prefix.replace(f"{{{k}}}", v)
-            return group_prefix
-
         def update_processor_save_key_prefix(self, label):
-            SPLITTER = '.' if self.updates_uns() else '-'
-            upstream_prefix = self.save_key_prefix
-            if len(upstream_prefix) > 0:  # happens when GroupProcess modules are stacked
-                upstream_prefix += SPLITTER
-
-            current_prefix = self.safe_format(
-                self.group_prefix,
+            prefix = self.get_save_key_prefix(
                 label=label,
                 group_key=self.group_key.rsplit('.', maxsplit=1)[-1],
             )
-
-            prefix = f'{upstream_prefix}{current_prefix}'
             if not self.updates_uns() and '.' in prefix:
                 logger.warning(
                     "Non 'uns' group_key was entered, but 'group_prefix' "
