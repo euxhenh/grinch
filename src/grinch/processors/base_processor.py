@@ -13,7 +13,7 @@ from ..aliases import ALLOWED_KEYS
 from ..conf import BaseConfigurable
 from ..custom_types import REP, REP_KEY, optional_staticmethod
 from ..utils.adata import as_empty
-from ..utils.ops import compose
+from ..utils.ops import compose, safe_format
 from ..utils.validation import check_has_processor
 
 logger = logging.getLogger(__name__)
@@ -163,6 +163,22 @@ class BaseProcessor(BaseConfigurable):
                         f"Could not interpret format for {field.name}. Please make sure "
                         "it is a str, list[str], or dict[str, str]."
                     )
+
+        def get_save_key_prefix(
+            self,
+            current_prefix: str,
+            splitter: str = '.',
+            **kwargs
+        ) -> str:
+            """Returns a save_key_prefix. Can be used to search recursively
+            for save_key prefixes.
+            """
+            upstream_prefix = self.save_key_prefix
+            if len(upstream_prefix) > 0:  # happens when GroupProcess modules are stacked
+                upstream_prefix += splitter
+            current_prefix = safe_format(current_prefix, **kwargs)
+            prefix = f'{upstream_prefix}{current_prefix}'
+            return prefix
 
     cfg: Config
 
