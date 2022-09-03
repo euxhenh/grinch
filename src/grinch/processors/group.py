@@ -7,7 +7,7 @@ from anndata import AnnData
 from pydantic import Field, validator
 
 from ..custom_types import NP1D_str
-from ..utils.ops import group_indices, order_by, safe_format
+from ..utils.ops import group_indices, order_by
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
