@@ -23,7 +23,7 @@ class AnnDataKeys:
         N_COUNTS = auto()
         N_CELLS = auto()
         PCOVER_M = auto()
-        PCOVER_O = auto()
+        PCOVER_I = auto()
 
     class OBSM:
         X_EMB = auto()
