@@ -66,6 +66,7 @@ class GroupProcess(BaseProcessor):
 
         def update_processor_save_key_prefix(self, label):
             prefix = self.get_save_key_prefix(
+                self.group_prefix,
                 label=label,
                 group_key=self.group_key.rsplit('.', maxsplit=1)[-1],
             )
