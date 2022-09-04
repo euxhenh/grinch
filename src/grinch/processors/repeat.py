@@ -20,6 +20,7 @@ class RepeatProcessor(BaseProcessor):
         repeat_vals: List[Any]
 
         repeat_prefix: str = 'r-{repeat_var}-{repeat_val}-'
+        upstream_splitter: str = '-'
 
         @validator('repeat_var')
         def has_field(cls, val, values):
@@ -33,7 +34,7 @@ class RepeatProcessor(BaseProcessor):
         def update_processor_save_key_prefix(self, repeat_val):
             prefix = self.get_save_key_prefix(
                 self.repeat_prefix,
-                splitter="-",
+                splitter=self.upstream_splitter,
                 repeat_var=self.repeat_var,
                 repeat_val=repeat_val,
             )
