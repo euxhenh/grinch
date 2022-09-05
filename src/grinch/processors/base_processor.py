@@ -174,8 +174,8 @@ class BaseProcessor(BaseConfigurable):
             for save_key prefixes.
             """
             upstream_prefix = self.save_key_prefix
-            if len(upstream_prefix) > 0:  # happens when GroupProcess modules are stacked
-                upstream_prefix += splitter
+            # if len(upstream_prefix) > 0:  # happens when GroupProcess modules are stacked
+            #     upstream_prefix += splitter
             current_prefix = safe_format(current_prefix, **kwargs)
             prefix = f'{upstream_prefix}{current_prefix}'
             return prefix
@@ -310,17 +310,31 @@ class BaseProcessor(BaseConfigurable):
         # Add prefix to the last save key
         key = BaseProcessor.__prepend_to_last_key(key, save_key_prefix)
 
+        # TODO dont allow X obs_names and var_names
         save_class, *save_keys = key.split('.')
+        if save_class != 'uns':
+            if len(save_keys) > 1:
+                logger.warning(
+                    "Found non-'uns' save_class, but more than one save key."
+                    "Replacing 'save_keys' dots with dashes."
+                )
+                save_keys = [''.join(save_keys).replace('.', '-')]
+
         klas = getattr(adata, save_class)
         # Iterate over all save keys and initialize empty dictionaries if
         # the keys are not found.
+        zl = ValueError("Found zero-length save key.")
         while len(save_keys) > 1:
             save_key = save_keys.pop(0)
+            if len(save_key) < 1:
+                raise zl
             if save_key not in klas:
                 klas[save_key] = {}
             klas = klas[save_key]
         # Final key
         save_key = save_keys.pop(0)
+        if len(save_key) < 1:
+            raise zl
         assert len(save_keys) == 0
         klas[save_key] = value
 
@@ -331,13 +345,13 @@ class BaseProcessor(BaseConfigurable):
         value: REP,
         save_key_prefix: str = ''
     ) -> None:
+        """Saves values under the key that save_key points to. Not to be
+        called by any derived classes."""
         single_set_func = partial(
             BaseProcessor._set_repr,
             adata,
             save_key_prefix=save_key_prefix,
         )
-        """Saves values under the key that save_key points to. Not to be
-        called by any derived classes."""
         match key, value:
             # Match a string key and Any value
             case str() as key, val:

@@ -8,4 +8,5 @@ tags
 grinch.egg*
 *cache
 data
-conf*
+conf/*
+!conf/example_DE_analysis.yaml

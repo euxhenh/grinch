@@ -55,29 +55,12 @@ class GroupProcess(BaseProcessor):
         def ensure_correct_axis(cls, axis):
             return validate_axis(axis)
 
-        @validator('group_prefix')
-        def has_label_and_uns(cls, val, values):
-            if "{label}" in val and not values['group_key'].startswith('uns'):
-                raise ValueError("Non-uns group_key's cannot be used with a label prefix.")
-            return val
-
-        def updates_uns(self) -> bool:
-            return self.group_key.startswith('uns.')
-
         def update_processor_save_key_prefix(self, label):
-            prefix = self.get_save_key_prefix(
+            self.processor.save_key_prefix = self.get_save_key_prefix(
                 self.group_prefix,
                 label=label,
                 group_key=self.group_key.rsplit('.', maxsplit=1)[-1],
             )
-            if not self.updates_uns() and '.' in prefix:
-                logger.warning(
-                    "Non 'uns' group_key was entered, but 'group_prefix' "
-                    "contains dots. Replacing 'group_prefix' dots with dashes."
-                )
-                prefix = prefix.replace('.', '-')
-
-            self.processor.save_key_prefix = prefix
 
     cfg: Config
 

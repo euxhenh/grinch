@@ -1,4 +1,5 @@
 import abc
+import gc
 from typing import Dict
 
 from anndata import AnnData
@@ -55,6 +56,8 @@ class InplaceIndexer(BaseIndexer):
             adata._inplace_subset_obs(mask)
         else:
             adata._inplace_subset_var(mask)
+
+        gc.collect()
 
 
 class IndexProcessor(BaseIndexer):
