@@ -1,0 +1,22 @@
+_target_: grinch.GRPipeline.Config
+
+data_readpath: 'data/stub.h5ad'
+data_writepath: 'data/stub_processed.h5ad'
+
+no_data_write: false
+
+processors:
+  - _target_: grinch.GroupProcess.Config
+    group_key: obs.y
+    processor:
+      _target_: grinch.TTest.Config
+      group_key: obs.category
+  - _target_: grinch.GroupProcess.Config
+    group_key: obs.category
+    processor:
+      _target_: grinch.GroupProcess.Config
+      group_key: obs.y
+      min_points_per_group: 25
+      drop_small_groups: true
+      processor:
+        _target_: grinch.BimodalTest.Config

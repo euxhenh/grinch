@@ -106,7 +106,8 @@ class TTest(BaseProcessor):
         group_labels = column_or_1d(self.get_repr(adata, self.cfg.group_key))
         unq_labels = np.unique(group_labels)
         if len(unq_labels) <= 1:
-            raise ValueError(f"Found only one unique value under key '{self.cfg.group_key}'")
+            logger.warning(f"Found only one unique value under key '{self.cfg.group_key}'")
+            return
 
         x = self.get_repr(adata, self.cfg.x_key)
         x = check_array(
@@ -125,7 +126,7 @@ class TTest(BaseProcessor):
         )
         for label in to_iter:
             ts: DETestSummary = self._ttest(pmv, label)
-            key = f"{self.cfg.save_key}.{label}"
+            key = f"{self.cfg.save_key}.{self.cfg.group_key.rsplit('.')[-1]}-{label}"
             self.store_item(key, ts.df())
 
 
