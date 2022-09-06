@@ -30,10 +30,10 @@ def test_enrich(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.GSEA.Config",
-            "filter_by": {'c1': fcfg},
+            "filter_by": [fcfg],
         }
     )
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     gsea = cfg.initialize()
     adata = AnnData(X)
     ts = DETestSummary(pvals=[0.02, 0.5, 1, 0.01, 0.8])
