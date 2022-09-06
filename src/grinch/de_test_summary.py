@@ -13,19 +13,7 @@ from .utils.stats import _correct
 
 
 class TestSummary(BaseModel, abc.ABC):
-    """A base class for Test summaries.
-
-    Parameters
-    __________
-    pvals: 1D array
-        p-values of the test.
-    qvals: 1D array
-        corrected p-values of the test. If these are not passed explicitly,
-        they will be automatically computed using 'fdr_bh' correction.
-    """
-    pvals: NP1D_float
-    qvals: Optional[NP1D_float]
-
+    """A base class for Test summaries."""
     class Config:
         arbitrary_types_allowed = True
         validate_assignment = True
@@ -37,11 +25,6 @@ class TestSummary(BaseModel, abc.ABC):
         # Convert to numpy before performing any validation
         return v if v is None else column_or_1d(v)
 
-    @validator('qvals', pre=True)
-    def _init_qvals(cls, qvals, values) -> NP1D_float:
-        """Make sure qvals are initialized."""
-        return qvals if qvals is not None else _correct(values['pvals'])[1]
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         not_none_arrs = self._tuple(exclude_none=True)
@@ -49,8 +32,24 @@ class TestSummary(BaseModel, abc.ABC):
             raise ValueError("No data is stored in this test summary.")
         check_consistent_length(*not_none_arrs)
 
-    def __len__(self) -> int:
-        return len(self.pvals)
+    def __str__(self):
+        s = f"{self.__class__.__name__} with fields "
+        for field in self.__fields__:
+            if getattr(self, field) is not None:
+                s += f"'{field}', "
+        s += f"of length {len(self)}."
+        return s
+
+    def __repr__(self) -> str:
+        s = f"{self.__class__.__name__}(\n"
+        for field in self.__fields__:
+            if (arr := getattr(self, field)) is not None:
+                if arr.dtype == np.float_:
+                    arr = np.round(arr, 3)
+                arr = np.array_repr(arr)
+                s += f"    {field}={arr},\n"
+        s += ")"
+        return s
 
     def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:
         """Converts self to tuple. To be used internally only."""
@@ -87,7 +86,10 @@ class TestSummary(BaseModel, abc.ABC):
     @classmethod
     def from_df(cls, val: pd.DataFrame) -> 'TestSummary':
         """Constructs an instance of TestSummary given a df."""
-        return cls.from_dict(val.to_dict('list'))
+        _dict = {}
+        for column in val.columns:
+            _dict[column] = val[column].to_numpy()
+        return cls.from_dict(_dict)
 
     @overload
     def where(self, *conds: FilterCondition, as_mask: Literal[True]) -> NP1D_bool: ...
@@ -101,6 +103,8 @@ class TestSummary(BaseModel, abc.ABC):
         the conditions.
         """
         # Iterate over conditions and take logical-& of masks returned
+        if len(conds) == 1:
+            return conds[0](self, as_mask=as_mask)
         return StackedFilterCondition(*conds)(self, as_mask=as_mask)
 
     def argsort(self, by: str, reverse: bool = False) -> NP1D_int:
@@ -108,7 +112,30 @@ class TestSummary(BaseModel, abc.ABC):
         return argidx if not reverse else np.flip(argidx)
 
 
-class DETestSummary(TestSummary):
+class PvalTestSummary(TestSummary):
+    """A base class for test summaries that take pvalues.
+
+    Parameters
+    __________
+    pvals: 1D array
+        p-values of the test.
+    qvals: 1D array
+        corrected p-values of the test. If these are not passed explicitly,
+        they will be automatically computed using 'fdr_bh' correction.
+    """
+    pvals: NP1D_float
+    qvals: Optional[NP1D_float]
+
+    @validator('qvals', pre=True)
+    def _init_qvals(cls, qvals, values) -> NP1D_float:
+        """Make sure qvals are initialized."""
+        return qvals if qvals is not None else _correct(values['pvals'])[1]
+
+    def __len__(self) -> int:
+        return len(self.pvals)
+
+
+class DETestSummary(PvalTestSummary):
     """A summary dataclas for DE test results.
 
     Parameters
@@ -125,7 +152,7 @@ class DETestSummary(TestSummary):
     log2fc: Optional[NP1D_float]
 
 
-class BimodalTestSummary(TestSummary):
+class BimodalTestSummary(PvalTestSummary):
     """A summary dataclass for bimodal test results.
     """
 

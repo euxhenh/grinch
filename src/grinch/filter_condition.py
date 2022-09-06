@@ -62,6 +62,8 @@ class FilterCondition(BaseModel):
         idx = np.argsort(arr) if self.ordered else np.argpartition(arr, self.top_k)
         idx = idx[:self.top_k]
         if not as_mask:
+            if self.ordered:
+                logger.warning("'ordered=True' will be ignored when returning mask.")
             return idx
 
         mask = np.full_like(arr, False, dtype=bool)
@@ -77,6 +79,8 @@ class FilterCondition(BaseModel):
 
         mask = arr >= self.cutoff if self.greater_is_better else arr <= self.cutoff
         if as_mask:
+            if self.ordered:
+                logger.warning("'ordered=True' will be ignored when returning mask.")
             return mask
 
         idx = np.argwhere(mask).ravel()
