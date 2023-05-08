@@ -45,6 +45,12 @@ class AnnDataKeys:
         BIMODALTEST = auto()
         PCOVER = auto()
 
+    class OBSP:
+        ...
+
+    class VARP:
+        ...
+
 
 # Create shorter aliases, since these will be used a lot
 ADK = AnnDataKeys
@@ -52,6 +58,8 @@ OBS = AnnDataKeys.OBS
 VAR = AnnDataKeys.VAR
 OBSM = AnnDataKeys.OBSM
 VARM = AnnDataKeys.VARM
+OBSP = AnnDataKeys.OBSP
+VARP = AnnDataKeys.VARP
 UNS = AnnDataKeys.UNS
 
-ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers']
+ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers', 'obsp', 'varp']
