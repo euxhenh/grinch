@@ -18,9 +18,9 @@ class FilterCondition(BaseModel):
     'cutoff'. If top_k is not None, will take the top k greatest (smallest)
     elements. If both are None, will assume key is a mask and convert it to
     a bool. The ordered key is useful if the returned indices can be in any
-    order or if they should be ordered. 'greater_is_better' will reverse
-    the selection criteria, except for the case when 'cutoff' and 'top_k'
-    are both None, where it has no effect.
+    order or if they should be ordered. 'greater_is_True' will reverse the
+    selection criteria, except for the case when 'cutoff' and 'top_k' are
+    both None, where it has no effect.
 
     If key is None, will assume the passed object to call is the array to
     filter itself.
@@ -29,7 +29,7 @@ class FilterCondition(BaseModel):
     key: str | None = None
     cutoff: float | None = None
     top_k: int | None = None
-    greater_is_better: bool = False
+    greater_is_True: bool = False
     ordered: bool = False
     dtype: str = Field('float', regex='(float|bool)')
 
@@ -56,7 +56,7 @@ class FilterCondition(BaseModel):
         if self.top_k > len(arr):
             raise ValueError(f"Requested {self.top_k} items but array has size {len(arr)}.")
 
-        if self.greater_is_better:
+        if self.greater_is_True:
             arr = -arr
         # argpartition is faster if we don't care about the order
         idx = np.argsort(arr) if self.ordered else np.argpartition(arr, self.top_k)
@@ -72,12 +72,12 @@ class FilterCondition(BaseModel):
 
     def _take_cutoff(self, arr: NP1D_float, as_mask: bool = True):
         """Takes the elements which are greater than or less than cutoff
-        depending on the value of greater_is_better.
+        depending on the value of greater_is_True.
         """
         if self.cutoff is None:
             raise ValueError("Expected float but 'cutoff' is None.")
 
-        mask = arr >= self.cutoff if self.greater_is_better else arr <= self.cutoff
+        mask = arr >= self.cutoff if self.greater_is_True else arr <= self.cutoff
         if as_mask:
             if self.ordered:
                 logger.warning("'ordered=True' will be ignored when returning mask.")
@@ -86,7 +86,7 @@ class FilterCondition(BaseModel):
         idx = np.argwhere(mask).ravel()
         if self.ordered:
             idx = idx[np.argsort(arr[idx])]  # Sort idx based on arr
-        return np.flip(idx) if self.greater_is_better else idx
+        return np.flip(idx) if self.greater_is_True else idx
 
     def _take_mask(self, arr: NP1D_float | NP1D_bool, as_mask: bool = True):
         """Assumes arr is a mask."""

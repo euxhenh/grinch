@@ -37,12 +37,12 @@ def test_indexer_obs(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.IndexProcessor.Config",
-            "filter_by": {'mask': fcfg},
+            "filter_by": [fcfg],
             "processor": kmeanscfg,
             "axis": "var",
         }
     )
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     index = cfg.initialize()
     adata = AnnData(X)
     adata.var['pick'] = [0, 1, 1, 0]

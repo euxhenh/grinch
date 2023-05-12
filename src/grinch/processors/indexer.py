@@ -1,6 +1,6 @@
 import abc
 import gc
-from typing import Dict
+from typing import List
 
 from anndata import AnnData
 from pydantic import Field, validator
@@ -15,7 +15,7 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     """A base class for indexing operations."""
 
     class Config(BaseProcessor.Config):
-        filter_by: Dict[str, FilterCondition]
+        filter_by: List[FilterCondition]
         # Can be 0, 1 or 'obs', 'var'
         axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
 
@@ -32,7 +32,7 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        sfc = StackedFilterCondition(*self.cfg.filter_by.values())
+        sfc = StackedFilterCondition(*self.cfg.filter_by)
         mask: NP1D_bool = sfc(adata, as_mask=True)
         return self._process_mask(adata, mask)
 

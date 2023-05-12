@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_FILTERS: List[FilterCondition] = [
-    FilterCondition(key='qvals', cutoff=0.05, greater_is_better=False, dtype='float'),
-    FilterCondition(key='log2fc', cutoff=1, greater_is_better=True, dtype='float'),
+    FilterCondition(key='qvals', cutoff=0.05, greater_is_True=False, dtype='float'),
+    FilterCondition(key='log2fc', cutoff=1, greater_is_True=True, dtype='float'),
 ]
 
 DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
