@@ -43,7 +43,7 @@ class GroupProcess(BaseProcessor):
         # Key to group by, must be recognized by np.unique.
         group_key: str
         axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
-        group_prefix: str = 'g-{group_key}.{label}.'
+        group_prefix: str = 'g-{group_key}/{label}.'
         min_points_per_group: int = Field(default_factory=int, ge=0)
         # Whether to drop the groups which have less than
         # `min_points_per_group` points or not.
@@ -98,4 +98,6 @@ class GroupProcess(BaseProcessor):
 
             self.cfg.update_processor_save_key_prefix(label)
             processor: BaseProcessor = self.cfg.processor.initialize()
-            processor(adata, obs_indices=group)
+            storage = processor(adata, obs_indices=group, return_storage=True)
+            # Prefix should be handled by the processor
+            self.store_items(storage, add_prefix=False)
