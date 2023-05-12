@@ -9,6 +9,7 @@ from sklearn.utils.validation import check_array, check_non_negative
 from .aliases import OBS, VAR
 from .conf import BaseConfigurable
 from .utils import any_not_None, true_inside
+from .utils.stats import _var
 
 
 class BaseFilter(BaseConfigurable):
@@ -97,10 +98,12 @@ class FilterGenes(BaseFilter):
     """Filters cells based on counts and number of expressed genes."""
 
     class Config(BaseFilter.Config):
-        min_counts: Optional[float] = Field(None, ge=0)
-        max_counts: Optional[float] = Field(None, ge=0)
-        min_cells: Optional[int] = Field(None, ge=0)
-        max_cells: Optional[int] = Field(None, ge=0)
+        min_counts: float | None = Field(None, ge=0)
+        max_counts: float | None = Field(None, ge=0)
+        min_cells: int | None = Field(None, ge=0)
+        max_cells: int | None = Field(None, ge=0)
+        min_var: float | None = Field(None, ge=0)
+        max_var: float | None = Field(None, ge=0)
 
     cfg: Config
 
@@ -125,12 +128,20 @@ class FilterGenes(BaseFilter):
                 self.cfg.max_cells,
             )
 
+        gene_var = _var(adata.X, axis=0, ddof=0)
+        if any_not_None(self.cfg.min_var, self.cfg.max_var):
+            to_keep &= true_inside(gene_var, self.cfg.min_var, self.cfg.max_var)
+
         if to_keep.sum() < 1:
-            raise ValueError("Filtering options are too stringent. Less than 1 gene remained.")
+            raise ValueError(
+                "Filtering options are too stringent. "
+                "Less than 1 gene remained."
+            )
 
         # Set these after the exception above
         adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
         adata.var[VAR.N_CELLS] = cells_per_gene.astype(np.float32)
+        adata.var[VAR.VARIANCE] = gene_var.astype(np.float32)
 
         adata._inplace_subset_var(to_keep)
 
