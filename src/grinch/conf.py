@@ -116,7 +116,7 @@ class BaseConfigurable(_BaseConfigurable):
     def log(
         self,
         message: str,
-        shape: Tuple[int, int] = None,
+        shape: Tuple[int, int] | None = None,
         artifacts: Optional[str | List[str]] = None
     ) -> None:
         """Sends a report to reporter for logging.

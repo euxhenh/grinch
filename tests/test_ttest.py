@@ -37,9 +37,9 @@ def test_ttest(X):
     adata.obs['label'] = label
 
     ttest(adata)
-    pvals = adata.uns[UNS.TTEST]['label-0']['pvals'].to_numpy()
-    log2fc = adata.uns[UNS.TTEST]['label-0']['log2fc'].to_numpy()
-    dd = DETestSummary.from_df(adata.uns[UNS.TTEST]['label-0'])
+    pvals = adata.uns[UNS.TTEST_]['label-0']['pvals'].to_numpy()
+    log2fc = adata.uns[UNS.TTEST_]['label-0']['log2fc'].to_numpy()
+    dd = DETestSummary.from_df(adata.uns[UNS.TTEST_]['label-0'])
     assert_allclose(dd.pvals, pvals)
     assert_allclose(dd.log2fc, log2fc)
 
@@ -55,9 +55,9 @@ def test_ttest(X):
     assert log2fc[3] > 2
     assert log2fc[4] > 2
 
-    pvals = adata.uns[UNS.TTEST]['label-1']['pvals'].to_numpy()
-    log2fc = adata.uns[UNS.TTEST]['label-1']['log2fc'].to_numpy()
-    dd = DETestSummary.from_df(adata.uns[UNS.TTEST]['label-1'])
+    pvals = adata.uns[UNS.TTEST_]['label-1']['pvals'].to_numpy()
+    log2fc = adata.uns[UNS.TTEST_]['label-1']['log2fc'].to_numpy()
+    dd = DETestSummary.from_df(adata.uns[UNS.TTEST_]['label-1'])
     assert_allclose(dd.pvals, pvals)
     assert_allclose(dd.log2fc, log2fc)
 

@@ -1,13 +1,10 @@
-import gc
 import logging
-from typing import List
 
-import anndata
 from anndata import AnnData
 from pydantic import Field, validator
 
 from ..custom_types import NP1D_str
-from ..utils.ops import group_indices, order_by
+from ..utils.ops import group_indices
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
@@ -37,7 +34,8 @@ class GroupProcess(BaseProcessor):
         processed.
     drop_small_groups: bool
         If a group contains less than 'min_points_per_group' and this is
-        set to True, these groups will not be included in the merged anndata.
+        set to True, these groups will not be included in the merged
+        anndata.
     """
 
     class Config(BaseProcessor.Config):
@@ -77,75 +75,27 @@ class GroupProcess(BaseProcessor):
         )
 
     def _process(self, adata: AnnData) -> None:
-        # We will use the index to reorder adata, so these have to be unique
-        if self.cfg.axis == 0 and not adata.obs.index.is_unique:
-            adata.obs_names_make_unique()
-        elif self.cfg.axis == 1 and not adata.var.index.is_unique:
-            adata.var_names_make_unique()
-
         # Determine groups to process separately
-        group_labels = self.get_repr(adata, self.cfg.group_key)
+        group_labels = self.get_repr(adata, self.cfg.group_key, to_numpy=True)
         if len(group_labels) != adata.shape[self.cfg.axis]:
-            raise ValueError("Length of 'group_labels' should match the dimension of adata.")
+            raise ValueError(
+                "Length of 'group_labels' should "
+                "match the dimension of adata."
+            )
         unq_labels, groups = group_indices(group_labels)
-
-        adata_list: List[AnnData] = []  # Will hold group adatas without their data matrices.
 
         # TODO multithread
         for label, group in zip(unq_labels, groups):
             logger.info(
-                f"Running '{self.cfg.processor.init_type.__name__}' for group '{label}'."
+                f"Running '{self.cfg.processor.init_type.__name__}' "
+                f"for group '{label}'."
             )
+            # Determine if this group is small or not
+            if self.cfg.drop_small_groups:
+                if len(group) < self.cfg.min_points_per_group:
+                    logger.info(f"Skipping small group '{label}'.")
+                    continue
+
             self.cfg.update_processor_save_key_prefix(label)
             processor: BaseProcessor = self.cfg.processor.initialize()
-            _adata = adata[group] if self.cfg.axis == 0 else adata[:, group]
-
-            # Determine if this group is small or not
-            if len(group) < self.cfg.min_points_per_group:
-                if not self.cfg.drop_small_groups:
-                    adata_list.append(_adata)
-                continue
-
-            _adata = processor(_adata, no_data_matrix=True)
-            adata_list.append(_adata)
-
-        # Outer join will fill missing values with nan's.
-        # uns_merge = same will only merge uns keys which are the same.
-        concat_adata = anndata.concat(adata_list, join='outer', uns_merge='first')
-        # Reorder so that obs or vars have original order
-        original_order = self._get_names_along_axis(adata)
-
-        if concat_adata.shape != adata.shape:
-            # Since some adatas may have been dropped, we only take obs and
-            # vars which exist in concat adata.
-            concat_names = self._get_names_along_axis(concat_adata)
-            original_order = order_by(concat_names, original_order, unique_x=True)
-            X = adata[original_order].X if self.cfg.axis == 0 else adata[:, original_order].X
-            logger.info(f"Dropping {len(original_order) - len(concat_names)} points.")
-        else:
-            # doesn't create view
-            X = adata.X
-
-        concat_adata = (
-            concat_adata[original_order] if self.cfg.axis == 0
-            else concat_adata[:, original_order]
-        )
-
-        adata._init_as_actual(
-            # concat_adata has no data matrix, so we take this from adata
-            X=X,
-            obs=concat_adata.obs,
-            var=concat_adata.var,
-            uns=concat_adata.uns,
-            obsm=concat_adata.obsm,
-            varm=concat_adata.varm,
-            varp=concat_adata.varp,
-            obsp=concat_adata.obsp,
-            raw=concat_adata.raw,
-            dtype=concat_adata.X.dtype,
-            layers=concat_adata.layers,
-            filename=concat_adata.filename,
-        )
-
-        del concat_adata, adata_list, _adata
-        gc.collect()
+            processor(adata, obs_indices=group)

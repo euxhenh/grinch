@@ -64,7 +64,7 @@ class KMeans(BaseUnsupervisedPredictor):
 
     class Config(BaseUnsupervisedPredictor.Config):
         labels_key: str = f"obs.{OBS.KMEANS}"
-        stats_key: str = f"uns.{UNS.KMEANS}"
+        stats_key: str = f"uns.{UNS.KMEANS_}"
         # KMeans args
         n_clusters: int = Field(8, ge=2)
 
@@ -118,7 +118,7 @@ class LogisticRegression(BaseSupervisedPredictor):
 
     class Config(BaseSupervisedPredictor.Config):
         labels_key: str = f"obs.{OBS.LOG_REG}"
-        stats_key: str = f"uns.{UNS.LOG_REG}"
+        stats_key: str = f"uns.{UNS.LOG_REG_}"
         # LogisticRegression kwargs
         penalty: str = "l2"
         C: float = Field(1.0, gt=0)  # inverse regularization trade-off

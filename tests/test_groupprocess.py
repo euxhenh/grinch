@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 from anndata import AnnData
 from hydra.utils import instantiate
-from numpy.testing import assert_equal
 from omegaconf import OmegaConf
 
 from grinch import OBS
@@ -17,7 +16,7 @@ X = np.array([
 ]).astype(np.float32)
 
 adata = AnnData(X)
-adata.obs['mem'] = [0, 0, 1, 1, 2, 2]
+adata.obs['mem'] = [0, 0, 0, 1, 1, 1]
 
 
 @pytest.mark.parametrize("adata", [adata])
@@ -25,6 +24,7 @@ def test_groupby(adata):
     cfg = OmegaConf.create({
         "_target_": "src.grinch.KMeans.Config",
         "x_key": "X",
+        "labels_key": "uns.kmeans",
         "n_clusters": 2,
     })
     # cfg = instantiate(cfg)
@@ -32,44 +32,13 @@ def test_groupby(adata):
         "_target_": "src.grinch.GroupProcess.Config",
         "processor": cfg,
         "group_key": "obs.mem",
-        "group_prefix": "g-{group_key}-"
     })
     # gcfg = instantiate(gcfg, _convert_='partial')
     gcfg = instantiate(gcfg)
     groupprocess = gcfg.initialize()
-
-    obs_names = adata.obs_names.to_numpy().copy().astype(str)
     groupprocess(adata)
-
-    for x in range(0, 6, 2):
-        assert adata.obs[f'g-mem-{OBS.KMEANS}'][x] \
-            != adata.obs[f'g-mem-{OBS.KMEANS}'][x + 1]
-
-    assert_equal(adata.obs_names.to_numpy().astype(str), obs_names)
-
-
-@pytest.mark.parametrize("adata", [adata])
-def test_groupby_noprefix(adata):
-    cfg = OmegaConf.create({
-        "_target_": "src.grinch.KMeans.Config",
-        "x_key": "X",
-        "n_clusters": 2,
-    })
-    # cfg = instantiate(cfg)
-    gcfg = OmegaConf.create({
-        "_target_": "src.grinch.GroupProcess.Config",
-        "processor": cfg,
-        "group_key": "obs.mem",
-        "group_prefix": "",
-    })
-    # gcfg = instantiate(gcfg, _convert_='partial')
-    gcfg = instantiate(gcfg)
-    groupprocess = gcfg.initialize()
-
-    obs_names = adata.obs_names.to_numpy().copy().astype(str)
-    groupprocess(adata)
-
-    for x in range(0, 6, 2):
-        assert adata.obs[OBS.KMEANS][x] != adata.obs[OBS.KMEANS][x + 1]
-
-    assert_equal(adata.obs_names.to_numpy().astype(str), obs_names)
+    gr = adata.uns['g-mem']
+    assert gr['0'][OBS.KMEANS][0] == gr['0'][OBS.KMEANS][1]
+    assert gr['0'][OBS.KMEANS][0] != gr['0'][OBS.KMEANS][2]
+    assert gr['1'][OBS.KMEANS][0] != gr['1'][OBS.KMEANS][1]
+    assert gr['1'][OBS.KMEANS][1] == gr['1'][OBS.KMEANS][2]

@@ -36,14 +36,14 @@ class AnnDataKeys:
         LOG_REG_COEF = auto()
 
     class UNS:
-        X_PCA = auto()
-        X_TRUNCATED_SVD = auto()
-        KMEANS = auto()
-        LOG_REG = auto()
-        TTEST = auto()
-        GSEA = auto()
-        BIMODALTEST = auto()
-        PCOVER = auto()
+        X_PCA_ = auto()
+        X_TRUNCATED_SVD_ = auto()
+        KMEANS_ = auto()
+        LOG_REG_ = auto()
+        TTEST_ = auto()
+        GSEA_ = auto()
+        BIMODALTEST_ = auto()
+        PCOVER_ = auto()
 
     class OBSP:
         ...

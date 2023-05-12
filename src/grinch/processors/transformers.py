@@ -55,7 +55,7 @@ class PCA(BaseTransformer):
     class Config(BaseTransformer.Config):
         x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_PCA}"
-        stats_key: str = f"uns.{UNS.X_PCA}"
+        stats_key: str = f"uns.{UNS.X_PCA_}"
         # PCA args
         n_components: Optional[int | float | str] = None
         whiten: bool = False
@@ -89,7 +89,7 @@ class TruncatedSVD(BaseTransformer):
     class Config(BaseTransformer.Config):
         x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
-        stats_key: str = f"uns.{UNS.X_TRUNCATED_SVD}"
+        stats_key: str = f"uns.{UNS.X_TRUNCATED_SVD_}"
         # Truncated SVD args
         n_components: int = Field(2, ge=1)
         algorithm: str = 'randomized'

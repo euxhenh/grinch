@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, overload, Literal
+from typing import Any, overload, Literal
 
 import numpy as np
 from pydantic import BaseModel, Extra, Field, validate_arguments, validator
@@ -26,12 +26,12 @@ class FilterCondition(BaseModel):
     filter itself.
     """
 
-    key: Optional[str]
-    cutoff: Optional[float]
-    top_k: Optional[int]
+    key: str | None = None
+    cutoff: float | None = None
+    top_k: int | None = None
     greater_is_better: bool = False
     ordered: bool = False
-    dtype: Optional[str] = Field(None, regex='(float|bool)')
+    dtype: str = Field('float', regex='(float|bool)')
 
     class Config:
         validate_assignment = True

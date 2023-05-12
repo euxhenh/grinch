@@ -62,4 +62,4 @@ def validate_axis(axis):
         return 0
     elif axis in ['var', 1]:
         return 1
-    raise ValueError(f"Could not interpret axis {axis}.")
+    raise ValueError(f"Could not interpret axis={axis}.")
