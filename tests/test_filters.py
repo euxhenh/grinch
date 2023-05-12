@@ -269,3 +269,23 @@ def test_gene_inplace(X):
     assert_allclose(X_filtered, adata_new.X)
     assert_allclose(adata_new.var[VAR.N_COUNTS], [9])
     assert_allclose(adata_new.var[VAR.N_CELLS], [3])
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_min_max_var(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterGenes.Config",
+            "min_var": 0.8,
+            "max_var": 7,
+        }
+    )
+    cfg = instantiate(cfg)
+    filter_genes = cfg.initialize()
+    adata = AnnData(X)
+    X_original = adata.X.copy()
+    filter_genes(adata)
+    assert_allclose(X_original, X)
+    X_filtered = X[:, [0]]
+    assert_allclose(X_filtered, adata.X)
+    assert_allclose(adata.var[VAR.VARIANCE], [np.var([1, 0, 3])], rtol=1e-5)

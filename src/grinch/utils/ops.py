@@ -1,5 +1,5 @@
 from functools import reduce
-from typing import List, Literal, Optional, Tuple, overload
+from typing import List, Literal, Tuple, overload
 
 import numpy as np
 from sklearn.utils import column_or_1d
@@ -43,7 +43,7 @@ def safe_format(prefix, **kwargs):
     return prefix
 
 
-def true_inside(x, v1: Optional[float], v2: Optional[float]) -> NP_bool:
+def true_inside(x, v1: float | None = None, v2: float | None = None) -> NP_bool:
     """Returns a boolean array a with a[i] = True if x[i] is between v1 and
     v2 (inclusive). If any of v1 or v2 is None, will cap at -np.inf and
     np.inf respectively.

@@ -24,6 +24,7 @@ class AnnDataKeys:
         N_CELLS = auto()
         PCOVER_M = auto()
         PCOVER_I = auto()
+        VARIANCE = auto()
 
     class OBSM:
         X_EMB = auto()
