@@ -1,11 +1,11 @@
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Extra
 
 
 class Report(BaseModel):
     cls: str
-    config: Optional[BaseModel] = None
+    config: Dict[str, Any] | None = None
     message: Optional[str] = None
     shape: Optional[Tuple[int, int]] = None
     artifacts: Optional[str | List[str]] = None

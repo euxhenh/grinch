@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_FILTERS: List[FilterCondition] = [
-    FilterCondition(key='qvals', cutoff=0.05, greater_is_better=False),
-    FilterCondition(key='log2fc', cutoff=1, greater_is_better=True),
+    FilterCondition(key='qvals', cutoff=0.05, greater_is_better=False, dtype='float'),
+    FilterCondition(key='log2fc', cutoff=1, greater_is_better=True, dtype='float'),
 ]
 
 DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
@@ -58,8 +58,8 @@ class GSEA(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
-        read_key: str = f"uns.{UNS.TTEST}"
-        save_key: str = f"uns.{UNS.GSEA}"
+        read_key: str = f"uns.{UNS.TTEST_}"
+        save_key: str = f"uns.{UNS.GSEA_}"
 
         gene_sets: List[str] | str = DEFAULT_GENE_SET
         # Dict of keys to use for filtering DE genes; keys are ignored

@@ -60,7 +60,7 @@ class TTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
-        save_key: str = f"uns.{UNS.TTEST}"
+        save_key: str = f"uns.{UNS.TTEST_}"
         group_key: str
 
         is_logged: bool = True
@@ -94,19 +94,24 @@ class TTest(BaseProcessor):
 
         qvals = np.full_like(pvals, 1.0 if self.cfg.replace_nan else np.nan)
         # only correct not nan's.
-        qvals[not_none_mask] = _correct(pvals[not_none_mask], method=self.cfg.correction)[1]
+        qvals[not_none_mask] = _correct(pvals[not_none_mask],
+                                        method=self.cfg.correction)[1]
         if self.cfg.replace_nan:
             pvals[~not_none_mask] = 1.0
 
         log2fc = _compute_log2fc(m1, m2, self.cfg.base, self.cfg.is_logged)
 
-        return DETestSummary(pvals=pvals, qvals=qvals, mean1=m1, mean2=m2, log2fc=log2fc)
+        return DETestSummary(pvals=pvals, qvals=qvals,
+                             mean1=m1, mean2=m2, log2fc=log2fc)
 
     def _process(self, adata: AnnData) -> None:
         group_labels = column_or_1d(self.get_repr(adata, self.cfg.group_key))
         unq_labels = np.unique(group_labels)
         if len(unq_labels) <= 1:
-            logger.warning(f"Found only one unique value under key '{self.cfg.group_key}'")
+            logger.warning(
+                "Found only one unique value "
+                f"under key '{self.cfg.group_key}'"
+            )
             return
 
         x = self.get_repr(adata, self.cfg.x_key)
@@ -121,7 +126,8 @@ class TTest(BaseProcessor):
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
 
         to_iter = (
-            tqdm(unq_labels, desc="Running t-Tests") if self.cfg.show_progress_bar
+            tqdm(unq_labels, desc="Running t-Tests")
+            if self.cfg.show_progress_bar
             else unq_labels
         )
         for label in to_iter:
@@ -134,11 +140,12 @@ class BimodalTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
-        save_key: str = f"uns.{UNS.BIMODALTEST}"
+        save_key: str = f"uns.{UNS.BIMODALTEST_}"
         correction: str = 'fdr_bh'
         skip_zeros: bool = False
 
-        max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(), exclude=True)
+        max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
+                                           exclude=True)
 
         @validator('max_workers')
         def init_max_workers(cls, val):
@@ -147,7 +154,9 @@ class BimodalTest(BaseProcessor):
         @validator('save_key')
         def _starts_with_uns(cls, save_key):
             if save_key.split('.')[0] != 'uns':
-                raise ValueError("Anndata column for bimodaltest should be 'uns'.")
+                raise ValueError(
+                    "Anndata column for bimodaltest should be 'uns'."
+                )
             return save_key
 
     cfg: Config
@@ -172,7 +181,8 @@ class BimodalTest(BaseProcessor):
             return diptest(arr)
 
         with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
-            test_results: Iterable[Tuple[float, float]] = executor.map(_diptest_sp_wrapper, x.T)
+            test_results: Iterable[Tuple[float, float]] = executor.map(
+                _diptest_sp_wrapper, x.T)
         test_results = np.asarray(list(test_results))
 
         # first dimension is the dip statistic, the second is the pvalue

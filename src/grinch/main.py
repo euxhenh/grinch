@@ -4,6 +4,7 @@ import os
 
 import hydra
 from hydra.utils import instantiate
+from omegaconf import OmegaConf
 from rich.logging import RichHandler
 
 logging.basicConfig(
@@ -34,9 +35,13 @@ def instantiate_config(config_name):
 
 parser = argparse.ArgumentParser(description="DE gene and enrichment toolbox.")
 parser.add_argument('conf', metavar='C', type=str, help="path to config file")
+parser.add_argument('--pc', action='store_true', default=True)
 
 if __name__ == "__main__":
     args = parser.parse_args()
     cfg = instantiate_config(args.conf)
+    if args.pc:
+        print(OmegaConf.to_yaml(OmegaConf.to_object(cfg)))
+        print(type(OmegaConf.to_yaml(cfg)))
     obj = cfg.initialize()
     obj()

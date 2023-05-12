@@ -11,10 +11,9 @@ from pydantic import validate_arguments, validator
 
 from ..aliases import ALLOWED_KEYS
 from ..conf import BaseConfigurable
-from ..custom_types import REP, REP_KEY, optional_staticmethod
-from ..utils.adata import as_empty
+from ..custom_types import REP, REP_KEY, NP1D_int, optional_staticmethod
 from ..utils.ops import compose, safe_format
-from ..utils.validation import check_has_processor
+from ..utils.validation import all_not_None, check_has_processor
 
 logger = logging.getLogger(__name__)
 
@@ -28,47 +27,38 @@ def adata_modifier(f: Callable):
     params = inspect.signature(f).parameters
     # require 'self' and 'adata'
     if len(params) < 2:
-        raise ValueError("A 'setter_method' should take at least 2 arguments.")
+        raise ValueError(
+            "A 'setter_method' should take at least 2 arguments."
+        )
 
     _, adata_parameter = next(islice(params.items(), 1, 2))
     if not issubclass(AnnData, adata_parameter.annotation):
         raise ValueError(
-            "First argument to a 'setter_method' should be of explicit type AnnData."
+            "First argument to a 'setter_method' "
+            "should be of explicit type AnnData."
         )
 
     def _wrapper(
-        self,
-        adata: AnnData,
-        *args, **kwargs
+        self: 'BaseProcessor', adata: AnnData, *args, **kwargs
     ) -> Optional[AnnData | Dict[str, REP] | Tuple[AnnData, Dict[str, REP]]]:
         # init empty storage dict
         self.storage = {}
         outp = f(self, adata, *args, **kwargs)
         if outp is not None:
             logger.warning(
-                f"Function '{f.__name__}' returned a value. This will be discarded."
+                f"Function '{f.__name__}' returned a value."
+                " This will be discarded."
             )
-        # no_data_matrix can be useful e.g., in group mode when adatas
-        # are split into groups and we don't want to unnecessarily
-        # create actual copies as they will be concatenated anyway.
-        # 'no_data_matrix' should be keyword only
-        if 'no_data_matrix' in kwargs:
-            adata = as_empty(adata) if kwargs['no_data_matrix'] else adata
-
-        return_storage = 'return_storage' in kwargs and kwargs['return_storage']
-
         if hasattr(self.cfg, 'save_stats') and self.cfg.save_stats:
             self.save_processor_stats()
-        if len(self.storage) > 0 and not return_storage:
-            self.set_repr(adata, list(self.storage), list(self.storage.values()))
+        if len(self.storage) > 0:
+            self.set_repr(
+                adata,
+                list(self.storage),
+                list(self.storage.values())
+            )
 
-        if not self.cfg.inplace and return_storage:
-            return adata, self.storage
-        elif return_storage:
-            return self.storage
-        elif not self.cfg.inplace:
-            return adata
-        return None
+        return adata if not self.cfg.inplace else None
 
     return _wrapper
 
@@ -103,9 +93,9 @@ class BaseProcessor(BaseConfigurable):
         Any Config member parameter that ends in '_key' will be checked by
         pydantic validators to conform with adata column names.
     read_key_prefix, save_key_prefix: str
-        Will prepend this prefix to all (last) read/save_keys. This is useful,
-        for example, for GroupProcess, which prepends the 'group{label}'
-        prefix to all read/saved reps.
+        Will prepend this prefix to all (last) read/save_keys. This is
+        useful, for example, for GroupProcess, which prepends the
+        'group{label}' prefix to all read/saved reps.
     """
 
     class Config(BaseConfigurable.Config):
@@ -124,11 +114,18 @@ class BaseProcessor(BaseConfigurable):
                     "dot '.' that points to the AnnData column to use."
                 )
             if len(parts := val.split('.')) > 2 and parts[0] != 'uns':
-                raise ValueError("There can only be one dot '.' in non-uns representation keys.")
+                raise ValueError(
+                    "There can only be one dot "
+                    "'.' in non-uns representation keys."
+                )
             if parts[0] not in ALLOWED_KEYS:
-                raise ValueError(f"AnnData annotation key should be one of {ALLOWED_KEYS}.")
+                raise ValueError(
+                    f"AnnData annotation key should be one of {ALLOWED_KEYS}."
+                )
             if len(parts[1]) >= 120:
-                raise ValueError("Columns keys should be less than 120 characters.")
+                raise ValueError(
+                    "Columns keys should be less than 120 characters."
+                )
             return val
 
         @validator('*')
@@ -160,8 +157,9 @@ class BaseProcessor(BaseConfigurable):
                     return None
                 case _:
                     raise ValueError(
-                        f"Could not interpret format for {field.name}. Please make sure "
-                        "it is a str, list[str], or dict[str, str]."
+                        f"Could not interpret format for {field.name}. "
+                        "Please make sure it is a str, list[str], "
+                        "or dict[str, str]."
                     )
 
         def get_save_key_prefix(
@@ -224,12 +222,16 @@ class BaseProcessor(BaseConfigurable):
     def save_processor_stats(self) -> None:
         check_has_processor(self)
         if not hasattr(self.cfg, 'stats_key'):
-            raise KeyError(f"No 'stats_key' was found in {self.cfg.__class__.__qualname__}.")
+            raise KeyError(
+                "No 'stats_key' was found "
+                f"in {self.cfg.__class__.__qualname__}."
+            )
         # Assume it has been explicitly set to None
         if self.cfg.stats_key is None:  # type: ignore
             return
 
-        stats = {stat: getattr(self.processor, stat) for stat in self._processor_stats()}
+        stats = {stat: getattr(self.processor, stat)
+                 for stat in self._processor_stats()}
         if stats:
             self.store_item(self.cfg.stats_key, stats)  # type: ignore
 
@@ -238,15 +240,22 @@ class BaseProcessor(BaseConfigurable):
     def __call__(
         self,
         adata: AnnData,
-        *,
-        no_data_matrix: bool = False,
-        return_storage: bool = False
+        obs_indices: NP1D_int | None = None,
+        var_indices: NP1D_int | None = None,
     ):
         """Calls the processor with adata. Will copy adata if inplace was
         set to False.
         """
-        if not self.cfg.inplace and not no_data_matrix:
+        if not self.cfg.inplace:
             adata = adata.copy()
+
+        if all_not_None(obs_indices, var_indices):
+            adata = adata[obs_indices, var_indices]
+        elif obs_indices is not None:
+            # Storage is applied to the full adata from the decorator
+            adata = adata[obs_indices]
+        elif var_indices is not None:
+            adata = adata[:, var_indices]
 
         self._process(adata)
 
@@ -265,7 +274,12 @@ class BaseProcessor(BaseConfigurable):
         return f'{pref_keys}.{prefix}{last_key}'
 
     @staticmethod
-    def _get_repr(adata: AnnData, key: str, read_key_prefix: str = '') -> Any:
+    def _get_repr(
+        adata: AnnData,
+        key: str,
+        read_key_prefix: str = '',
+        to_numpy: bool = False,
+    ) -> Any:
         """Get the data representation that key points to."""
         if key is None:
             raise ValueError("Cannot get representation if 'key' is None.")
@@ -281,22 +295,23 @@ class BaseProcessor(BaseConfigurable):
         # We only support dictionary style access for read_keys
         rec_itemgetter = compose(*(itemgetter(rk) for rk in read_keys))
         klas = getattr(adata, read_class)
-        return rec_itemgetter(klas)
+        item = rec_itemgetter(klas)
+        if to_numpy:
+            item = item.to_numpy()
+        return item
 
-    @optional_staticmethod('BaseProcessor', {'cfg.read_key_prefix': 'read_key_prefix'})
-    def get_repr(adata: AnnData, key: REP_KEY, read_key_prefix: str = '') -> REP:
+    @optional_staticmethod('BaseProcessor',
+                           {'cfg.read_key_prefix': 'read_key_prefix'})
+    def get_repr(adata: AnnData, key: REP_KEY, **kwargs) -> REP:
         """Get the representation(s) that read_key points to."""
-        single_get_func = partial(
-            BaseProcessor._get_repr,
-            adata,
-            read_key_prefix=read_key_prefix,
-        )
+        single_get_func = partial(BaseProcessor._get_repr, adata, **kwargs)
+        vals: List | Dict
         match key:
             case str() as v:
                 return single_get_func(v)
             case [*vals]:
                 return [single_get_func(v) for v in vals]
-            case {**vals}:
+            case {**vals}:  # type: ignore
                 return {k: single_get_func(v) for k, v in vals.items()}  # type:ignore
             case _:
                 raise ValueError(f"'{key}' format not understood.")
@@ -338,7 +353,8 @@ class BaseProcessor(BaseConfigurable):
         assert len(save_keys) == 0
         klas[save_key] = value
 
-    @optional_staticmethod('BaseProcessor', {'cfg.save_key_prefix': 'save_key_prefix'})
+    @optional_staticmethod('BaseProcessor',
+                           {'cfg.save_key_prefix': 'save_key_prefix'})
     def set_repr(
         adata: AnnData,
         key: REP_KEY,
@@ -352,6 +368,9 @@ class BaseProcessor(BaseConfigurable):
             adata,
             save_key_prefix=save_key_prefix,
         )
+        keys: List | Dict
+        vals: List | Dict
+
         match key, value:
             # Match a string key and Any value
             case str() as key, val:
@@ -359,20 +378,26 @@ class BaseProcessor(BaseConfigurable):
             # Match a list of keys and a list of vals
             case [*keys], [*vals]:
                 if len(keys) != len(vals):
-                    raise ValueError("Inconsistent length between save_key and value.")
+                    raise ValueError(
+                        "Inconsistent length between save_key and value."
+                    )
                 _ = list(starmap(single_set_func, zip(keys, vals)))
             # Match a dict of keys and a dict of vals
-            case {**keys}, {**vals}:
+            case {**keys}, {**vals}:  # type: ignore
                 # Make sure all keys exist
-                keys_not_found = set(keys).difference(vals)
+                keys_not_found = set(keys).difference(vals)  # type: ignore
                 if len(keys_not_found) > 0:
                     raise ValueError(
-                        f"Keys {keys_not_found} were not found in the output dictionary."
+                        f"Keys {keys_not_found} were not found "
+                        "in the output dictionary."
                     )
-                _ = list(starmap(single_set_func, ((v, vals[k]) for k, v in keys.items())))
+                _ = list(starmap(
+                    single_set_func,
+                    ((v, vals[k]) for k, v in keys.items())))  # type: ignore
             # No match
             case _:
                 raise ValueError(
-                    f"Inconsistent format between value and key. Key has type {type(key)} "
-                    f"but value has type {type(value)}."
+                    "Inconsistent format between value and key. "
+                    f"Key has type {type(key)} but value "
+                    f"has type {type(value)}."
                 )

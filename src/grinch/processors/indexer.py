@@ -5,7 +5,7 @@ from typing import Dict
 from anndata import AnnData
 from pydantic import Field, validator
 
-from ..custom_types import REP, NP1D_bool
+from ..custom_types import NP1D_bool
 from ..filter_condition import FilterCondition, StackedFilterCondition
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
@@ -79,10 +79,6 @@ class IndexProcessor(BaseIndexer):
     def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
         # dont let the processor do the adata modifications, since we are
         # passing a view
-        storage: Dict[str, REP] = self.processor(
-            adata[mask] if self.cfg.axis == 0 else adata[:, mask],
-            return_storage=True,
-        )
-
-        for k, v in storage.items():
-            self.store_item(k, v)
+        key = ['obs_indices', 'var_indices'][int(self.cfg.axis)]
+        kwargs = {key: mask}
+        self.processor(adata, **kwargs)

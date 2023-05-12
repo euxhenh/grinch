@@ -19,7 +19,7 @@ class PhenotypeCover(BaseProcessor):
         feature_importance_key: str = f"var.{VAR.PCOVER_I}"
 
         save_stats: bool = True
-        stats_key: str = f"uns.{UNS.PCOVER}"
+        stats_key: str = f"uns.{UNS.PCOVER_}"
 
         # GreedyPC args
         coverage: int
