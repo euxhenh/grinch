@@ -66,7 +66,7 @@ class KMeans(BaseUnsupervisedPredictor):
         labels_key: str = f"obs.{OBS.KMEANS}"
         stats_key: str = f"uns.{UNS.KMEANS_}"
         # KMeans args
-        n_clusters: int = Field(8, ge=2)
+        n_clusters: int = Field(8, ge=1)
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):

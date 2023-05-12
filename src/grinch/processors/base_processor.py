@@ -4,7 +4,7 @@ import logging
 from functools import partial
 from itertools import islice, starmap
 from operator import itemgetter
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List
 
 from anndata import AnnData
 from pydantic import validate_arguments, validator
@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 def adata_modifier(f: Callable):
     """A decorator for lazy adata setattr. This exists so that all
     BaseProcessors don't set any adata keys themselves and everything is
-    handled by the BaseProcessor class. This is useful for GroupProcessing,
-    saving adata without the data matrix, etc.
+    handled by the BaseProcessor class. This is useful for GroupProcessing.
     """
     params = inspect.signature(f).parameters
     # require 'self' and 'adata'
@@ -40,7 +39,7 @@ def adata_modifier(f: Callable):
 
     def _wrapper(
         self: 'BaseProcessor', adata: AnnData, *args, **kwargs
-    ) -> Optional[AnnData | Dict[str, REP] | Tuple[AnnData, Dict[str, REP]]]:
+    ) -> Dict[str, REP] | None:
         # init empty storage dict
         self.storage = {}
         outp = f(self, adata, *args, **kwargs)
@@ -51,14 +50,17 @@ def adata_modifier(f: Callable):
             )
         if hasattr(self.cfg, 'save_stats') and self.cfg.save_stats:
             self.save_processor_stats()
-        if len(self.storage) > 0:
+
+        return_storage: bool = kwargs.get('return_storage', False)
+        if not return_storage and len(self.storage) > 0:
             self.set_repr(
                 adata,
                 list(self.storage),
                 list(self.storage.values())
             )
-
-        return adata if not self.cfg.inplace else None
+        else:
+            return self.storage
+        return None
 
     return _wrapper
 
@@ -240,15 +242,14 @@ class BaseProcessor(BaseConfigurable):
     def __call__(
         self,
         adata: AnnData,
+        *,
         obs_indices: NP1D_int | None = None,
         var_indices: NP1D_int | None = None,
+        **kwargs,
     ):
         """Calls the processor with adata. Will copy adata if inplace was
         set to False.
         """
-        if not self.cfg.inplace:
-            adata = adata.copy()
-
         if all_not_None(obs_indices, var_indices):
             adata = adata[obs_indices, var_indices]
         elif obs_indices is not None:
@@ -264,9 +265,21 @@ class BaseProcessor(BaseConfigurable):
         """To be implemented by a derived class."""
         raise NotImplementedError
 
-    def store_item(self, key: str, val: REP) -> None:
+    def store_item(self, key: str, val: REP, /, add_prefix: bool = True) -> None:
         """Will store the value to a key for lazy saving into adata."""
+        if add_prefix:
+            key = BaseProcessor.__prepend_to_last_key(key, self.cfg.save_key_prefix)
         self.storage[key] = val
+
+    def store_items(self, items: Dict[str, REP], add_prefix: bool = True):
+        """Stores multiple items in dict fashion."""
+        if add_prefix:
+            items = {
+                BaseProcessor.__prepend_to_last_key(
+                    key, self.cfg.save_key_prefix): val
+                for key, val in items.items()
+            }
+        self.storage.update(items)
 
     @staticmethod
     def __prepend_to_last_key(key: str, prefix: str):
@@ -312,18 +325,16 @@ class BaseProcessor(BaseConfigurable):
             case [*vals]:
                 return [single_get_func(v) for v in vals]
             case {**vals}:  # type: ignore
-                return {k: single_get_func(v) for k, v in vals.items()}  # type:ignore
+                return {k: single_get_func(v) for k, v in vals.items()}
             case _:
                 raise ValueError(f"'{key}' format not understood.")
 
     @staticmethod
-    def _set_repr(adata: AnnData, key: str, value: Any, save_key_prefix: str = ''):
+    def _set_repr(adata: AnnData, key: str, value: Any):
         """Save value under the key pointed to by key.
         """
         if key is None:
             raise ValueError("Cannot save representation if 'key' is None.")
-        # Add prefix to the last save key
-        key = BaseProcessor.__prepend_to_last_key(key, save_key_prefix)
 
         # TODO dont allow X obs_names and var_names
         save_class, *save_keys = key.split('.')
@@ -353,21 +364,10 @@ class BaseProcessor(BaseConfigurable):
         assert len(save_keys) == 0
         klas[save_key] = value
 
-    @optional_staticmethod('BaseProcessor',
-                           {'cfg.save_key_prefix': 'save_key_prefix'})
-    def set_repr(
-        adata: AnnData,
-        key: REP_KEY,
-        value: REP,
-        save_key_prefix: str = ''
-    ) -> None:
+    def set_repr(self, adata: AnnData, key: REP_KEY, value: REP) -> None:
         """Saves values under the key that save_key points to. Not to be
         called by any derived classes."""
-        single_set_func = partial(
-            BaseProcessor._set_repr,
-            adata,
-            save_key_prefix=save_key_prefix,
-        )
+        single_set_func = partial(BaseProcessor._set_repr, adata)
         keys: List | Dict
         vals: List | Dict
 
@@ -383,9 +383,9 @@ class BaseProcessor(BaseConfigurable):
                     )
                 _ = list(starmap(single_set_func, zip(keys, vals)))
             # Match a dict of keys and a dict of vals
-            case {**keys}, {**vals}:  # type: ignore
+            case {**keys}, {**vals}:
                 # Make sure all keys exist
-                keys_not_found = set(keys).difference(vals)  # type: ignore
+                keys_not_found = set(keys).difference(vals)
                 if len(keys_not_found) > 0:
                     raise ValueError(
                         f"Keys {keys_not_found} were not found "
@@ -393,7 +393,8 @@ class BaseProcessor(BaseConfigurable):
                     )
                 _ = list(starmap(
                     single_set_func,
-                    ((v, vals[k]) for k, v in keys.items())))  # type: ignore
+                        ((v, vals[k]) for k, v in keys.items())
+                ))
             # No match
             case _:
                 raise ValueError(
