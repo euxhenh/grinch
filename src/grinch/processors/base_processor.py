@@ -305,12 +305,13 @@ class BaseProcessor(BaseConfigurable):
     def get_repr(adata: AnnData, key: REP_KEY, **kwargs) -> REP:
         """Get the representation(s) that read_key points to."""
         single_get_func = partial(BaseProcessor._get_repr, adata, **kwargs)
+        vals: List | Dict
         match key:
             case str() as v:
                 return single_get_func(v)
             case [*vals]:
                 return [single_get_func(v) for v in vals]
-            case {**vals}:
+            case {**vals}:  # type: ignore
                 return {k: single_get_func(v) for k, v in vals.items()}  # type:ignore
             case _:
                 raise ValueError(f"'{key}' format not understood.")
@@ -367,6 +368,9 @@ class BaseProcessor(BaseConfigurable):
             adata,
             save_key_prefix=save_key_prefix,
         )
+        keys: List | Dict
+        vals: List | Dict
+
         match key, value:
             # Match a string key and Any value
             case str() as key, val:
@@ -379,7 +383,7 @@ class BaseProcessor(BaseConfigurable):
                     )
                 _ = list(starmap(single_set_func, zip(keys, vals)))
             # Match a dict of keys and a dict of vals
-            case {**keys}, {**vals}:
+            case {**keys}, {**vals}:  # type: ignore
                 # Make sure all keys exist
                 keys_not_found = set(keys).difference(vals)  # type: ignore
                 if len(keys_not_found) > 0:
@@ -387,8 +391,9 @@ class BaseProcessor(BaseConfigurable):
                         f"Keys {keys_not_found} were not found "
                         "in the output dictionary."
                     )
-                _ = list(starmap(single_set_func,
-                                 ((v, vals[k]) for k, v in keys.items())))
+                _ = list(starmap(
+                    single_set_func,
+                    ((v, vals[k]) for k, v in keys.items())))  # type: ignore
             # No match
             case _:
                 raise ValueError(
