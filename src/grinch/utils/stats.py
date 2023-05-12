@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import Dict, Hashable, List, Optional, Tuple
+from typing import Dict, Hashable, List, Optional, Tuple, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -18,12 +18,27 @@ from ..custom_types import NP1D_float, NP1D_int
 from .ops import group_indices
 
 
+@overload
 def _var(
     x: npt.ArrayLike,
-    axis: Optional[int] = None,
+    axis: None = None,
     ddof: int = 0,
-    mean: Optional[int | npt.ArrayLike] = None
-) -> int | np.ndarray:
+    mean: int | npt.ArrayLike | None = None,
+) -> int:
+    ...
+
+
+@overload
+def _var(
+    x: npt.ArrayLike,
+    axis: int,
+    ddof: int = 0,
+    mean: int | npt.ArrayLike | None = None,
+) -> np.ndarray:
+    ...
+
+
+def _var(x, axis=None, ddof=0, mean=None):
     """Computes variance of a given array.
 
     Parameters
