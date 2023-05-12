@@ -98,6 +98,7 @@ class GroupProcess(BaseProcessor):
 
             self.cfg.update_processor_save_key_prefix(label)
             processor: BaseProcessor = self.cfg.processor.initialize()
-            storage = processor(adata, obs_indices=group, return_storage=True)
+            arg = 'obs_indices' if self.cfg.axis == 0 else 'var_indices'
+            storage = processor(adata, return_storage=True, **{arg: group})
             # Prefix should be handled by the processor
             self.store_items(storage, add_prefix=False)
