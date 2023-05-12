@@ -28,10 +28,10 @@ def test_indexer_obs(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.InplaceIndexer.Config",
-            "filter_by": {'mask': fcfg}
+            "filter_by": [fcfg],
         }
     )
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     index = cfg.initialize()
     adata = AnnData(X)
     X_original = adata.X.copy()
@@ -55,11 +55,11 @@ def test_indexer_var(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.InplaceIndexer.Config",
-            "filter_by": {'mask': fcfg},
+            "filter_by": [fcfg],
             "axis": 'var',
         }
     )
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     index = cfg.initialize()
     adata = AnnData(X)
     X_original = adata.X.copy()
@@ -92,16 +92,16 @@ def test_indexer_obs_multiple(X):
             "_target_": "src.grinch.FilterCondition",
             "key": "obs.pick3",
             "cutoff": 0.5,
-            "greater_is_better": True,
+            "greater_is_True": True,
         }
     )
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.InplaceIndexer.Config",
-            "filter_by": {'mask': fcfg1, 'mask2': fcfg2, 'mask3': fcfg3}
+            "filter_by": [fcfg1, fcfg2, fcfg3]
         }
     )
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     index = cfg.initialize()
     adata = AnnData(X)
     X_original = adata.X.copy()
