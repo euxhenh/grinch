@@ -3,6 +3,7 @@ import logging
 from anndata import AnnData
 from pydantic import Field, validator
 
+from ..aliases import GROUP_SEP
 from ..custom_types import NP1D_str
 from ..utils.ops import group_indices
 from ..utils.validation import validate_axis
@@ -43,7 +44,7 @@ class GroupProcess(BaseProcessor):
         # Key to group by, must be recognized by np.unique.
         group_key: str
         axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
-        group_prefix: str = 'g-{group_key}/{label}.'
+        group_prefix: str = f'g-{{group_key}}{GROUP_SEP}{{label}}.'
         min_points_per_group: int = Field(default_factory=int, ge=0)
         # Whether to drop the groups which have less than
         # `min_points_per_group` points or not.
@@ -86,15 +87,16 @@ class GroupProcess(BaseProcessor):
 
         # TODO multithread
         for label, group in zip(unq_labels, groups):
-            logger.info(
-                f"Running '{self.cfg.processor.init_type.__name__}' "
-                f"for group '{label}'."
-            )
             # Determine if this group is small or not
             if self.cfg.drop_small_groups:
                 if len(group) < self.cfg.min_points_per_group:
                     logger.info(f"Skipping small group '{label}'.")
                     continue
+
+            logger.info(
+                f"Running '{self.cfg.processor.init_type.__name__}' "
+                f"for group '{self.cfg.group_key}={label}'."
+            )
 
             self.cfg.update_processor_save_key_prefix(label)
             processor: BaseProcessor = self.cfg.processor.initialize()

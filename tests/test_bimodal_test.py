@@ -33,6 +33,6 @@ def test_bimodal_test(X):
     adata = AnnData(X)
 
     bimodal(adata)
-    is_sig = adata.uns[UNS.BIMODALTEST_].qvals <= 0.05
+    is_sig = adata.uns[UNS.BIMODALTEST].qvals <= 0.05
 
     assert_allclose([True, True, False, True, True], is_sig)
