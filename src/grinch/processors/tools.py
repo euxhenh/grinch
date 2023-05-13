@@ -28,7 +28,7 @@ class StoreAsMask(BaseProcessor):
         self.store_item(self.cfg.save_key, mask)
 
 
-class ReplaceNAN(BaseProcessor):
+class ReplaceNaN(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         read_key: str
@@ -55,3 +55,17 @@ class ReplaceNAN(BaseProcessor):
             self.store_item(self.cfg.save_key, x)
         else:
             self.store_item(self.cfg.read_key, x)
+
+
+class FilterNaN(BaseProcessor):
+
+    class Config(BaseProcessor.Config):
+        read_key: str
+
+    cfg: Config
+
+    def _process(self, adata: AnnData) -> None:
+        x = np.asarray(self.get_repr(adata, self.cfg.read_key), dtype=float)
+        mask = np.isnan(x)
+        logger.info(f"Removing {mask.sum()} rows with NaNs.")
+        adata._inplace_subset_obs(~mask)
