@@ -13,7 +13,7 @@ from .predictors import (
 )
 from .repeat import RepeatProcessor
 from .splitter import DataSplitter, Splitter
-from .tools import ReplaceNAN, StoreAsMask
+from .tools import FilterNaN, ReplaceNaN, StoreAsMask
 from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
@@ -40,5 +40,6 @@ __all__ = [
     'BaseTransformer',
     'TruncatedSVD',
     'StoreAsMask',
-    'ReplaceNAN',
+    'ReplaceNaN',
+    'FilterNaN',
 ]
