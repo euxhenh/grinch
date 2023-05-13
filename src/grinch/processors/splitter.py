@@ -91,7 +91,7 @@ class Splitter(BaseConfigurable):
         train_idx = np.arange(adata.shape[0])
         stratify = (
             None if self.cfg.stratify_key is None
-            else BaseProcessor.get_repr(adata, self.cfg.stratify_key)
+            else BaseProcessor._get_repr(adata, self.cfg.stratify_key)
         )
         val_frac, test_frac = self.cfg.val_fraction, self.cfg.test_fraction
 
