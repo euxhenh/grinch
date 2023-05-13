@@ -60,7 +60,7 @@ class TTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
-        save_key: str = f"uns.{UNS.TTEST_}"
+        save_key: str = f"uns.{UNS.TTEST}"
         group_key: str
 
         is_logged: bool = True
@@ -110,7 +110,7 @@ class TTest(BaseProcessor):
         if len(unq_labels) <= 1:
             logger.warning(
                 "Found only one unique value "
-                f"under key '{self.cfg.group_key}'"
+                f"under key '{self.cfg.group_key}'."
             )
             return
 
@@ -140,7 +140,7 @@ class BimodalTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
-        save_key: str = f"uns.{UNS.BIMODALTEST_}"
+        save_key: str = f"uns.{UNS.BIMODALTEST}"
         correction: str = 'fdr_bh'
         skip_zeros: bool = False
 

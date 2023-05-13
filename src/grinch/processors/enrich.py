@@ -58,8 +58,8 @@ class GSEA(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
-        read_key: str = f"uns.{UNS.TTEST_}"
-        save_key: str = f"uns.{UNS.GSEA_}"
+        read_key: str = f"uns.{UNS.TTEST}"
+        save_key: str = f"uns.{UNS.GSEA}"
 
         gene_sets: List[str] | str = DEFAULT_GENE_SET
         # Dict of keys to use for filtering DE genes; keys are ignored

@@ -37,11 +37,11 @@ def test_enrich(X):
     gsea = cfg.initialize()
     adata = AnnData(X)
     ts = DETestSummary(pvals=[0.02, 0.5, 1, 0.01, 0.8])
-    adata.uns[UNS.TTEST_] = ts.df()
+    adata.uns[UNS.TTEST] = ts.df()
     adata.var_names = ['IGKV4-1', 'CD55', 'IGKC', 'PPFIBP1', 'ABHD4']
     gsea(adata)
 
-    results = adata.uns[UNS.GSEA_]
+    results = adata.uns[UNS.GSEA]
     genes = results['Genes'].to_numpy()
     for g in genes:
         gs = g.split(';')
@@ -49,12 +49,12 @@ def test_enrich(X):
         assert set(gs).issubset(set(['IGKV4-1', 'PPFIBP1']))
 
     adata = AnnData(X)
-    adata.uns[UNS.TTEST_] = {}
-    adata.uns[UNS.TTEST_]['0'] = ts.df()
+    adata.uns[UNS.TTEST] = {}
+    adata.uns[UNS.TTEST]['0'] = ts.df()
     adata.var_names = ['IGKV4-1', 'CD55', 'IGKC', 'PPFIBP1', 'ABHD4']
     gsea(adata)
 
-    results = adata.uns[UNS.GSEA_]['0']
+    results = adata.uns[UNS.GSEA]['0']
     genes = results['Genes'].to_numpy()
     for g in genes:
         gs = g.split(';')

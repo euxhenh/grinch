@@ -11,7 +11,7 @@ from pydantic import validate_arguments, validator
 
 from ..aliases import ALLOWED_KEYS
 from ..conf import BaseConfigurable
-from ..custom_types import REP, REP_KEY, NP1D_int, optional_staticmethod
+from ..custom_types import REP, REP_KEY, NP1D_int
 from ..utils.ops import compose, safe_format
 from ..utils.validation import all_not_None, check_has_processor
 
@@ -268,23 +268,23 @@ class BaseProcessor(BaseConfigurable):
     def store_item(self, key: str, val: REP, /, add_prefix: bool = True) -> None:
         """Will store the value to a key for lazy saving into adata."""
         if add_prefix:
-            key = BaseProcessor.__prepend_to_last_key(key, self.cfg.save_key_prefix)
+            key = BaseProcessor.__insert_prefix(key, self.cfg.save_key_prefix)
         self.storage[key] = val
 
     def store_items(self, items: Dict[str, REP], add_prefix: bool = True):
         """Stores multiple items in dict fashion."""
         if add_prefix:
             items = {
-                BaseProcessor.__prepend_to_last_key(
+                BaseProcessor.__insert_prefix(
                     key, self.cfg.save_key_prefix): val
                 for key, val in items.items()
             }
         self.storage.update(items)
 
     @staticmethod
-    def __prepend_to_last_key(key: str, prefix: str):
-        pref_keys, last_key = key.rsplit('.', maxsplit=1)
-        return f'{pref_keys}.{prefix}{last_key}'
+    def __insert_prefix(key: str, prefix: str):
+        first_key, store_keys = key.split('.', maxsplit=1)
+        return f'{first_key}.{prefix}{store_keys}'
 
     @staticmethod
     def _get_repr(
@@ -302,7 +302,7 @@ class BaseProcessor(BaseConfigurable):
         if key in ['obs_names', 'var_names']:
             return getattr(adata, key).to_numpy().astype(str)
 
-        key = BaseProcessor.__prepend_to_last_key(key, read_key_prefix)
+        key = BaseProcessor.__insert_prefix(key, read_key_prefix)
 
         read_class, *read_keys = key.split('.')
         # We only support dictionary style access for read_keys
@@ -313,9 +313,7 @@ class BaseProcessor(BaseConfigurable):
             item = item.to_numpy()
         return item
 
-    @optional_staticmethod('BaseProcessor',
-                           {'cfg.read_key_prefix': 'read_key_prefix'})
-    def get_repr(adata: AnnData, key: REP_KEY, **kwargs) -> REP:
+    def get_repr(self, adata: AnnData, key: REP_KEY, **kwargs) -> REP:
         """Get the representation(s) that read_key points to."""
         single_get_func = partial(BaseProcessor._get_repr, adata, **kwargs)
         vals: List | Dict

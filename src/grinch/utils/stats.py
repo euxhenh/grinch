@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from functools import wraps
 from typing import Dict, Hashable, List, Optional, Tuple, overload
@@ -16,6 +17,8 @@ from tqdm.auto import tqdm
 
 from ..custom_types import NP1D_float, NP1D_int
 from .ops import group_indices
+
+logger = logging.getLogger(__name__)
 
 
 @overload
@@ -277,14 +280,23 @@ class PartMeanVar:
         accumul = _StatVector(
             n=0,
             sums=np.zeros_like(self.sum_vectors[labels[0]].sums, dtype=float),
-            sum_of_squares=np.zeros_like(self.sum_vectors[labels[0]].sum_of_squares, dtype=float)
+            sum_of_squares=np.zeros_like(
+                self.sum_vectors[labels[0]].sum_of_squares, dtype=float
+            )
         )
 
         for label in labels:
             accumul += self.sum_vectors[label]
 
-        if ddof >= accumul.n:
+        if accumul.n != 1 and ddof >= accumul.n:
             raise ValueError(f"Degrees of freedom are greater than n={accumul.n}.")
+        elif accumul.n == 1:
+            logger.warning(
+                "Found group with only 1 datapoint. "
+                "t-Test results may not be reliable. "
+                "Setting ddof=0."
+            )
+            ddof = 0
 
         Ex = accumul.sums / accumul.n
         Ex2 = accumul.sum_of_squares / accumul.n

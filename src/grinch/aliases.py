@@ -41,9 +41,9 @@ class AnnDataKeys:
         X_TRUNCATED_SVD_ = auto()
         KMEANS_ = auto()
         LOG_REG_ = auto()
-        TTEST_ = auto()
-        GSEA_ = auto()
-        BIMODALTEST_ = auto()
+        TTEST = auto()
+        GSEA = auto()
+        BIMODALTEST = auto()
         PCOVER_ = auto()
 
     class OBSP:
@@ -64,3 +64,5 @@ VARP = AnnDataKeys.VARP
 UNS = AnnDataKeys.UNS
 
 ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers', 'obsp', 'varp']
+
+GROUP_SEP = '.'
