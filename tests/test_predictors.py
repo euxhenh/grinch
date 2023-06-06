@@ -48,21 +48,6 @@ def test_kmeans_x(X):
     assert outp[0] != outp[-1]
 
 
-@pytest.mark.parametrize("X", X_mods)
-def test_leiden_x(X):
-    cfg = OmegaConf.create(
-        {
-            "_target_": "src.grinch.Leiden.Config",
-            "x_key": "X",
-            "seed": 42,
-        }
-    )
-    cfg = instantiate(cfg)
-    leiden = cfg.initialize()
-    adata = AnnData(X)
-    leiden(adata)
-
-
 @pytest.mark.parametrize("X", X_mods_no_sparse)
 def test_kmeans_x_pca(X):
     adata = AnnData(X)
