@@ -1,5 +1,6 @@
 import abc
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
@@ -54,7 +55,7 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
 
     def _process(self, adata: AnnData) -> None:
         check_has_processor(self)
-        """Fits the data and stores predictions."""
+        # Fits the data and stores predictions.
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
         self.store_item(self.cfg.labels_key, labels)
@@ -86,6 +87,31 @@ class KMeans(BaseUnsupervisedPredictor):
     @staticmethod
     def _processor_stats() -> List[str]:
         return BasePredictor._processor_stats() + ['cluster_centers_']
+
+
+class LeidenGraphConstructionAlgorithm(Enum):
+    KNN = 'knn'
+
+
+class Leiden(BaseUnsupervisedPredictor):
+
+    class Config(BaseUnsupervisedPredictor.Config):
+        labels_key: str = f"obs.{OBS.LEIDEN}"
+        stats_key: str = f"uns.{UNS.LEIDEN_}"
+        resolution: float = Field(1.0, gt=0)
+        directed: bool = True
+        graph_construction: str = "knn"
+        graph_knn_algorithm: str = "auto"
+
+        @validator('graph_construction')
+        def validate_graph_construction(cls, val):
+            allowed = [v.value for v in LeidenGraphConstructionAlgorithm]
+            if val not in allowed:
+                raise ValueError(
+                    "Leiden graph construction has to "
+                    f"be a value in {allowed}."
+                )
+            return val
 
 
 class BaseSupervisedPredictor(BasePredictor, abc.ABC):
