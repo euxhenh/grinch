@@ -278,6 +278,7 @@ def test_min_max_var(X):
             "_target_": "src.grinch.FilterGenes.Config",
             "min_var": 0.8,
             "max_var": 7,
+            "ddof": 0,
         }
     )
     cfg = instantiate(cfg)

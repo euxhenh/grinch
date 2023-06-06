@@ -76,6 +76,7 @@ class GRPipeline(BaseConfigurable):
                 return ds
 
         if self.cfg.data_writepath is not None:
+            logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)
         return ds
 
