@@ -104,6 +104,7 @@ class FilterGenes(BaseFilter):
         max_cells: int | None = Field(None, ge=0)
         min_var: float | None = Field(None, ge=0)
         max_var: float | None = Field(None, ge=0)
+        ddof: int = Field(1, ge=0)
 
     cfg: Config
 
@@ -128,7 +129,7 @@ class FilterGenes(BaseFilter):
                 self.cfg.max_cells,
             )
 
-        gene_var = _var(adata.X, axis=0, ddof=0)
+        gene_var = _var(adata.X, axis=0, ddof=self.cfg.ddof)
         if any_not_None(self.cfg.min_var, self.cfg.max_var):
             to_keep &= true_inside(gene_var, self.cfg.min_var, self.cfg.max_var)
 

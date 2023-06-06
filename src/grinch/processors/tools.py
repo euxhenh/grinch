@@ -67,5 +67,6 @@ class FilterNaN(BaseProcessor):
     def _process(self, adata: AnnData) -> None:
         x = np.asarray(self.get_repr(adata, self.cfg.read_key), dtype=float)
         mask = np.isnan(x)
-        logger.info(f"Removing {mask.sum()} rows with NaNs.")
-        adata._inplace_subset_obs(~mask)
+        if mask.sum() > 0:
+            logger.info(f"Removing {mask.sum()} rows with NaNs.")
+            adata._inplace_subset_obs(~mask)
