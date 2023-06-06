@@ -2,6 +2,7 @@ from .base_processor import BaseProcessor, adata_modifier
 from .de import BimodalTest, TTest
 from .enrich import GSEA
 from .feature_selection import PhenotypeCover
+from .graphs import BaseGraphConstructor, KNNGraph
 from .group import GroupProcess
 from .indexer import BaseIndexer, IndexProcessor, InplaceIndexer
 from .predictors import (
@@ -9,6 +10,8 @@ from .predictors import (
     BaseSupervisedPredictor,
     BaseUnsupervisedPredictor,
     KMeans,
+    Leiden,
+    LeidenGraphConstructionAlgorithm,
     LogisticRegression,
 )
 from .repeat import RepeatProcessor
@@ -31,6 +34,10 @@ __all__ = [
     'BaseUnsupervisedPredictor',
     'BaseSupervisedPredictor',
     'KMeans',
+    'BaseGraphConstructor',
+    'KNNGraph',
+    'Leiden',
+    'LeidenGraphConstructionAlgorithm',
     'LogisticRegression',
     'DataSplitter',
     'RepeatProcessor',

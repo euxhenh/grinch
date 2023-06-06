@@ -1,5 +1,5 @@
 from . import custom_types as typing
-from .aliases import ADK, OBS, OBSM, UNS, VAR, VARM, AnnDataKeys
+from .aliases import ADK, OBS, OBSM, OBSP, UNS, VAR, VARM, VARP, AnnDataKeys
 from .conf import BaseConfig, BaseConfigurable
 from .de_test_summary import BimodalTestSummary, DETestSummary, TestSummary
 from .filter_condition import FilterCondition, StackedFilterCondition
@@ -11,6 +11,7 @@ from .processors import (
     GSEA,
     PCA,
     UMAP,
+    BaseGraphConstructor,
     BaseIndexer,
     BasePredictor,
     BaseProcessor,
@@ -24,6 +25,9 @@ from .processors import (
     IndexProcessor,
     InplaceIndexer,
     KMeans,
+    KNNGraph,
+    Leiden,
+    LeidenGraphConstructionAlgorithm,
     LogisticRegression,
     PhenotypeCover,
     RepeatProcessor,
@@ -42,6 +46,8 @@ __all__ = [
     'OBSM',
     'VAR',
     'VARM',
+    'OBSP',
+    'VARP',
     'UNS',
     'AnnDataKeys',
     'BaseConfig',
@@ -54,6 +60,10 @@ __all__ = [
     'InplaceIndexer',
     'IndexProcessor',
     'KMeans',
+    'Leiden',
+    'BaseGraphConstructor',
+    'KNNGraph',
+    'LeidenGraphConstructionAlgorithm',
     'LogisticRegression',
     'BaseProcessor',
     'BaseTransformer',

@@ -40,14 +40,16 @@ class AnnDataKeys:
         X_PCA_ = auto()
         X_TRUNCATED_SVD_ = auto()
         KMEANS_ = auto()
+        LEIDEN_ = auto()
         LOG_REG_ = auto()
         TTEST = auto()
         GSEA = auto()
         BIMODALTEST = auto()
         PCOVER_ = auto()
+        KNN_ = auto()
 
     class OBSP:
-        ...
+        KNN = auto()
 
     class VARP:
         ...
