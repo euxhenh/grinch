@@ -69,8 +69,7 @@ class Leiden:
             mode = 'directed' if self.directed else 'undirected'
             if self.weighted:
                 G = ig.Graph.Weighted_Adjacency(G, mode=mode, attr='weight')
-                weights = [e['weight'] for e in G.es]
-                kwargs['weights'] = weights
+                kwargs['weights'] = G.es['weight']
             else:
                 G = (G != 0).astype(int)
                 G = ig.Graph.Adjacency(G, mode=mode)
