@@ -360,7 +360,14 @@ class BaseProcessor(BaseConfigurable):
         if len(save_key) < 1:
             raise zl
         assert len(save_keys) == 0
-        klas[save_key] = value
+        # This is in case save_key points to a dictionary already
+        if (save_key in klas
+            and isinstance(klas[save_key], dict)
+            and isinstance(value, dict)
+                and len(klas[save_key])):
+            klas[save_key] |= value
+        else:
+            klas[save_key] = value
 
     def set_repr(self, adata: AnnData, key: REP_KEY, value: REP) -> None:
         """Saves values under the key that save_key points to. Not to be

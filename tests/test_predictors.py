@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import OBS, OBSM
+from grinch import OBS, OBSM, UNS
 
 from ._utils import assert_allclose, to_view
 
@@ -168,3 +168,11 @@ def test_leiden(X):
     if pred[0] == 1:
         true = 1 - true
     assert_allclose(pred, true)
+
+    centroids = {
+        pred[0]: np.ravel(X[:2].mean(axis=0)),
+        1 - pred[0]: np.ravel(X[2:].mean(axis=0)),
+    }
+    pred_centroid = adata.uns[UNS.LEIDEN_]["cluster_centers_"]
+    assert_allclose(centroids[0], pred_centroid[0])
+    assert_allclose(centroids[1], pred_centroid[1])

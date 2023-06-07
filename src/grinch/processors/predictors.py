@@ -2,12 +2,15 @@ import abc
 import logging
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
+from sklearn.utils import indexable
 
 from ..aliases import OBS, OBSM, OBSP, UNS
+from ..utils.ops import group_indices
 from ..utils.validation import check_has_processor, pop_args
 from .base_processor import BaseProcessor, adata_modifier
 from .wrappers import Leiden as _Leiden
@@ -102,6 +105,10 @@ class Leiden(BaseUnsupervisedPredictor):
         partition_type: str = 'RBConfigurationVertexPartition'
         directed: bool = True
         weighted: bool = True
+        # Set to True if should comute cluster centers based
+        # on community assignment too.
+        compute_centroids: bool = True
+        x_key_for_centroids: str = "X"
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -122,6 +129,25 @@ class Leiden(BaseUnsupervisedPredictor):
             n_iterations=self.cfg.n_iterations,
             **self.cfg.kwargs,
         )
+
+    def _process(self, adata: AnnData) -> None:
+        super()._process(adata)
+
+        if not self.cfg.compute_centroids:
+            return
+
+        x = self.get_repr(adata, self.cfg.x_key_for_centroids)
+        x, = indexable(x)
+        labels = self.processor.membership_
+        assert x.shape[0] == len(labels)
+
+        # Compute centers and store them as well
+        label_to_centroid = {}
+        unq_labels, groups = group_indices(labels)
+        for label, group in zip(unq_labels, groups):
+            label_to_centroid[label] = np.ravel(x[group].mean(axis=0))
+        self.store_item(f"{self.cfg.stats_key}.cluster_centers_",
+                        label_to_centroid)
 
     @staticmethod
     def _processor_stats() -> List[str]:
