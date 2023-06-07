@@ -11,7 +11,6 @@ from .predictors import (
     BaseUnsupervisedPredictor,
     KMeans,
     Leiden,
-    LeidenGraphConstructionAlgorithm,
     LogisticRegression,
 )
 from .repeat import RepeatProcessor
@@ -37,7 +36,6 @@ __all__ = [
     'BaseGraphConstructor',
     'KNNGraph',
     'Leiden',
-    'LeidenGraphConstructionAlgorithm',
     'LogisticRegression',
     'DataSplitter',
     'RepeatProcessor',
