@@ -67,12 +67,10 @@ class Splitter(BaseConfigurable):
 
         @validator('stratify_key')
         def rep_format_is_correct(cls, val):
-            return BaseProcessor._validate_single_rep_key(val) if val is not None else val
+            return (BaseProcessor.Config._validate_single_rep_key(val)
+                    if val is not None else val)
 
     cfg: Config
-
-    def __init__(self, cfg: Config, /):
-        super().__init__(cfg)
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData | DataSplitter) -> DataSplitter:
