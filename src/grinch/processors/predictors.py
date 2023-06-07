@@ -139,7 +139,7 @@ class Leiden(BaseUnsupervisedPredictor):
         x = self.get_repr(adata, self.cfg.x_key_for_centroids)
         x, = indexable(x)
         labels = self.processor.membership_
-        assert x.shape[0] == len(labels)
+        assert x.shape[0] == len(labels)  # type: ignore
 
         # Compute centers and store them as well
         label_to_centroid = {}
