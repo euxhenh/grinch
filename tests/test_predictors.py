@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 
 from grinch import OBS, OBSM
 
-from ._utils import to_view
+from ._utils import assert_allclose, to_view
 
 X = np.array([
     [6, 8, 0, 0, 0],
@@ -138,3 +138,33 @@ def test_log_reg_x(X):
     outp = adata_test.obs[OBS.LOG_REG]
     assert outp[0] == outp[2]
     assert outp[0] != outp[1]
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_leiden(X):
+    adata = AnnData(X)
+    cfg_knn = OmegaConf.create(
+        {
+            "_target_": "src.grinch.KNNGraph.Config",
+            "x_key": "X",
+            "n_neighbors": 1,
+        }
+    )
+    cfg_knn = instantiate(cfg_knn)
+    knn = cfg_knn.initialize()
+    knn(adata)
+
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.Leiden.Config",
+            "seed": 42,
+        }
+    )
+    cfg = instantiate(cfg)
+    leiden = cfg.initialize()
+    leiden(adata)
+    pred = adata.obs[OBS.LEIDEN]
+    true = np.array([0, 0, 1, 1, 1])
+    if pred[0] == 1:
+        true = 1 - true
+    assert_allclose(pred, true)

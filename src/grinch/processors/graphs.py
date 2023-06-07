@@ -57,7 +57,6 @@ class KNNGraph(BaseGraphConstructor):
         n_neighbors: int = Field(15, gt=0)
         n_jobs: int = Field(4, gt=0)
         mode: str = "distance"
-        include_self: bool = False
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):

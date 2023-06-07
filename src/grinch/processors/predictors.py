@@ -1,6 +1,5 @@
 import abc
 import logging
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
@@ -8,9 +7,10 @@ from pydantic import Field, validate_arguments, validator
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 
-from ..aliases import OBS, OBSM, UNS
+from ..aliases import OBS, OBSM, OBSP, UNS
 from ..utils.validation import check_has_processor, pop_args
 from .base_processor import BaseProcessor, adata_modifier
+from .wrappers import Leiden as _Leiden
 
 logger = logging.getLogger(__name__)
 
@@ -81,37 +81,52 @@ class KMeans(BaseUnsupervisedPredictor):
         self.processor: _KMeans = _KMeans(
             n_clusters=self.cfg.n_clusters,
             random_state=self.cfg.seed,
+            n_init='auto',  # temporary warning supress
             **self.cfg.kwargs,
         )
 
     @staticmethod
     def _processor_stats() -> List[str]:
-        return BasePredictor._processor_stats() + ['cluster_centers_']
-
-
-class LeidenGraphConstructionAlgorithm(Enum):
-    KNN = 'knn'
+        return BaseUnsupervisedPredictor._processor_stats() + \
+            ['cluster_centers_']
 
 
 class Leiden(BaseUnsupervisedPredictor):
 
     class Config(BaseUnsupervisedPredictor.Config):
+        x_key: str = f"obsp.{OBSP.KNN}"
         labels_key: str = f"obs.{OBS.LEIDEN}"
         stats_key: str = f"uns.{UNS.LEIDEN_}"
         resolution: float = Field(1.0, gt=0)
+        n_iterations: int = -1
+        partition_type: str = 'RBConfigurationVertexPartition'
         directed: bool = True
-        graph_construction: str = "knn"
-        graph_knn_algorithm: str = "auto"
+        weighted: bool = True
 
-        @validator('graph_construction')
-        def validate_graph_construction(cls, val):
-            allowed = [v.value for v in LeidenGraphConstructionAlgorithm]
-            if val not in allowed:
-                raise ValueError(
-                    "Leiden graph construction has to "
-                    f"be a value in {allowed}."
-                )
-            return val
+        @validator('kwargs')
+        def remove_explicit_args(cls, val):
+            return pop_args(['partition_type', 'graph', 'weights',
+                             'n_iterations', 'seed'], val)
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /):
+        super().__init__(cfg)
+
+        self.processor: _Leiden = _Leiden(
+            resolution=self.cfg.resolution,
+            partition_type=self.cfg.partition_type,
+            directed=self.cfg.directed,
+            weighted=self.cfg.weighted,
+            seed=self.cfg.seed,
+            n_iterations=self.cfg.n_iterations,
+            **self.cfg.kwargs,
+        )
+
+    @staticmethod
+    def _processor_stats() -> List[str]:
+        return BaseUnsupervisedPredictor._processor_stats() + \
+            ['modularity_']
 
 
 class BaseSupervisedPredictor(BasePredictor, abc.ABC):
@@ -153,7 +168,8 @@ class LogisticRegression(BaseSupervisedPredictor):
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
-            return pop_args(['penalty', 'C', 'max_iter', 'n_jobs', 'random_state'], val)
+            return pop_args(['penalty', 'C', 'max_iter',
+                             'n_jobs', 'random_state'], val)
 
     cfg: Config
 
@@ -171,4 +187,5 @@ class LogisticRegression(BaseSupervisedPredictor):
 
     @staticmethod
     def _processor_stats() -> List[str]:
-        return BasePredictor._processor_stats() + ['classes_', 'coef_', 'intercept_']
+        return BaseSupervisedPredictor._processor_stats() + \
+            ['classes_', 'coef_', 'intercept_']

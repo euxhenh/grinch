@@ -10,3 +10,4 @@ statsmodels
 gseapy
 diptest
 phenotype_cover
+leidenalg
