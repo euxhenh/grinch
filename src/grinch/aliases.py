@@ -49,7 +49,7 @@ class AnnDataKeys:
         BIMODALTEST = auto()
         PCOVER_ = auto()
         KNN_ = auto()
-        GENE_ID_TO_NAME_FAILED = auto()
+        N_GENE_ID_TO_NAME_FAILED = auto()
 
     class OBSP:
         KNN = auto()

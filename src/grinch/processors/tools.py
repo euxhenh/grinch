@@ -21,7 +21,7 @@ class GeneIdToName(BaseProcessor):
     class Config(BaseProcessor.Config):
         read_key: str = "var_names"
         save_key: str = f"var.{VAR.FEATURE_NAME}"
-        stats_key: str = f"uns.{UNS.GENE_ID_TO_NAME_FAILED}"
+        stats_key: str = f"uns.{UNS.N_GENE_ID_TO_NAME_FAILED}"
         ensembl_release: int = 77
 
     cfg: Config
@@ -43,8 +43,7 @@ class GeneIdToName(BaseProcessor):
                 gene_names.append(gene_id)
                 not_found += 1
 
-        gene_names = np.asarray(gene_names)
-        self.set_repr(adata, self.cfg.save_key, gene_names)
+        self.set_repr(adata, self.cfg.save_key, np.asarray(gene_names))
         self.store_item(self.cfg.stats_key, not_found)
 
 
