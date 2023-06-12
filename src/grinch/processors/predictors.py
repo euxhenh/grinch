@@ -145,7 +145,7 @@ class Leiden(BaseUnsupervisedPredictor):
         label_to_centroid = {}
         unq_labels, groups = group_indices(labels)
         for label, group in zip(unq_labels, groups):
-            label_to_centroid[label] = np.ravel(x[group].mean(axis=0))
+            label_to_centroid[str(label)] = np.ravel(x[group].mean(axis=0))
         self.store_item(f"{self.cfg.stats_key}.cluster_centers_",
                         label_to_centroid)
 

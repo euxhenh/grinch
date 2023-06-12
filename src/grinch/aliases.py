@@ -25,6 +25,8 @@ class AnnDataKeys:
         PCOVER_M = auto()
         PCOVER_I = auto()
         VARIANCE = auto()
+        ENSEMBL_ID = auto()
+        FEATURE_NAME = auto()
 
     class OBSM:
         X_EMB = auto()
@@ -47,6 +49,7 @@ class AnnDataKeys:
         BIMODALTEST = auto()
         PCOVER_ = auto()
         KNN_ = auto()
+        GENE_ID_TO_NAME_FAILED = auto()
 
     class OBSP:
         KNN = auto()

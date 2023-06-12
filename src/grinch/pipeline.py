@@ -45,7 +45,7 @@ class GRPipeline(BaseConfigurable):
             self.processors.append(c.initialize())
 
     @validate_arguments(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, adata: Optional[AnnData] = None, *args, **kwargs) -> DataSplitter:
+    def __call__(self, adata: Optional[AnnData] = None, **kwargs) -> DataSplitter:
         """Applies processor to the different data splits in DataSplitter.
         It differentiates between predictors (calls processor.predict),
         transformers (calls processor.transform) and it defaults to

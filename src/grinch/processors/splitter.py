@@ -33,6 +33,7 @@ class DataSplitter:
         """
         if not any_not_None(self.VAL_SPLIT, self.TEST_SPLIT):
             to_write = as_empty(self.TRAIN_SPLIT) if no_data_write else self.TRAIN_SPLIT
+            breakpoint()
             to_write.write_h5ad(path)
             return
 
