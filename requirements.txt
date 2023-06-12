@@ -11,3 +11,4 @@ gseapy
 diptest
 phenotype_cover
 leidenalg
+pyensembl
