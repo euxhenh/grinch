@@ -112,6 +112,15 @@ def mean_var(
         Axis along which to compute variance.
     ddof: int
         Degrees of freedom.
+
+    Returns
+    _______
+    mean: array-like, int
+        The mean of the data along axis, or total mean
+        if axis is None.
+    var: array-like, int
+        The variance of the data along axis, or total mean
+        if axis is None.
     """
     if not isinstance(x, (np.ndarray, sp.spmatrix)):
         x = np.asarray(x)

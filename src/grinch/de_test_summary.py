@@ -152,6 +152,13 @@ class DETestSummary(PvalTestSummary):
     log2fc: Optional[NP1D_float]
 
 
+class KSTestSummary(DETestSummary):
+    """A class for Kolmogorov-Smirnov test summary.
+    """
+    statistic: NP1D_float
+    statistic_sign: NP1D_int
+
+
 class BimodalTestSummary(PvalTestSummary):
     """A summary dataclass for bimodal test results.
     """
