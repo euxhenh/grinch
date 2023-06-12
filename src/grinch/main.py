@@ -35,7 +35,7 @@ def instantiate_config(config_name):
 
 parser = argparse.ArgumentParser(description="DE gene and enrichment toolbox.")
 parser.add_argument('conf', metavar='C', type=str, help="path to config file")
-parser.add_argument('--pc', action='store_true', default=True)
+parser.add_argument('--pc', action='store_true', default=False)
 
 if __name__ == "__main__":
     args = parser.parse_args()

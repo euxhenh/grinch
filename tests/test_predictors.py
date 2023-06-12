@@ -174,5 +174,5 @@ def test_leiden(X):
         1 - pred[0]: np.ravel(X[2:].mean(axis=0)),
     }
     pred_centroid = adata.uns[UNS.LEIDEN_]["cluster_centers_"]
-    assert_allclose(centroids[0], pred_centroid[0])
-    assert_allclose(centroids[1], pred_centroid[1])
+    assert_allclose(centroids[0], pred_centroid['0'])
+    assert_allclose(centroids[1], pred_centroid['1'])

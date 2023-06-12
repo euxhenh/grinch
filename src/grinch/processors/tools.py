@@ -5,12 +5,46 @@ from typing import Dict, Optional
 import numpy as np
 from anndata import AnnData
 from pydantic import Field
+from pyensembl import EnsemblRelease
 
+from ..aliases import UNS, VAR
 from ..custom_types import NP1D_bool
 from ..filter_condition import FilterCondition, StackedFilterCondition
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
+
+
+class GeneIdToName(BaseProcessor):
+    """Used to convert gene naming convention.
+    """
+    class Config(BaseProcessor.Config):
+        read_key: str = "var_names"
+        save_key: str = f"var.{VAR.FEATURE_NAME}"
+        stats_key: str = f"uns.{UNS.N_GENE_ID_TO_NAME_FAILED}"
+        ensembl_release: int = 77
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /) -> None:
+        super().__init__(cfg)
+
+        self.data = EnsemblRelease(self.cfg.ensembl_release)
+
+    def _process(self, adata: AnnData) -> None:
+        gene_names = []
+        not_found = 0
+
+        gene_ids = self.get_repr(adata, self.cfg.read_key, to_numpy=True)
+        for gene_id in gene_ids:
+            try:
+                gene_names.append(self.data.gene_by_id(gene_id).gene_name)
+            except ValueError:
+                gene_names.append(gene_id)
+                not_found += 1
+
+        self.set_repr(adata, self.cfg.save_key, np.asarray(gene_names))
+        self.store_item(self.cfg.stats_key, not_found)
 
 
 class StoreAsMask(BaseProcessor):
