@@ -99,6 +99,7 @@ class GSEA(BaseProcessor):
                 no_plot=True,
                 **kwargs,
             ).results
+            results['Genes_Tested'] = len(gene_list)
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")
