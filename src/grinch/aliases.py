@@ -45,6 +45,7 @@ class AnnDataKeys:
         LEIDEN_ = auto()
         LOG_REG_ = auto()
         TTEST = auto()
+        KSTEST = auto()
         GSEA = auto()
         BIMODALTEST = auto()
         PCOVER_ = auto()

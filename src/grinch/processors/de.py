@@ -1,6 +1,9 @@
+import abc
 import logging
 import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+from operator import attrgetter
 from typing import Iterable, Optional, Tuple
 
 import numpy as np
@@ -8,16 +11,18 @@ import scipy.sparse as sp
 from anndata import AnnData
 from diptest import diptest
 from pydantic import Field, validator
-from sklearn.utils import column_or_1d, check_array
+from scipy.stats import ks_2samp
+from sklearn.utils import check_array, column_or_1d, indexable
 from tqdm.auto import tqdm
 
 from ..aliases import UNS
-from ..custom_types import NP1D_float
-from ..de_test_summary import BimodalTestSummary, DETestSummary
+from ..custom_types import NP1D_Any, NP1D_float
+from ..de_test_summary import BimodalTestSummary, DETestSummary, KSTestSummary
 from ..utils.stats import (
     PartMeanVar,
     _compute_log2fc,
     _correct,
+    group_indices,
     ttest_from_mean_var,
 )
 from .base_processor import BaseProcessor
@@ -25,11 +30,9 @@ from .base_processor import BaseProcessor
 logger = logging.getLogger(__name__)
 
 
-class TTest(BaseProcessor):
-    """A class for performing differential expression analysis by using a
-    t-Test to determine if a gene is differentially expressed in one group
-    vs the other. An efficient implementation of mean and var computation
-    is used to quickly run all one-vs-all tests.
+class PairwiseDETest(BaseProcessor, abc.ABC):
+    """A base class for differential expression testing that
+    compares two distributions.
 
     Parameters
     __________
@@ -60,7 +63,7 @@ class TTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         x_key: str = "X"
-        save_key: str = f"uns.{UNS.TTEST}"
+        save_key: str
         group_key: str
 
         is_logged: bool = True
@@ -75,21 +78,25 @@ class TTest(BaseProcessor):
         @validator('save_key')
         def _starts_with_uns(cls, save_key):
             if save_key.split('.')[0] != 'uns':
-                raise ValueError("Anndata column for ttest should be 'uns'.")
+                raise ValueError("Anndata column for DE Test should be 'uns'.")
             return save_key
 
         @validator('base')
         def _remove_base_if_not_logged(cls, base, values):
             return None if not values['is_logged'] else base
 
+        def get_label_key(self, label: str) -> str:
+            key = (
+                f"{self.save_key}."
+                f"{self.group_key.rsplit('.')[-1]}-"
+                f"{label}"
+            )
+            return key
+
     cfg: Config
 
-    def _ttest(self, pmv: PartMeanVar, label) -> DETestSummary:
-        """Perform a single ttest."""
-        n1, m1, v1 = pmv.compute([label], ddof=1)  # take label
-        n2, m2, v2 = pmv.compute([label], ddof=1, exclude=True)  # take all but label
-
-        pvals = ttest_from_mean_var(n1, m1, v1, n2, m2, v2)[1]
+    def get_pqvals(self, pvals):
+        """Performs basic processing on p and computes qvals."""
         not_none_mask = ~np.isnan(pvals)
 
         qvals = np.full_like(pvals, 1.0 if self.cfg.replace_nan else np.nan)
@@ -98,14 +105,16 @@ class TTest(BaseProcessor):
                                         method=self.cfg.correction)[1]
         if self.cfg.replace_nan:
             pvals[~not_none_mask] = 1.0
+        return pvals, qvals
 
+    def get_log2fc(self, m1, m2):
         log2fc = _compute_log2fc(m1, m2, self.cfg.base, self.cfg.is_logged)
-
-        return DETestSummary(pvals=pvals, qvals=qvals,
-                             mean1=m1, mean2=m2, log2fc=log2fc)
+        return log2fc
 
     def _process(self, adata: AnnData) -> None:
-        group_labels = column_or_1d(self.get_repr(adata, self.cfg.group_key))
+        group_labels: NP1D_Any = column_or_1d(
+            self.get_repr(adata, self.cfg.group_key)
+        )
         unq_labels = np.unique(group_labels)
         if len(unq_labels) <= 1:
             logger.warning(
@@ -122,18 +131,115 @@ class TTest(BaseProcessor):
             ensure_min_features=2,
             ensure_min_samples=2,
         )
+        self._test(x, group_labels)
+
+    @abc.abstractmethod
+    def _test(self, x, group_labels) -> None:
+        raise NotImplementedError
+
+
+class TTest(PairwiseDETest):
+    """A class for performing differential expression analysis by using a
+    t-Test to determine if a gene is differentially expressed in one group
+    vs the other. An efficient implementation of mean and var computation
+    is used to quickly run all one-vs-all tests.
+    """
+
+    class Config(PairwiseDETest.Config):
+        save_key: str = f"uns.{UNS.TTEST}"
+
+    cfg: Config
+
+    def _test(self, x, group_labels: NP1D_Any) -> None:
         # efficient mean and variance computation
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
+        unq_labels = np.unique(group_labels)
 
         to_iter = (
-            tqdm(unq_labels, desc="Running t-Tests")
+            tqdm(unq_labels, desc=f"Running {self.__class__.__name__}")
             if self.cfg.show_progress_bar
             else unq_labels
         )
         for label in to_iter:
-            ts: DETestSummary = self._ttest(pmv, label)
-            key = f"{self.cfg.save_key}.{self.cfg.group_key.rsplit('.')[-1]}-{label}"
+            ts: DETestSummary = self._single_test(pmv, label)
+            key: str = self.cfg.get_label_key(label)
             self.store_item(key, ts.df())
+
+    def _single_test(self, pmv: PartMeanVar, label) -> DETestSummary:
+        """Perform a single ttest."""
+        n1, m1, v1 = pmv.compute([label], ddof=1)  # take label
+        n2, m2, v2 = pmv.compute([label], ddof=1, exclude=True)  # all but label
+
+        pvals = ttest_from_mean_var(n1, m1, v1, n2, m2, v2)[1]
+        pvals, qvals = self.get_pqvals(pvals)
+        log2fc = self.get_log2fc(m1, m2)
+        return DETestSummary(pvals=pvals, qvals=qvals,
+                             mean1=m1, mean2=m2, log2fc=log2fc)
+
+
+class KSTest(PairwiseDETest):
+    """A class for comparing two distributions based on the
+    Kolmogorov-Smirnov Test.
+    https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
+    """
+
+    class Config(PairwiseDETest.Config):
+        save_key: str = f"uns.{UNS.KSTEST}"
+        method: str = 'auto'
+        alternative: str = 'two-sided'
+        max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
+                                           exclude=True)
+
+    cfg: Config
+
+    def _test(self, x, group_labels: NP1D_Any) -> None:
+        pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
+        unq_labels, groups = group_indices(group_labels, as_mask=True)
+
+        to_iter = (
+            tqdm(unq_labels, desc=f"Running {self.__class__.__name__}")
+            if self.cfg.show_progress_bar
+            else unq_labels
+        )
+
+        if sp.issparse(x):
+            logger.warning((
+                "KS Test cannot work with sparse matrices. "
+                "Densifying..."
+            ))
+            x = x.toarray()
+
+        x, = indexable(x)
+        for label, group in zip(to_iter, groups):
+            ts: KSTestSummary = self._single_test(
+                pmv, label,
+                x=x[group], y=x[~group],
+            )
+            key: str = self.cfg.get_label_key(label)
+            self.store_item(key, ts.df())
+
+    def _single_test(self, pmv: PartMeanVar, label, *, x, y) -> KSTestSummary:
+        """Perform a single ks test"""
+        part_ks_2samp = partial(
+            ks_2samp,
+            alternative=self.cfg.alternative,
+            method=self.cfg.method
+        )
+
+        with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
+            test_results: Iterable = executor.map(part_ks_2samp, x.T, y.T)
+
+        stat_getter = attrgetter('pvalue', 'statistic', 'statistic_sign')
+        stats = np.asarray([stat_getter(res) for res in test_results])
+        pvals, stats, statistic_sign = stats.T
+
+        pvals, qvals = self.get_pqvals(pvals)
+        _, m1, _ = pmv.compute([label], ddof=1)  # take label
+        _, m2, _ = pmv.compute([label], ddof=1, exclude=True)  # all but labl
+        log2fc = self.get_log2fc(m1, m2)
+        return KSTestSummary(pvals=pvals, qvals=qvals, mean1=m1, mean2=m2,
+                             statistic=stats, statistic_sign=statistic_sign,
+                             log2fc=log2fc)
 
 
 class BimodalTest(BaseProcessor):

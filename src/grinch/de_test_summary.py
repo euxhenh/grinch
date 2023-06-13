@@ -32,6 +32,9 @@ class TestSummary(BaseModel, abc.ABC):
             raise ValueError("No data is stored in this test summary.")
         check_consistent_length(*not_none_arrs)
 
+    def __len__(self):
+        return len(self._tuple(exclude_none=True)[0])  # type: ignore
+
     def __str__(self):
         s = f"{self.__class__.__name__} with fields "
         for field in self.__fields__:
@@ -150,6 +153,13 @@ class DETestSummary(PvalTestSummary):
     mean1: Optional[NP1D_float]
     mean2: Optional[NP1D_float]
     log2fc: Optional[NP1D_float]
+
+
+class KSTestSummary(DETestSummary):
+    """A class for Kolmogorov-Smirnov test summary.
+    """
+    statistic: NP1D_float
+    statistic_sign: NP1D_int
 
 
 class BimodalTestSummary(PvalTestSummary):
