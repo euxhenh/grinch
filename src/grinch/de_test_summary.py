@@ -54,7 +54,15 @@ class TestSummary(BaseModel, abc.ABC):
         s += ")"
         return s
 
+    @overload
+    def _tuple(self, exclude_none: bool = True) -> Tuple[NP1D_float, ...]:
+        ...
+
+    @overload
     def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:
+        ...
+
+    def _tuple(self, exclude_none=False):
         """Converts self to tuple. To be used internally only."""
         data: Dict[str, NP1D_float] = self.dict(exclude_none=exclude_none)
         return tuple(data.values())
