@@ -1,3 +1,5 @@
+# mypy: disable-error-code = used-before-def
+
 import abc
 import inspect
 import logging
@@ -154,7 +156,8 @@ class BaseProcessor(BaseConfigurable):
                 case [*vals]:
                     return [cls._validate_single_rep_key(v) for v in vals]
                 case {**vals}:
-                    return {k: cls._validate_single_rep_key(v) for k, v in vals.items()}
+                    return {k: cls._validate_single_rep_key(v)  # type: ignore
+                            for k, v in vals.items()}
                 case None:
                     return None
                 case _:
@@ -322,7 +325,7 @@ class BaseProcessor(BaseConfigurable):
                 return single_get_func(v)
             case [*vals]:
                 return [single_get_func(v) for v in vals]
-            case {**vals}:  # type: ignore
+            case {**vals}:
                 return {k: single_get_func(v) for k, v in vals.items()}
             case _:
                 raise ValueError(f"'{key}' format not understood.")

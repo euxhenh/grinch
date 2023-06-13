@@ -95,7 +95,7 @@ class BaseConfig(BaseModel):
     def initialize(self, *args, **kwargs):
         """Initialize and return an object of type `self.init_type`.
         """
-        initialized_obj: BaseConfigurable = None
+        initialized_obj: BaseConfigurable | None = None
         if self.init_type is not None:
             initialized_obj = self.init_type(self, *args, **kwargs)
         return initialized_obj

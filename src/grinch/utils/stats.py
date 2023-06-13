@@ -219,22 +219,50 @@ def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
 
 
 @dataclass
-class _StatVector:
-    n: int  # number of points accumulated so far
-    sums: NP1D_float  # sum of vectors
-    sum_of_squares: NP1D_float  # sum of vectors-squared
+class _MeanVarVector:
+    n: int  # number of samples accumulated so far
+    sums: NP1D_float  # sums of samples
+    sum_of_squares: NP1D_float  # sums of samples squared
 
-    def __add__(self, other: '_StatVector'):
+    def __post_init__(self):
+        if len(self.sums) != len(self.sum_of_squares):
+            raise ValueError(
+                "Dimensions of sums and sum_of_squares "
+                f"have to be the same, but found dims {len(self.sums)} "
+                f"and {len(self.sum_of_squares)}."
+            )
+        self.dim: int = len(self.sums)
+
+    def _check_dims(self, other):
+        if self.dim != other.dim:
+            raise ValueError(
+                "Can only add vectors of the same dimension, "
+                f"but found dimensions {self.dim} and {other.dim}."
+            )
+
+    def __add__(self, other: '_MeanVarVector'):
+        self._check_dims(other)
         n = self.n + other.n
         sums = self.sums + other.sums
         sum_of_squares = self.sum_of_squares + other.sum_of_squares
-        return _StatVector(n, sums, sum_of_squares)
+        return _MeanVarVector(n, sums, sum_of_squares)
 
-    def __iadd__(self, other: '_StatVector'):
+    def __iadd__(self, other: '_MeanVarVector'):
+        self._check_dims(other)
         self.n += other.n
         self.sums += other.sums
         self.sum_of_squares += other.sum_of_squares
         return self
+
+    def get_mean(self) -> NP1D_float:
+        return self.sums / self.n
+
+    def get_var(self, mean: NP1D_float | None = None, ddof: int = 0) -> NP1D_float:
+        if mean is None:
+            mean = self.get_mean()
+        Ex2 = self.sum_of_squares / self.n
+        var = (Ex2 - np.square(mean)) * np.divide(self.n, self.n - ddof)
+        return var
 
 
 class PartMeanVar:
@@ -259,14 +287,14 @@ class PartMeanVar:
         # support sparse matrices as well
         def square_func(x): return x.power(2) if sp.issparse(X) else x**2
         # maps label to a StatVector
-        self.sum_vectors: Dict[Hashable, _StatVector] = {}
+        self.sum_vectors: Dict[Hashable, _MeanVarVector] = {}
 
         for label, group in zip(unq_labels, groups):
             xg = X[group]
-            self.sum_vectors[label] = _StatVector(
+            self.sum_vectors[label] = _MeanVarVector(
                 n=xg.shape[0],
                 sums=np.ravel(xg.sum(axis=0)),
-                sum_of_squares=np.ravel(square_func(xg).sum(axis=0))
+                sum_of_squares=np.ravel(square_func(xg).sum(axis=0)),
             )
 
     def compute(
@@ -286,7 +314,7 @@ class PartMeanVar:
         if len(diff := set(labels).difference(self.sum_vectors)) != 0:
             raise ValueError(f"Found labels {diff} not in dictionary.")
 
-        accumul = _StatVector(
+        accumul = _MeanVarVector(
             n=0,
             sums=np.zeros_like(self.sum_vectors[labels[0]].sums, dtype=float),
             sum_of_squares=np.zeros_like(
@@ -299,16 +327,14 @@ class PartMeanVar:
 
         if accumul.n != 1 and ddof >= accumul.n:
             raise ValueError(f"Degrees of freedom are greater than n={accumul.n}.")
-        elif accumul.n == 1:
+        if accumul.n == 1:
             logger.warning(
                 "Found group with only 1 datapoint. "
-                "t-Test results may not be reliable. "
+                "Test results may not be reliable. "
                 "Setting ddof=0."
             )
             ddof = 0
 
-        Ex = accumul.sums / accumul.n
-        Ex2 = accumul.sum_of_squares / accumul.n
-        var = (Ex2 - np.square(Ex)) * np.divide(accumul.n, accumul.n - ddof)
-
-        return accumul.n, Ex, var
+        mean = accumul.get_mean()
+        var = accumul.get_var(mean=mean, ddof=ddof)
+        return accumul.n, mean, var

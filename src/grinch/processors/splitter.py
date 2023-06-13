@@ -62,7 +62,7 @@ class Splitter(BaseConfigurable):
             super().__init__(*args, **kwargs)
 
             if all_not_None(self.val_fraction, self.test_fraction):
-                if self.val_fraction + self.test_fraction >= 1:
+                if self.val_fraction + self.test_fraction >= 1:  # type: ignore
                     raise ValueError("Val and test fraction should sum less than one.")
 
         @validator('stratify_key')

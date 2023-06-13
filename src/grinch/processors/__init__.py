@@ -1,5 +1,5 @@
 from .base_processor import BaseProcessor, adata_modifier
-from .de import BimodalTest, TTest
+from .de import BimodalTest, KSTest, TTest
 from .enrich import GSEA
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, KNNGraph
@@ -22,6 +22,7 @@ __all__ = [
     'adata_modifier',
     'BaseProcessor',
     'TTest',
+    'KSTest',
     'BimodalTest',
     'GSEA',
     'GroupProcess',
