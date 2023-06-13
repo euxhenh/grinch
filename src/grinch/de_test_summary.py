@@ -55,11 +55,11 @@ class TestSummary(BaseModel, abc.ABC):
         return s
 
     @overload
-    def _tuple(self, exclude_none: bool = True) -> Tuple[NP1D_float, ...]:
+    def _tuple(self, exclude_none: Literal[True]) -> Tuple[NP1D_float, ...]:
         ...
 
     @overload
-    def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:
+    def _tuple(self, exclude_none: Literal[False]) -> Tuple[Optional[NP1D_float], ...]:
         ...
 
     def _tuple(self, exclude_none=False):
