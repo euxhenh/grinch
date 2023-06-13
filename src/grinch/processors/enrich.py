@@ -28,7 +28,7 @@ DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
 EMPTY_TEST = pd.DataFrame(columns=[
     'Gene_set', 'Term', 'Overlap', 'P-value', 'Adjusted P-value',
     'Old P-value', 'Old Adjusted P-value', 'Odds Ratio', 'Combined Score',
-    'Genes'
+    'Genes', 'N_Genes_Tested',
 ])
 
 
@@ -99,6 +99,7 @@ class GSEA(BaseProcessor):
                 no_plot=True,
                 **kwargs,
             ).results
+            results['N_Genes_Tested'] = len(gene_list)
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")
