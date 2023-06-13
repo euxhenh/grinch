@@ -32,6 +32,9 @@ class TestSummary(BaseModel, abc.ABC):
             raise ValueError("No data is stored in this test summary.")
         check_consistent_length(*not_none_arrs)
 
+    def __len__(self):
+        return len(self._tuple(exclude_none=True)[0])
+
     def __str__(self):
         s = f"{self.__class__.__name__} with fields "
         for field in self.__fields__:
