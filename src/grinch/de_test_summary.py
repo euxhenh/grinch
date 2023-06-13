@@ -33,7 +33,7 @@ class TestSummary(BaseModel, abc.ABC):
         check_consistent_length(*not_none_arrs)
 
     def __len__(self):
-        return len(self._tuple(exclude_none=True)[0])
+        return len(self._tuple(exclude_none=True)[0])  # type: ignore
 
     def __str__(self):
         s = f"{self.__class__.__name__} with fields "
@@ -54,15 +54,7 @@ class TestSummary(BaseModel, abc.ABC):
         s += ")"
         return s
 
-    @overload
-    def _tuple(self, exclude_none: Literal[True]) -> Tuple[NP1D_float, ...]:
-        ...
-
-    @overload
-    def _tuple(self, exclude_none: Literal[False]) -> Tuple[Optional[NP1D_float], ...]:
-        ...
-
-    def _tuple(self, exclude_none=False):
+    def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:
         """Converts self to tuple. To be used internally only."""
         data: Dict[str, NP1D_float] = self.dict(exclude_none=exclude_none)
         return tuple(data.values())
