@@ -1,12 +1,16 @@
 import abc
 import logging
+import warnings
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
-from umap import UMAP as _UMAP
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="NumbaDeprecationWarning")
+    from umap import UMAP as _UMAP
 
 from ..aliases import OBSM, UNS
 from ..utils.validation import check_has_processor, pop_args

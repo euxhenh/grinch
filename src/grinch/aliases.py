@@ -53,7 +53,10 @@ class AnnDataKeys:
         N_GENE_ID_TO_NAME_FAILED = auto()
 
     class OBSP:
-        KNN = auto()
+        KNN_CONNECTIVITY = auto()
+        KNN_DISTANCES = auto()
+        UMAP_CONNECTIVITY = auto()
+        UMAP_DISTANCES = auto()
 
     class VARP:
         ...

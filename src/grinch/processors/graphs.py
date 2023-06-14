@@ -1,6 +1,7 @@
 import abc
 from typing import Any, Dict, Tuple
 
+import numpy as np
 from anndata import AnnData
 from pydantic import Field, validator
 from scipy.sparse import csr_matrix, spmatrix
@@ -11,14 +12,27 @@ from ..aliases import OBSM, OBSP
 from ..custom_types import NP1D_float, NP1D_int, NP2D_float
 from ..utils.validation import pop_args
 from .base_processor import BaseProcessor
+from .wrappers import FuzzySimplicialSet as _FuzzySimplicialSet
 
 
 class BaseGraphConstructor(BaseProcessor, abc.ABC):
-    """A base class for connectivity graph constructors"""
+    """A base class for connectivity graph constructors.
+
+    Parameters
+    __________
+    x_key: str
+        What key to use for the data representation. I.e., distances
+        between points will be computed using these values.
+    conn_key: str
+        Key to store the connectivity sparse matrix.
+    dist_key: str
+        Key to store the adjacency sparse matrix with edge weights.
+    """
 
     class Config(BaseProcessor.Config):
         x_key: str = f"obsm.{OBSM.X_PCA}"
-        adj_key: str
+        conn_key: str
+        dist_key: str
         save_stats: bool = True
         stats_key: str | None = None
         kwargs: Dict[str, Any] = {}
@@ -26,12 +40,14 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x: NP2D_float = self.get_repr(adata, self.cfg.x_key)  # type: ignore
-        adj: spmatrix = self._connect(x)
+        x = self.get_repr(adata, self.cfg.x_key)
+        adj: spmatrix = self._connect(x)  # type: ignore
         adj = _ensure_sparse_format(
             adj, accept_sparse='csr', dtype=None, copy=False,
             force_all_finite=True, accept_large_sparse=True)
-        self.store_item(self.cfg.adj_key, adj)
+        self.store_item(self.cfg.dist_key, adj.copy())
+        adj.data = np.ones_like(adj.data)
+        self.store_item(self.cfg.conn_key, adj)
 
     @abc.abstractmethod
     def _connect(self, x: NP2D_float) -> spmatrix:
@@ -50,13 +66,13 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
 
 
 class KNNGraph(BaseGraphConstructor):
-    """Connectivity graph constructor based on exact kNN."""
+    """Distance graph constructor based on exact kNN."""
 
     class Config(BaseGraphConstructor.Config):
-        adj_key: str = f"obsp.{OBSP.KNN}"
+        conn_key: str = f"obsp.{OBSP.KNN_CONNECTIVITY}"
+        dist_key: str = f"obsp.{OBSP.KNN_DISTANCES}"
         n_neighbors: int = Field(15, gt=0)
         n_jobs: int = Field(4, gt=0)
-        mode: str = "distance"
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -75,5 +91,46 @@ class KNNGraph(BaseGraphConstructor):
 
     def _connect(self, x: NP2D_float) -> csr_matrix:
         self.processor.fit(x)
-        adj = self.processor.kneighbors_graph(mode=self.cfg.mode)
+        adj = self.processor.kneighbors_graph(mode='distance')
         return adj
+
+
+class FuzzySimplicialSetGraph(BaseGraphConstructor):
+    """A class for computing connectivities of samples based
+    on UMAP's fuzzy simplicial set algorithm.
+    I.e., higher weights mean closer or similar points.
+
+    Parameters
+    __________
+    precomputed: bool
+        If True, will consider x as pre-computed neighbors.
+    """
+
+    class Config(BaseGraphConstructor.Config):
+        x_key: str = f"obsp.{OBSP.KNN_DISTANCES}"
+        conn_key: str = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
+        dist_key: str = f"obsp.{OBSP.UMAP_DISTANCES}"
+        precomputed: bool = True
+        n_neighbors: int = 15
+        metric: str = "euclidean"
+
+        @validator('kwargs')
+        def remove_explicit_args(cls, val):
+            return pop_args(['X', 'n_neighbors', 'random_state', 'metric',
+                             'knn_indices', 'knn_dists'], val)
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /):
+        super().__init__(cfg)
+
+        self.processor: _FuzzySimplicialSet = _FuzzySimplicialSet(
+            n_neighbors=self.cfg.n_neighbors,
+            metric=self.cfg.metric,
+            precomputed=self.cfg.precomputed,
+            random_state=self.cfg.seed,
+            **self.cfg.kwargs,
+        )
+
+    def _connect(self, x: NP2D_float | spmatrix) -> spmatrix:
+        return self.processor.fit_predict(x)

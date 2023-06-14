@@ -194,22 +194,21 @@ class KSTest(PairwiseDETest):
 
     def _test(self, x, group_labels: NP1D_Any) -> None:
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
-        unq_labels, groups = group_indices(group_labels, as_mask=True)
-
-        to_iter = (
-            tqdm(unq_labels, desc=f"Running {self.__class__.__name__}")
-            if self.cfg.show_progress_bar
-            else unq_labels
-        )
-
         if sp.issparse(x):
             logger.warning((
                 "KS Test cannot work with sparse matrices. "
                 "Densifying..."
             ))
             x = x.toarray()
-
         x, = indexable(x)
+
+        unq_labels, groups = group_indices(group_labels, as_mask=True)
+        to_iter = (
+            tqdm(unq_labels, desc="Running Kolmogorov-Smirnov tests.")
+            if self.cfg.show_progress_bar
+            else unq_labels
+        )
+
         for label, group in zip(to_iter, groups):
             ts: KSTestSummary = self._single_test(
                 pmv, label,
