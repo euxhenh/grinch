@@ -41,7 +41,7 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
 
     def _process(self, adata: AnnData) -> None:
         x = self.get_repr(adata, self.cfg.x_key)
-        adj: spmatrix = self._connect(x)
+        adj: spmatrix = self._connect(x)  # type: ignore
         adj = _ensure_sparse_format(
             adj, accept_sparse='csr', dtype=None, copy=False,
             force_all_finite=True, accept_large_sparse=True)
@@ -132,5 +132,5 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
             **self.cfg.kwargs,
         )
 
-    def _connect(self, x: NP2D_float | None) -> spmatrix:
+    def _connect(self, x: NP2D_float | spmatrix) -> spmatrix:
         return self.processor.fit_predict(x)

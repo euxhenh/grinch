@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import OBS, OBSM, UNS
+from grinch import OBS, OBSM, OBSP, UNS
 
 from ._utils import assert_allclose, to_view
 
@@ -157,6 +157,7 @@ def test_leiden(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.Leiden.Config",
+            "x_key": f"obsp.{OBSP.KNN_DISTANCES}",
             "seed": 42,
         }
     )
