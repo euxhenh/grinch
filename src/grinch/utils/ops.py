@@ -2,9 +2,17 @@ from functools import reduce
 from typing import List, Literal, Tuple, overload
 
 import numpy as np
+from scipy.sparse import issparse, spmatrix
 from sklearn.utils import column_or_1d
 
-from ..custom_types import NP1D_Any, NP1D_bool, NP1D_int, NP_bool
+from ..custom_types import (
+    NP1D_Any,
+    NP1D_bool,
+    NP1D_int,
+    NP2D_float,
+    NP2D_int,
+    NP_bool,
+)
 
 
 def IDENTITY(x):
@@ -172,3 +180,56 @@ def order_by(x: NP1D_Any, y: NP1D_Any, unique_x: bool = False) -> NP1D_Any:
         raise ValueError("'x' is not a subset of 'y'.")
 
     return np.repeat(restricted_y, counts_x[inv_y])
+
+
+def get_indices_dists_from_adj(adj: spmatrix) -> Tuple[NP2D_int, NP2D_float]:
+    """Given a square adjacency matrix of shape (n_samples, n_samples),
+    return two arrays of shape (n_samples, n_neighbors) corresponding
+    to the indices and weights of those neighbors.
+
+    Parameters
+    __________
+    adj: spmatrix
+        Sparse square adjacency matrix.
+
+    Examples
+    ________
+    >>> import scipy.sparse as sp
+    >>> src = np.array([1, 1, 0, 0, 2, 2, 3, 3])
+    >>> trg = np.array([0, 3, 1, 2, 0, 1, 2, 1])
+    >>> data = np.array([0, 1.1, 5, 0, 3, 5, 3, 2])
+    >>> adj = sp.csr_matrix((data, (src, trg)))
+    >>> knn_indices, knn_dists = get_indices_dists_from_adj(adj)
+    >>> knn_indices
+    array([[1, 2],
+           [0, 3],
+           [0, 1],
+           [1, 2]], dtype=int32)
+    >>> knn_dists
+    array([[5. , 0. ],
+           [0. , 1.1],
+           [3. , 5. ],
+           [2. , 3. ]])
+    """
+    if not issparse(adj):
+        raise ValueError("Adjacency matrix should be sparse.")
+    adj = adj.tocoo()
+
+    if adj.shape[0] != adj.shape[1]:
+        raise ValueError("Expected square adjacency matrix.")
+
+    n_neighbors = np.unique(np.unique(adj.row, return_counts=True)[1])
+    if n_neighbors.size != 1:
+        raise ValueError(
+            "Found differing numbers of neighbors in the adjacency matrix."
+        )
+    n_neighbors = n_neighbors[0]
+    n_samples = adj.shape[0]
+
+    assert adj.row.size == n_samples * n_neighbors
+    assert np.all(adj.row[:-1] <= adj.row[1:])  # make sure it's sorted
+
+    knn_indices = adj.col.reshape((n_samples, n_neighbors))
+    knn_dists = adj.data.reshape((n_samples, n_neighbors))
+
+    return knn_indices, knn_dists

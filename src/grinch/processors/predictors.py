@@ -97,7 +97,7 @@ class KMeans(BaseUnsupervisedPredictor):
 class Leiden(BaseUnsupervisedPredictor):
 
     class Config(BaseUnsupervisedPredictor.Config):
-        x_key: str = f"obsp.{OBSP.KNN}"
+        x_key: str = f"obsp.{OBSP.UMAP_DISTANCES}"
         labels_key: str = f"obs.{OBS.LEIDEN}"
         stats_key: str = f"uns.{UNS.LEIDEN_}"
         resolution: float = Field(1.0, gt=0)

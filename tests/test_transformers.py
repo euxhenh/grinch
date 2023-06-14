@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 import scipy.sparse as sp
@@ -5,7 +7,10 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from sklearn.decomposition import PCA, TruncatedSVD
-from umap import UMAP
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="NumbaDeprecationWarning")
+    from umap import UMAP
 
 from grinch import OBSM, UNS
 

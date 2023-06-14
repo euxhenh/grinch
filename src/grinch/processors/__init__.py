@@ -2,7 +2,7 @@ from .base_processor import BaseProcessor, adata_modifier
 from .de import BimodalTest, KSTest, TTest
 from .enrich import GSEA
 from .feature_selection import PhenotypeCover
-from .graphs import BaseGraphConstructor, KNNGraph
+from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
 from .group import GroupProcess
 from .indexer import BaseIndexer, IndexProcessor, InplaceIndexer
 from .predictors import (
@@ -36,6 +36,7 @@ __all__ = [
     'KMeans',
     'BaseGraphConstructor',
     'KNNGraph',
+    'FuzzySimplicialSetGraph',
     'Leiden',
     'LogisticRegression',
     'DataSplitter',

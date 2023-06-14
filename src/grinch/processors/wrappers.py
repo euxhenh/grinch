@@ -1,9 +1,16 @@
+import warnings
+
 import igraph as ig
 import leidenalg as la
 import numpy as np
-from scipy.sparse import spmatrix
+from scipy.sparse import csr_matrix, spmatrix
 
-from ..custom_types import NP1D_int, NP2D_Any
+from ..custom_types import NP1D_int, NP2D_Any, NP2D_float
+from ..utils.ops import get_indices_dists_from_adj
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="NumbaDeprecationWarning")
+    from umap.umap_ import fuzzy_simplicial_set
 
 
 class Leiden:
@@ -87,3 +94,54 @@ class Leiden:
     def fit_predict(self, G: ig.Graph | NP2D_Any | spmatrix):
         self.fit(G)
         return self.membership_
+
+
+class FuzzySimplicialSet:
+    """Standalone class for computing nearest neighbors
+    based on UMAP's fuzzy simplicial set algorithm.
+    """
+    def __init__(
+        self,
+        n_neighbors: int = 15,
+        metric: str = 'euclidean',
+        precomputed: bool = False,
+        random_state: int | None = None,
+        **kwargs,
+    ):
+        self.n_neighbors = n_neighbors
+        self.precomputed = precomputed
+        self.metric = metric
+        self.random_state = random_state
+        self.kwargs = kwargs
+
+        self.adj: spmatrix = None
+
+    def fit(self, X: NP2D_float | spmatrix):
+        kwargs = self.kwargs.copy()
+        if self.precomputed:
+            knn_indices, knn_dists = get_indices_dists_from_adj(X)
+            kwargs['knn_indices'] = knn_indices
+            kwargs['knn_dists'] = knn_dists
+            kwargs['X'] = csr_matrix((X.shape[0], 1))
+            kwargs['n_neighbors'] = knn_indices.shape[1]
+        else:
+            kwargs['X'] = X
+            kwargs['n_neighbors'] = self.n_neighbors
+
+        adj = fuzzy_simplicial_set(
+            metric=self.metric,
+            random_state=self.random_state,
+            **kwargs,
+        )[0]
+
+        self.adj = adj
+
+    def predict(self, _):
+        raise NotImplementedError(
+            f"Class of type {self.__class__} does "
+            "not implement a `predict` method."
+        )
+
+    def fit_predict(self, X: NP2D_float | spmatrix) -> spmatrix:
+        self.fit(X)
+        return self.adj

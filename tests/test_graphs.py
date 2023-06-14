@@ -14,13 +14,12 @@ X_mods = [X, sp.csr_matrix(X), sp.csc_matrix(X)]
 
 
 @pytest.mark.parametrize("X", X_mods)
-def test_knn_connectivity(X):
+def test_knn(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.KNNGraph.Config",
             "x_key": "X",
             "n_neighbors": 1,
-            "mode": "connectivity",
         }
     )
     cfg = instantiate(cfg)
@@ -29,24 +28,8 @@ def test_knn_connectivity(X):
     knn(adata)
 
     ans = np.array([[0, 0, 1], [0, 0, 1], [1, 0, 0]])
-    assert_allclose(ans, adata.obsp[OBSP.KNN])
-    assert isinstance(adata.obsp[OBSP.KNN], sp.csr_matrix)
-
-
-@pytest.mark.parametrize("X", X_mods)
-def test_knn_distance(X):
-    cfg = OmegaConf.create(
-        {
-            "_target_": "src.grinch.KNNGraph.Config",
-            "x_key": "X",
-            "n_neighbors": 1,
-        }
-    )
-    cfg = instantiate(cfg)
-    knn = cfg.initialize()
-    adata = AnnData(X)
-    knn(adata)
-
+    assert_allclose(ans, adata.obsp[OBSP.KNN_CONNECTIVITY])
+    assert isinstance(adata.obsp[OBSP.KNN_CONNECTIVITY], sp.csr_matrix)
     ans = np.array([[0, 0, 1], [0, 0, 2], [1, 0, 0]])
-    assert_allclose(ans, adata.obsp[OBSP.KNN])
-    assert isinstance(adata.obsp[OBSP.KNN], sp.csr_matrix)
+    assert_allclose(ans, adata.obsp[OBSP.KNN_DISTANCES])
+    assert isinstance(adata.obsp[OBSP.KNN_DISTANCES], sp.csr_matrix)
