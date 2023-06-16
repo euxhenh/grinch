@@ -8,8 +8,8 @@ from pydantic import Field
 from pyensembl import EnsemblRelease
 
 from ..aliases import UNS, VAR
+from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_bool
-from ..filter import Filter, StackedFilter
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)

@@ -7,8 +7,8 @@ from pydantic import BaseModel, Extra, validator
 from sklearn.utils import check_consistent_length
 from sklearn.utils.validation import column_or_1d
 
-from .custom_types import NP1D_Any, NP1D_bool, NP1D_float, NP1D_int
-from .filter import Filter, StackedFilter
+from .cond_filter import Filter, StackedFilter
+from .custom_types import NP1D_Any, NP1D_bool, NP1D_float, NP1D_int, NP1D_str
 from .utils.stats import _correct
 
 
@@ -19,6 +19,8 @@ class TestSummary(BaseModel, abc.ABC):
         validate_assignment = True
         extra = Extra.ignore
         validate_all = True
+
+    name: NP1D_str | None
 
     @validator('*', pre=True)
     def _to_np(cls, v) -> Optional[NP1D_Any]:
@@ -53,6 +55,12 @@ class TestSummary(BaseModel, abc.ABC):
                 s += f"    {field}={arr},\n"
         s += ")"
         return s
+
+    def __getitem__(self, val):
+        return type(self)(**{
+            field: (arr[val] if arr is not None else None)
+            for field, arr in self.dict().items()
+        })
 
     def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:
         """Converts self to tuple. To be used internally only."""
