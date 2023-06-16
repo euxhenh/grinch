@@ -11,7 +11,7 @@ from .utils.validation import all_not_None
 logger = logging.getLogger(__name__)
 
 
-class FilterCondition(BaseModel):
+class Filter(BaseModel):
     """Takes any object and looks for 'key' in its members. It then selects
     indices from 'key' based on the conditions defined in this class. If
     cutoff is not None, will take all values greater than or less than
@@ -44,8 +44,8 @@ class FilterCondition(BaseModel):
             raise ValueError("Only one or none of 'cutoff' or 'top_k' must be specified.")
         return top_k
 
-    def __and__(self, other) -> 'StackedFilterCondition':
-        return StackedFilterCondition(self, other)
+    def __and__(self, other) -> 'StackedFilter':
+        return StackedFilter(self, other)
 
     def _take_top_k(self, arr: NP1D_float, as_mask: bool = True):
         """Takes the top k elements from arr and returns a mask or index
@@ -130,16 +130,16 @@ class FilterCondition(BaseModel):
         return self._take_mask(arr, as_mask=as_mask)
 
 
-class StackedFilterCondition:
-    """A convenience class for stacking multiple FilterCondition's together.
+class StackedFilter:
+    """A convenience class for stacking multiple Filter's together.
     """
 
     def __init__(self, *fcs):
         self.fcs = []
         for fc in fcs:
-            if isinstance(fc, FilterCondition):
+            if isinstance(fc, Filter):
                 self.fcs.append(fc)
-            elif isinstance(fc, StackedFilterCondition):
+            elif isinstance(fc, StackedFilter):
                 self.fcs.extend(fc.fcs)
             else:
                 raise TypeError(f"Cannot stack object of type {type(fc)}.")
@@ -147,8 +147,8 @@ class StackedFilterCondition:
     def __len__(self):
         return len(self.fcs)
 
-    def __and__(self, other) -> 'StackedFilterCondition':
-        return StackedFilterCondition(self, other)
+    def __and__(self, other) -> 'StackedFilter':
+        return StackedFilter(self, other)
 
     @overload
     def __call__(self, obj: Any, as_mask: Literal[True]) -> NP1D_bool: ...

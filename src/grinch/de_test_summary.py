@@ -8,7 +8,7 @@ from sklearn.utils import check_consistent_length
 from sklearn.utils.validation import column_or_1d
 
 from .custom_types import NP1D_Any, NP1D_bool, NP1D_float, NP1D_int
-from .filter_condition import FilterCondition, StackedFilterCondition
+from .filter import Filter, StackedFilter
 from .utils.stats import _correct
 
 
@@ -95,10 +95,10 @@ class TestSummary(BaseModel, abc.ABC):
         return cls.from_dict(_dict)
 
     @overload
-    def where(self, *conds: FilterCondition, as_mask: Literal[True]) -> NP1D_bool: ...
+    def where(self, *conds: Filter, as_mask: Literal[True]) -> NP1D_bool: ...
 
     @overload
-    def where(self, *conds: FilterCondition, as_mask: Literal[False]) -> NP1D_int: ...
+    def where(self, *conds: Filter, as_mask: Literal[False]) -> NP1D_int: ...
 
     def where(self, *conds, as_mask=False) -> NP1D_int | NP1D_bool:
         """Given a condition which conists of a key field, a threshold
@@ -108,7 +108,7 @@ class TestSummary(BaseModel, abc.ABC):
         # Iterate over conditions and take logical-& of masks returned
         if len(conds) == 1:
             return conds[0](self, as_mask=as_mask)
-        return StackedFilterCondition(*conds)(self, as_mask=as_mask)
+        return StackedFilter(*conds)(self, as_mask=as_mask)
 
     def argsort(self, by: str, reverse: bool = False) -> NP1D_int:
         argidx = np.argsort(getattr(self, by))
@@ -153,6 +153,10 @@ class DETestSummary(PvalTestSummary):
     mean1: Optional[NP1D_float]
     mean2: Optional[NP1D_float]
     log2fc: Optional[NP1D_float]
+
+    @property
+    def abs_log2fc(self) -> NP1D_float | None:
+        return np.abs(self.log2fc) if self.log2fc is not None else None
 
 
 class KSTestSummary(DETestSummary):

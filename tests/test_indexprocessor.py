@@ -23,7 +23,7 @@ X_mods = [X, sp.csr_matrix(X), sp.csc_matrix(X), to_view(X)]
 def test_indexer_obs(X):
     fcfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "var.pick",
         }
     )

@@ -157,7 +157,7 @@ def test_leiden(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.Leiden.Config",
-            "x_key": f"obsp.{OBSP.KNN_DISTANCES}",
+            "x_key": f"obsp.{OBSP.KNN_DISTANCE}",
             "seed": 42,
         }
     )

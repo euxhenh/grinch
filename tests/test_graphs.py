@@ -31,5 +31,5 @@ def test_knn(X):
     assert_allclose(ans, adata.obsp[OBSP.KNN_CONNECTIVITY])
     assert isinstance(adata.obsp[OBSP.KNN_CONNECTIVITY], sp.csr_matrix)
     ans = np.array([[0, 0, 1], [0, 0, 2], [1, 0, 0]])
-    assert_allclose(ans, adata.obsp[OBSP.KNN_DISTANCES])
-    assert isinstance(adata.obsp[OBSP.KNN_DISTANCES], sp.csr_matrix)
+    assert_allclose(ans, adata.obsp[OBSP.KNN_DISTANCE])
+    assert isinstance(adata.obsp[OBSP.KNN_DISTANCE], sp.csr_matrix)

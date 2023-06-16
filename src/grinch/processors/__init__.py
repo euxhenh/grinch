@@ -1,6 +1,6 @@
 from .base_processor import BaseProcessor, adata_modifier
 from .de import BimodalTest, KSTest, TTest
-from .enrich import GSEA
+from .enrich import GSEAEnrich
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
 from .group import GroupProcess
@@ -24,7 +24,7 @@ __all__ = [
     'TTest',
     'KSTest',
     'BimodalTest',
-    'GSEA',
+    'GSEAEnrich',
     'GroupProcess',
     'BaseIndexer',
     'InplaceIndexer',

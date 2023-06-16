@@ -11,16 +11,16 @@ from sklearn.utils.validation import column_or_1d
 
 from ..aliases import UNS
 from ..custom_types import NP1D_int, NP1D_str
-from ..de_test_summary import DETestSummary, FilterCondition, TestSummary
+from ..de_test_summary import DETestSummary, Filter, TestSummary
 from ..utils.validation import pop_args
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_FILTERS: List[FilterCondition] = [
-    FilterCondition(key='qvals', cutoff=0.05, greater_is_True=False, dtype='float'),
-    FilterCondition(key='log2fc', cutoff=1, greater_is_True=True, dtype='float'),
+DEFAULT_FILTERS: List[Filter] = [
+    Filter(key='qvals', cutoff=0.05, greater_is_True=False, dtype='float'),
+    Filter(key='log2fc', cutoff=1, greater_is_True=True, dtype='float'),
 ]
 
 DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
@@ -32,8 +32,8 @@ EMPTY_TEST = pd.DataFrame(columns=[
 ])
 
 
-class GSEA(BaseProcessor):
-    """Performs gene set enrichment analysis. Will parse a dict of
+class GSEAEnrich(BaseProcessor):
+    """Performs gene set enrichment analysis enrichment. Will parse a dict of
     dataframes or a single dataframe and select the top k genes to perform
     GSEA based on user defined criteria.
 
@@ -48,7 +48,7 @@ class GSEA(BaseProcessor):
         dict, or to a single dataframe otherwise.
     gene_sets: str or list of str
         Names of gene sets to use for GSEA.
-    filter_by: list of FilterCondition
+    filter_by: list of Filter
         These will be used to filter genes for GSEA. Dict keys are ignored.
     gene_names_key: str
         Key to use for parsing gene symbols (names). Can be 'var_names' or
@@ -59,11 +59,11 @@ class GSEA(BaseProcessor):
 
     class Config(BaseProcessor.Config):
         read_key: str = f"uns.{UNS.TTEST}"
-        save_key: str = f"uns.{UNS.GSEA}"
+        save_key: str = f"uns.{UNS.GSEA_ENRICH}"
 
         gene_sets: List[str] | str = DEFAULT_GENE_SET
         # Dict of keys to use for filtering DE genes; keys are ignored
-        filter_by: List[FilterCondition] = DEFAULT_FILTERS
+        filter_by: List[Filter] = DEFAULT_FILTERS
         gene_names_key: str = "var_names"
         kwargs: Dict[str, Any] = {}
         # not to be used in a config
@@ -111,7 +111,7 @@ class GSEA(BaseProcessor):
         test: pd.DataFrame | TestSummary,
         gene_list_all: NP1D_str,
         *,
-        filter_by: List[FilterCondition],
+        filter_by: List[Filter],
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
         test_type: Type[TestSummary] = DETestSummary,
     ) -> pd.DataFrame:
@@ -120,11 +120,11 @@ class GSEA(BaseProcessor):
         Parameters
         __________
         test: pd.DataFrame or TestSummary
-            Must contain keys specified in all FilterCondition's passed.
+            Must contain keys specified in all Filter's passed.
         gene_list_all: ndarray of str
             List of all genes to select from. Must have the same length as
             test.
-        filter_by: List of FilterCondition
+        filter_by: List of Filter
             Determine which genes to pick from gene_list_all based on
             results of test.
         test_type: type
@@ -155,7 +155,7 @@ class GSEA(BaseProcessor):
             logger.warning('Encountered empty gene list.')
             # Empty dataframe
             return EMPTY_TEST
-        return GSEA._gsea(gene_list, gene_sets=gene_sets)
+        return GSEAEnrich._gsea(gene_list, gene_sets=gene_sets)
 
     def _process_dict(
         self,
@@ -168,7 +168,7 @@ class GSEA(BaseProcessor):
             if isinstance(v, dict):
                 self._process_dict(v, prefix=f'{k}.', func=func)
             else:
-                logger.info(f"Running GSEA for '{k}'.")
+                logger.info(f"Running GSEA Enrich for '{k}'.")
                 gsea_test_summary: pd.DataFrame = func(v)
                 save_key = f'{self.cfg.save_key}.{prefix}{k}'
                 self.store_item(save_key, gsea_test_summary)
@@ -185,7 +185,7 @@ class GSEA(BaseProcessor):
             )
 
         _gsea_f = partial(
-            GSEA._process_de_test,
+            type(self)._process_de_test,
             gene_list_all=gene_list_all,
             gene_sets=self.cfg.gene_sets,
             filter_by=self.cfg.filter_by,
