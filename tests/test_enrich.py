@@ -22,15 +22,13 @@ X_mods = [X]
 def test_enrich(X):
     fcfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.Filter",
-            "key": "pvals",
-            "cutoff": 0.05,
+            "_target_": "src.grinch.pVal_Filter_05",
         }
     )
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.GSEAEnrich.Config",
-            "filter_by": [fcfg],
+            "filter_by": fcfg,
         }
     )
     cfg = instantiate(cfg, _convert_='all')

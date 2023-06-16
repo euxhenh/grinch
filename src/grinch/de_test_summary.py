@@ -1,5 +1,5 @@
 import abc
-from typing import Dict, Literal, Optional, Tuple, overload
+from typing import Dict, Literal, Tuple, overload
 
 import numpy as np
 import pandas as pd
@@ -7,8 +7,8 @@ from pydantic import BaseModel, Extra, validator
 from sklearn.utils import check_consistent_length
 from sklearn.utils.validation import column_or_1d
 
-from .custom_types import NP1D_Any, NP1D_bool, NP1D_float, NP1D_int
-from .filter import Filter, StackedFilter
+from .cond_filter import Filter, StackedFilter
+from .custom_types import NP1D_Any, NP1D_bool, NP1D_float, NP1D_int, NP1D_str
 from .utils.stats import _correct
 
 
@@ -20,8 +20,10 @@ class TestSummary(BaseModel, abc.ABC):
         extra = Extra.ignore
         validate_all = True
 
+    name: NP1D_str | None = None
+
     @validator('*', pre=True)
-    def _to_np(cls, v) -> Optional[NP1D_Any]:
+    def _to_np(cls, v) -> NP1D_Any | None:
         # Convert to numpy before performing any validation
         return v if v is None else column_or_1d(v)
 
@@ -54,7 +56,13 @@ class TestSummary(BaseModel, abc.ABC):
         s += ")"
         return s
 
-    def _tuple(self, exclude_none: bool = False) -> Tuple[Optional[NP1D_float], ...]:
+    def __getitem__(self, val):
+        return type(self)(**{
+            field: (arr[val] if arr is not None else None)
+            for field, arr in self.dict().items()
+        })
+
+    def _tuple(self, exclude_none: bool = False) -> Tuple[NP1D_float | None, ...]:
         """Converts self to tuple. To be used internally only."""
         data: Dict[str, NP1D_float] = self.dict(exclude_none=exclude_none)
         return tuple(data.values())
@@ -127,7 +135,7 @@ class PvalTestSummary(TestSummary):
         they will be automatically computed using 'fdr_bh' correction.
     """
     pvals: NP1D_float
-    qvals: Optional[NP1D_float]
+    qvals: NP1D_float | None = None
 
     @validator('qvals', pre=True)
     def _init_qvals(cls, qvals, values) -> NP1D_float:
@@ -150,9 +158,9 @@ class DETestSummary(PvalTestSummary):
     """
 
     # Group means
-    mean1: Optional[NP1D_float]
-    mean2: Optional[NP1D_float]
-    log2fc: Optional[NP1D_float]
+    mean1: NP1D_float | None = None
+    mean2: NP1D_float | None = None
+    log2fc: NP1D_float | None = None
 
     @property
     def abs_log2fc(self) -> NP1D_float | None:
@@ -170,4 +178,4 @@ class BimodalTestSummary(PvalTestSummary):
     """A summary dataclass for bimodal test results.
     """
 
-    statistic: Optional[NP1D_float]
+    statistic: NP1D_float | None = None

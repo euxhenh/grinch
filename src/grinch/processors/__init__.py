@@ -1,9 +1,9 @@
 from .base_processor import BaseProcessor, adata_modifier
 from .de import BimodalTest, KSTest, TTest
-from .enrich import GSEAEnrich
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
 from .group import GroupProcess
+from .gsea import GSEAEnrich, GSEAPrerank
 from .indexer import BaseIndexer, IndexProcessor, InplaceIndexer
 from .predictors import (
     BasePredictor,
@@ -25,6 +25,7 @@ __all__ = [
     'KSTest',
     'BimodalTest',
     'GSEAEnrich',
+    'GSEAPrerank',
     'GroupProcess',
     'BaseIndexer',
     'InplaceIndexer',

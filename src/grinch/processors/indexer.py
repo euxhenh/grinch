@@ -5,8 +5,8 @@ from typing import List
 from anndata import AnnData
 from pydantic import Field, validator
 
+from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_bool
-from ..filter import Filter, StackedFilter
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 

@@ -1,8 +1,15 @@
 from . import custom_types as typing
 from .aliases import ADK, OBS, OBSM, OBSP, UNS, VAR, VARM, VARP, AnnDataKeys
+from .cond_filter import Filter, StackedFilter
 from .conf import BaseConfig, BaseConfigurable
-from .de_test_summary import BimodalTestSummary, DETestSummary, TestSummary
-from .filter import Filter, StackedFilter
+from .de_test_summary import (
+    BimodalTestSummary,
+    DETestSummary,
+    KSTestSummary,
+    PvalTestSummary,
+    TestSummary,
+)
+from .defaults import *  # noqa
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
 from .normalizers import Log1P, NormalizeTotal
@@ -31,6 +38,8 @@ __all__ = [
     'Reporter',
     'DETestSummary',
     'TestSummary',
+    'PvalTestSummary',
+    'KSTestSummary',
     'Filter',
     'StackedFilter',
     'Log1P',
