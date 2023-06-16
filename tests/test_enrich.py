@@ -22,14 +22,14 @@ X_mods = [X]
 def test_enrich(X):
     fcfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "pvals",
             "cutoff": 0.05,
         }
     )
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.GSEA.Config",
+            "_target_": "src.grinch.GSEAEnrich.Config",
             "filter_by": [fcfg],
         }
     )
@@ -41,7 +41,7 @@ def test_enrich(X):
     adata.var_names = ['IGKV4-1', 'CD55', 'IGKC', 'PPFIBP1', 'ABHD4']
     gsea(adata)
 
-    results = adata.uns[UNS.GSEA]
+    results = adata.uns[UNS.GSEA_ENRICH]
     genes = results['Genes'].to_numpy()
     for g in genes:
         gs = g.split(';')
@@ -54,7 +54,7 @@ def test_enrich(X):
     adata.var_names = ['IGKV4-1', 'CD55', 'IGKC', 'PPFIBP1', 'ABHD4']
     gsea(adata)
 
-    results = adata.uns[UNS.GSEA]['0']
+    results = adata.uns[UNS.GSEA_ENRICH]['0']
     genes = results['Genes'].to_numpy()
     for g in genes:
         gs = g.split(';')

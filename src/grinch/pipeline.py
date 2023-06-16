@@ -1,10 +1,11 @@
 import logging
 import traceback
+from os.path import expanduser
 from typing import List, Optional
 
 import anndata
 from anndata import AnnData
-from pydantic import Field, validate_arguments
+from pydantic import Field, validate_arguments, validator
 from tqdm.auto import tqdm
 
 from .conf import BaseConfigurable
@@ -31,6 +32,10 @@ class GRPipeline(BaseConfigurable):
         # to True. This will replace the data matrix with a sparse matrix
         # of all zeros.
         no_data_write: bool = False
+
+        @validator('data_readpath', 'data_writepath')
+        def expand_paths(cls, val):
+            return expanduser(val) if val is not None else None
 
     cfg: Config
 

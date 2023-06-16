@@ -70,7 +70,7 @@ class KNNGraph(BaseGraphConstructor):
 
     class Config(BaseGraphConstructor.Config):
         conn_key: str = f"obsp.{OBSP.KNN_CONNECTIVITY}"
-        dist_key: str = f"obsp.{OBSP.KNN_DISTANCES}"
+        dist_key: str = f"obsp.{OBSP.KNN_DISTANCE}"
         n_neighbors: int = Field(15, gt=0)
         n_jobs: int = Field(4, gt=0)
 
@@ -107,9 +107,9 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
     """
 
     class Config(BaseGraphConstructor.Config):
-        x_key: str = f"obsp.{OBSP.KNN_DISTANCES}"
+        x_key: str = f"obsp.{OBSP.KNN_DISTANCE}"
         conn_key: str = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
-        dist_key: str = f"obsp.{OBSP.UMAP_DISTANCES}"
+        dist_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"
         precomputed: bool = True
         n_neighbors: int = 15
         metric: str = "euclidean"

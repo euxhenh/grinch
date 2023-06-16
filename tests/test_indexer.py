@@ -21,7 +21,7 @@ X_mods = [X, sp.csr_matrix(X), sp.csc_matrix(X), to_view(X)]
 def test_indexer_obs(X):
     fcfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "obs.pick",
         }
     )
@@ -48,7 +48,7 @@ def test_indexer_obs(X):
 def test_indexer_var(X):
     fcfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "var.pick",
         }
     )
@@ -77,19 +77,19 @@ def test_indexer_var(X):
 def test_indexer_obs_multiple(X):
     fcfg1 = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "obs.pick",
         }
     )
     fcfg2 = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "obs.pick2",
         }
     )
     fcfg3 = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterCondition",
+            "_target_": "src.grinch.Filter",
             "key": "obs.pick3",
             "cutoff": 0.5,
             "greater_is_True": True,

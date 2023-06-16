@@ -6,7 +6,7 @@ from anndata import AnnData
 from pydantic import Field, validator
 
 from ..custom_types import NP1D_bool
-from ..filter_condition import FilterCondition, StackedFilterCondition
+from ..filter import Filter, StackedFilter
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
@@ -15,7 +15,7 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     """A base class for indexing operations."""
 
     class Config(BaseProcessor.Config):
-        filter_by: List[FilterCondition]
+        filter_by: List[Filter]
         # Can be 0, 1 or 'obs', 'var'
         axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
 
@@ -32,7 +32,7 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        sfc = StackedFilterCondition(*self.cfg.filter_by)
+        sfc = StackedFilter(*self.cfg.filter_by)
         mask: NP1D_bool = sfc(adata, as_mask=True)
         return self._process_mask(adata, mask)
 

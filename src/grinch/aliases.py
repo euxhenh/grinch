@@ -46,7 +46,8 @@ class AnnDataKeys:
         LOG_REG_ = auto()
         TTEST = auto()
         KSTEST = auto()
-        GSEA = auto()
+        GSEA_ENRICH = auto()
+        GSEA_PRERANK = auto()
         BIMODALTEST = auto()
         PCOVER_ = auto()
         KNN_ = auto()
@@ -54,9 +55,9 @@ class AnnDataKeys:
 
     class OBSP:
         KNN_CONNECTIVITY = auto()
-        KNN_DISTANCES = auto()
+        KNN_DISTANCE = auto()
         UMAP_CONNECTIVITY = auto()
-        UMAP_DISTANCES = auto()
+        UMAP_AFFINITY = auto()
 
     class VARP:
         ...

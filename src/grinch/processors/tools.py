@@ -9,7 +9,7 @@ from pyensembl import EnsemblRelease
 
 from ..aliases import UNS, VAR
 from ..custom_types import NP1D_bool
-from ..filter_condition import FilterCondition, StackedFilterCondition
+from ..filter import Filter, StackedFilter
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
@@ -48,16 +48,16 @@ class GeneIdToName(BaseProcessor):
 
 
 class StoreAsMask(BaseProcessor):
-    # Simple class that stores a mask of FilterConditions
+    # Simple class that stores a mask of Filters
 
     class Config(BaseProcessor.Config):
-        filter_by: Dict[str, FilterCondition]
+        filter_by: Dict[str, Filter]
         save_key: str
 
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        sfc = StackedFilterCondition(*self.cfg.filter_by.values())
+        sfc = StackedFilter(*self.cfg.filter_by.values())
         mask: NP1D_bool = sfc(adata, as_mask=True)
         self.store_item(self.cfg.save_key, mask)
 
@@ -104,3 +104,37 @@ class FilterNaN(BaseProcessor):
         if mask.sum() > 0:
             logger.info(f"Removing {mask.sum()} rows with NaNs.")
             adata._inplace_subset_obs(~mask)
+
+
+class ApplyOp(BaseProcessor):
+    """Applies a numpy operation to a column and stores
+    it somewhere else.
+
+    Parameters
+    __________
+    read_key: str
+    save_key: str
+        If save_key is None, will store at read_key.
+    op: str
+        Numpy operation to apply. Can also be an attribute,
+        but in that case as_attr must be set to True.
+    as_attr: bool
+        If False, will call np.op(x), otherwise call x.op().
+    """
+
+    class Config(BaseProcessor.Config):
+        read_key: str
+        save_key: str | None = None
+        op: str
+        as_attr: bool = False
+
+    cfg: Config
+
+    def _process(self, adata: AnnData) -> None:
+        x = self.get_repr(adata, self.cfg.read_key)
+        x = (
+            getattr(np, self.cfg.op)(x) if not self.cfg.as_attr
+            else getattr(x, self.cfg.op)()
+        )
+        save_key = self.cfg.save_key or self.cfg.read_key
+        self.store_item(save_key, x)
