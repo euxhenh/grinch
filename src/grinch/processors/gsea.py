@@ -78,7 +78,7 @@ class GSEA(BaseProcessor, abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _gsea(test: TestSummary, gene_sets: List[str] | str, **kwargs):
+    def _gsea(test: DETestSummary, gene_sets: List[str] | str, **kwargs):
         raise NotImplementedError
 
     def _process(self, adata: AnnData) -> None:
@@ -173,7 +173,7 @@ class GSEA(BaseProcessor, abc.ABC):
         test.name = gene_list_all
         # Apply all filters
         if isinstance(filter_by, Filter):
-            filter_by = (filter_by,)
+            filter_by = [filter_by]
         gene_mask: NP1D_int = test.where(*filter_by, as_mask=True)
         test = test[gene_mask]
 
@@ -205,7 +205,7 @@ class GSEAEnrich(GSEA):
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.enrichr."""
-        gene_list = test.name.tolist()
+        gene_list = test.name.tolist()  # type: ignore
         logger.info(f"Using {len(gene_list)} genes.")
         _ = kwargs.pop("seed", None)
         try:
