@@ -12,8 +12,9 @@ from sklearn.utils.validation import column_or_1d
 
 from ..aliases import UNS
 from ..custom_types import NP1D_int, NP1D_str
-from ..defaults import qVal_Filter_05, log2fc_Filter_1
 from ..de_test_summary import DETestSummary, Filter, TestSummary
+from ..defaults import log2fc_Filter_1, qVal_Filter_05
+from ..utils.decorators import retry
 from ..utils.validation import pop_args
 from .base_processor import BaseProcessor
 
@@ -199,6 +200,7 @@ class GSEAEnrich(GSEA):
     cfg: Config
 
     @staticmethod
+    @retry(5, msg="Error sending gene list", logger=logger, sleep=1)
     def _gsea(
         test: DETestSummary,
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
@@ -235,6 +237,7 @@ class GSEAPrerank(GSEA):
     cfg: Config
 
     @staticmethod
+    @retry(5, msg="Error sending gene list", logger=logger, sleep=1)
     def _gsea(
         test: DETestSummary,
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
