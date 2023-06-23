@@ -19,7 +19,7 @@ def retry(
         def _wrapper(*args, **kwargs):
             for i in range(retries + 1):
                 try:
-                    f(*args, **kwargs)
+                    return f(*args, **kwargs)
                 except Exception as e:
                     if i < retries and (msg is None or msg in str(e)):
                         if verbose:
