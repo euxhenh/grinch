@@ -161,10 +161,10 @@ def order_by(x: NP1D_Any, y: NP1D_Any, unique_x: bool = False) -> NP1D_Any:
 
     Examples
     ________
-    >>> order_by(np.array([5, 6, 0, 8, 6]), np.array([0, 5, 3, 9, 6, 8]))
-    array([0, 5, 6, 6, 8])
-    >>> order_by(np.array([5, 6, 0, 8]), np.array([0, 5, 3, 9, 6, 8]), unique_x=True)
-    array([0, 5, 6, 8])
+    >>> order_by(np.array([5, 6, 0, 8, 6]), np.array([0, 5, 3, 9, 8, 6]))
+    array([0, 5, 8, 6, 6])
+    >>> order_by(np.array([5, 6, 0, 8]), np.array([0, 5, 3, 9, 8, 6]), unique_x=True)
+    array([0, 5, 8, 6])
     """
     # Fast common corner case
     if np.array_equal(x, y):
