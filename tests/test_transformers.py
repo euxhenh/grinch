@@ -29,7 +29,7 @@ rng = np.random.default_rng(SEED)
 X_rand = rng.integers(0, 15, (10, 20)).astype(np.float32)
 
 X_mods = [X, to_view(X), X_rand, to_view(X_rand)]
-X_mods_sparse = [sp.csr_array(X), sp.csr_array(X_rand)]
+X_mods_sparse = [sp.csr_matrix(X), sp.csr_matrix(X_rand)]
 
 
 @pytest.mark.parametrize("X", X_mods)
