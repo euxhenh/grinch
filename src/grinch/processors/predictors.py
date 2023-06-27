@@ -65,7 +65,7 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         self.store_item(self.cfg.labels_key, labels)
 
 
-def centroids_from_Xy(X: NP2D_float, y: NP1D_Any) -> Dict[str, NP1D_float]:
+def centroids_from_Xy(X, y: NP1D_Any) -> Dict[str, NP1D_float]:
     """Computes the X centroids of each group in y.
     """
     X, = indexable(X)
@@ -152,7 +152,7 @@ class Leiden(BaseUnsupervisedPredictor):
             return
 
         x = self.get_repr(adata, self.cfg.x_key_for_centroids)
-        labels = self.processor.membership_
+        labels = np.asarray(self.processor.membership_)
         label_to_centroid = centroids_from_Xy(x, labels)
         self.store_item(f"{self.cfg.stats_key}.cluster_centers_",
                         label_to_centroid)
