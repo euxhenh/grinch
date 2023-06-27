@@ -13,7 +13,7 @@ X = np.array([
     [0.5, 6, 67, 0]
 ], dtype=float)
 
-G = sp.csr_array(X)
+G = sp.csr_matrix(X)
 
 
 @pytest.mark.parametrize("X", [G])

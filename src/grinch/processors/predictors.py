@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression as _LogisticRegression
 from sklearn.utils import indexable
 
 from ..aliases import OBS, OBSM, OBSP, UNS
+from ..custom_types import NP1D_Any, NP1D_float, NP2D_float
 from ..utils.ops import group_indices
 from ..utils.validation import check_has_processor, pop_args
 from .base_processor import BaseProcessor, adata_modifier
@@ -62,6 +63,20 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
         self.store_item(self.cfg.labels_key, labels)
+
+
+def centroids_from_Xy(X, y: NP1D_Any) -> Dict[str, NP1D_float]:
+    """Computes the X centroids of each group in y.
+    """
+    X, = indexable(X)
+    assert X.shape[0] == len(y)  # type: ignore
+
+    # Compute centers and store them as well
+    label_to_centroid = {}
+    unq_labels, groups = group_indices(y)
+    for label, group in zip(unq_labels, groups):
+        label_to_centroid[str(label)] = np.ravel(X[group].mean(axis=0))
+    return label_to_centroid
 
 
 class KMeans(BaseUnsupervisedPredictor):
@@ -137,15 +152,8 @@ class Leiden(BaseUnsupervisedPredictor):
             return
 
         x = self.get_repr(adata, self.cfg.x_key_for_centroids)
-        x, = indexable(x)
-        labels = self.processor.membership_
-        assert x.shape[0] == len(labels)  # type: ignore
-
-        # Compute centers and store them as well
-        label_to_centroid = {}
-        unq_labels, groups = group_indices(labels)
-        for label, group in zip(unq_labels, groups):
-            label_to_centroid[str(label)] = np.ravel(x[group].mean(axis=0))
+        labels = np.asarray(self.processor.membership_)
+        label_to_centroid = centroids_from_Xy(x, labels)
         self.store_item(f"{self.cfg.stats_key}.cluster_centers_",
                         label_to_centroid)
 
