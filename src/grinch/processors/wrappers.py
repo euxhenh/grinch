@@ -4,13 +4,10 @@ import igraph as ig
 import leidenalg as la
 import numpy as np
 from scipy.sparse import csr_matrix, spmatrix
+from umap.umap_ import fuzzy_simplicial_set
 
 from ..custom_types import NP1D_int, NP2D_Any, NP2D_float
 from ..utils.ops import get_indices_dists_from_adj
-
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", message="NumbaDeprecationWarning")
-    from umap.umap_ import fuzzy_simplicial_set
 
 
 class Leiden:

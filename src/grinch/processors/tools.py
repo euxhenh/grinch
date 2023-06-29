@@ -43,6 +43,7 @@ class GeneIdToName(BaseProcessor):
                 gene_names.append(gene_id)
                 not_found += 1
 
+        logger.info(f"Could not convert {not_found} gene IDs.")
         self.set_repr(adata, self.cfg.save_key, np.asarray(gene_names))
         self.store_item(self.cfg.stats_key, not_found)
 

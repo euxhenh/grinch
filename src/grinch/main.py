@@ -1,11 +1,14 @@
 import argparse
 import logging
 import os
+import warnings
 
 import hydra
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from rich.logging import RichHandler
+
+warnings.filterwarnings("ignore", message=".*The 'nopython' keyword.*")
 
 logging.basicConfig(
     level=logging.INFO,
