@@ -43,6 +43,12 @@ class GSEA(BaseProcessor, abc.ABC):
     """Will parse a dict of dataframes or a single dataframe and
     select the top k genes to perform GSEA based on user defined criteria.
 
+    To get a list of all gene sets, run
+    ```
+    import gseapy
+    gseapy.get_library_name()
+    ```
+
     Parameters
     __________
     read_key: str
