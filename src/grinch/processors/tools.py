@@ -68,7 +68,7 @@ class ReplaceNaN(BaseProcessor):
     class Config(BaseProcessor.Config):
         read_key: str
         save_key: Optional[str]
-        replace_value: Number | str = Field(0.0, regex='^median$')
+        replace_value: Number | str = Field(0.0, pattern='^median$')
 
     cfg: Config
 
