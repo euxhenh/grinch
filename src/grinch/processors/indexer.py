@@ -17,7 +17,7 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     class Config(BaseProcessor.Config):
         filter_by: List[Filter]
         # Can be 0, 1 or 'obs', 'var'
-        axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
+        axis: int | str = Field(0, ge=0, le=1, pattern='^(obs|var)$')
 
         @validator('axis')
         def ensure_correct_axis(cls, axis):

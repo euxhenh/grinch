@@ -1,6 +1,5 @@
 import abc
 import logging
-import warnings
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData

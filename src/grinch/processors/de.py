@@ -69,7 +69,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         is_logged: bool = True
         # If the data is logged, this should point to the base of the
         # logarithm used. Can be 'e' or a positive float.
-        base: Optional[float | str] = Field('e', gt=0, regex='^e$')
+        base: Optional[float | str] = Field('e', gt=0, pattern='^e$')
         correction: str = 'fdr_bh'
         replace_nan: bool = True
 

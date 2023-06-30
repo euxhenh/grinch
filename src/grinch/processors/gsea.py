@@ -10,10 +10,11 @@ from anndata import AnnData
 from pydantic import validator
 from sklearn.utils.validation import column_or_1d
 
-from ..aliases import UNS
+from ..aliases import UNS, VAR
+from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_int, NP1D_str
-from ..de_test_summary import DETestSummary, Filter, TestSummary
-from ..defaults import log2fc_Filter_1, qVal_Filter_05
+from ..de_test_summary import DETestSummary, TestSummary
+from ..shortcuts import FDRqVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
 from ..utils.validation import pop_args
 from .base_processor import BaseProcessor
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_ENRICH_FILTERS: List[Filter] = [qVal_Filter_05(), log2fc_Filter_1()]
 
 DEFAULT_PRERANK_FILTERS: List[Filter] = [qVal_Filter_05()]
+
+DEFAULT_LEAD_GENE_FILTERS: List[Filter] = [FDRqVal_Filter_05()]
 
 DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
 
@@ -75,11 +78,15 @@ class GSEA(BaseProcessor, abc.ABC):
 
         gene_sets: List[str] | str = DEFAULT_GENE_SET
         # Dict of keys to use for filtering DE genes; keys are ignored
-        filter_by: Filter | List[Filter]
+        filter_by: List[Filter]
         gene_names_key: str = "var_names"
         # not to be used in a config
         test_type: Type[TestSummary] = DETestSummary
         kwargs: Dict[str, Any] = {}
+
+        @validator('filter_by', pre=True, always=True)
+        def ensure_filter_list(cls, val):
+            return [val] if isinstance(val, Filter) else val
 
     cfg: Config
 
@@ -137,7 +144,7 @@ class GSEA(BaseProcessor, abc.ABC):
         test: pd.DataFrame | TestSummary,
         gene_list_all: NP1D_str,
         *,
-        filter_by: Filter | List[Filter],
+        filter_by: List[Filter],
         gsea_func: Callable,
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
         test_type: Type[TestSummary] = DETestSummary,
@@ -179,8 +186,6 @@ class GSEA(BaseProcessor, abc.ABC):
             )
         test.name = gene_list_all
         # Apply all filters
-        if isinstance(filter_by, Filter):
-            filter_by = [filter_by]
         gene_mask: NP1D_int = test.where(*filter_by, as_mask=True)
         test = test[gene_mask]
 
@@ -197,7 +202,7 @@ class GSEAEnrich(GSEA):
 
     class Config(GSEA.Config):
         save_key: str = f"uns.{UNS.GSEA_ENRICH}"
-        filter_by: Filter | List[Filter] = DEFAULT_ENRICH_FILTERS
+        filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -233,7 +238,7 @@ class GSEAPrerank(GSEA):
 
     class Config(GSEA.Config):
         save_key: str = f"uns.{UNS.GSEA_PRERANK}"
-        filter_by: Filter | List[Filter] = DEFAULT_PRERANK_FILTERS
+        filter_by: List[Filter] = DEFAULT_PRERANK_FILTERS
         seed: int = 123  # Prerank doesn't accept null seeds
 
         @validator('kwargs')
@@ -263,3 +268,57 @@ class GSEAPrerank(GSEA):
         for col in to_numeric_cols:
             results[col] = pd.to_numeric(results[col])
         return results
+
+
+class FindLeadGenes(BaseProcessor):
+    """Compute a mask of lead genes as determined by the significant
+    GSEA Prerank processes.
+    """
+
+    class Config(BaseProcessor.Config):
+        read_key: str = f"uns.{UNS.GSEA_PRERANK}"
+        all_leads_save_key: str = f"var.{VAR.IS_LEAD}"
+        lead_group_save_key: str = f"var.{VAR.LEAD_GROUP}"
+        filter_by: List[Filter] = DEFAULT_LEAD_GENE_FILTERS
+        gene_names_key: str = "var_names"
+
+        @validator('filter_by', pre=True, always=True)
+        def ensure_filter_list(cls, val):
+            return [val] if isinstance(val, Filter) else val
+
+    cfg: Config
+
+    def _process(self, adata: AnnData) -> None:
+        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
+        gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
+
+        gsea_prerank_dict = self.get_repr(adata, self.cfg.read_key)
+        if not isinstance(gsea_prerank_dict, dict):
+            raise ValueError("Expected a dictionary of GSEA Prerank tests.")
+        filter_by = StackedFilter(*self.cfg.filter_by)
+
+        all_leads = np.full(adata.shape[1], False)  # [i]=True if i is lead somewhere
+        lead_group = np.full(adata.shape[1], "", dtype=object)  # [i]=Group if i is lead in Group
+
+        for group, df in gsea_prerank_dict.items():
+            # First find all the lead genes for all significant processes.
+            # TODO make sure this comforms with GSEA prerank results
+            if not isinstance(df, pd.DataFrame):
+                raise ValueError("Expected a test results in DataFrame format.")
+            if 'Lead_genes' not in df:
+                raise ValueError("Expected a `Lead_genes` column in the DataFrame.")
+
+            sig_processes_mask = filter_by(df)  # type: ignore
+            sig_processes_df = df.iloc[sig_processes_mask]
+            # GSEAPy returns these genes as a single string sep by ;
+            lead_genes = sig_processes_df['Lead_genes'].str.cat(sep=';')
+            lead_genes = np.unique(lead_genes.split(';'))
+
+            lead_genes_mask = np.in1d(gene_list_all, lead_genes)
+            all_leads[lead_genes_mask] = True
+            lead_group[lead_genes_mask] += f"{group};"
+
+        lead_group = lead_group.astype(str)
+        lead_group = np.char.rstrip(lead_group, ";")  # remove trailing ;
+        self.store_item(self.cfg.all_leads_save_key, all_leads)
+        self.store_item(self.cfg.lead_group_save_key, lead_group)

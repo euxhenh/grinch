@@ -31,7 +31,7 @@ class Filter(BaseModel):
     top_k: int | None = None
     greater_is_True: bool = False
     ordered: bool = False
-    dtype: str = Field('float', regex='(float|bool)')
+    dtype: str = Field('float', pattern='(float|bool)')
 
     class Config:
         validate_assignment = True

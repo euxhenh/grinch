@@ -43,7 +43,7 @@ class GroupProcess(BaseProcessor):
         processor: BaseProcessor.Config
         # Key to group by, must be recognized by np.unique.
         group_key: str
-        axis: int | str = Field(0, ge=0, le=1, regex='^(obs|var)$')
+        axis: int | str = Field(0, ge=0, le=1, pattern='^(obs|var)$')
         group_prefix: str = f'g-{{group_key}}{GROUP_SEP}{{label}}.'
         min_points_per_group: int = Field(default_factory=int, ge=0)
         # Whether to drop the groups which have less than
