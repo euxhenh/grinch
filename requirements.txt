@@ -1,6 +1,6 @@
 numpy
 hydra-core
-pydantic
+pydantic==1.*
 anndata
 scipy
 scikit-learn
