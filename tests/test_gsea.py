@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 from anndata import AnnData
 from hydra.utils import instantiate
@@ -58,3 +59,37 @@ def test_enrich(X):
         gs = g.split(';')
         assert len(gs) > 0
         assert set(gs).issubset(set(['IGKV4-1', 'PPFIBP1']))
+
+
+def test_lead_genes():
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FindLeadGenes.Config",
+        }
+    )
+    cfg = instantiate(cfg)
+    find_lead = cfg.initialize()
+    adata = AnnData(np.random.random((1, 8)))
+    adata.var_names = list('ABCDEFGH')
+
+    df1 = pd.DataFrame(data={
+        'FDR q-val': [0.5, 0.4, 0.01, 0.6],
+        'Lead_genes': ['B;G', 'A;C', 'H;G', 'A;D']
+    })
+    df2 = pd.DataFrame(data={
+        'FDR q-val': [0.005, 0.4, 0.001, 0.02],
+        'Lead_genes': ['A;C;H', 'C', 'G', 'A;G']
+    })
+
+    adata.uns['gsea_prerank'] = {
+        "cl1": df1,
+        "cl2": df2,
+    }
+
+    # Leads are np.unique(H, G, A, C, H, G, A, G) = ACGH
+    find_lead(adata)
+    all_leads = [True, False, True, False, False, False, True, True]
+    lead_groups = ["cl2", "", "cl2", "", "", "", "cl1;cl2", "cl1;cl2"]
+
+    assert (adata.var['is_lead'] == all_leads).all()
+    assert (adata.var['lead_group'] == lead_groups).all()

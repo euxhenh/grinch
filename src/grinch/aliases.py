@@ -27,6 +27,8 @@ class AnnDataKeys:
         VARIANCE = auto()
         ENSEMBL_ID = auto()
         FEATURE_NAME = auto()
+        IS_LEAD = auto()
+        LEAD_GROUP = auto()
 
     class OBSM:
         X_EMB = auto()

@@ -10,7 +10,7 @@ from sklearn.linear_model import LogisticRegression as _LogisticRegression
 from sklearn.utils import indexable
 
 from ..aliases import OBS, OBSM, OBSP, UNS
-from ..custom_types import NP1D_Any, NP1D_float, NP2D_float
+from ..custom_types import NP1D_Any, NP1D_float
 from ..utils.ops import group_indices
 from ..utils.validation import check_has_processor, pop_args
 from .base_processor import BaseProcessor, adata_modifier

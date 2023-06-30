@@ -3,7 +3,7 @@ from .de import BimodalTest, KSTest, TTest
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
 from .group import GroupProcess
-from .gsea import GSEAEnrich, GSEAPrerank
+from .gsea import FindLeadGenes, GSEAEnrich, GSEAPrerank
 from .indexer import BaseIndexer, IndexProcessor, InplaceIndexer
 from .predictors import (
     BasePredictor,
@@ -26,6 +26,7 @@ __all__ = [
     'BimodalTest',
     'GSEAEnrich',
     'GSEAPrerank',
+    'FindLeadGenes',
     'GroupProcess',
     'BaseIndexer',
     'InplaceIndexer',
