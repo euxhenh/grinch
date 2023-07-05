@@ -1,4 +1,5 @@
 import abc
+import inspect
 import logging
 from functools import partial
 from typing import Any, Callable, Dict, List, Type
@@ -107,7 +108,7 @@ class GSEA(BaseProcessor, abc.ABC):
             )
 
         _gsea_f = partial(
-            type(self)._process_de_test,
+            self._process_de_test,
             gene_list_all=gene_list_all,
             gene_sets=self.cfg.gene_sets,
             filter_by=self.cfg.filter_by,
@@ -193,6 +194,7 @@ class GSEA(BaseProcessor, abc.ABC):
             logger.warning('Encountered empty gene list.')
             # Empty dataframe
             return pd.DataFrame()
+
         return gsea_func(test, gene_sets=gene_sets, **kwargs)
 
 
@@ -214,6 +216,7 @@ class GSEAEnrich(GSEA):
     @retry(5, msg="Error sending gene list", logger=logger, sleep=1)
     def _gsea(
         test: DETestSummary,
+        *,
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
         **kwargs
     ) -> pd.DataFrame:
@@ -234,11 +237,16 @@ class GSEAEnrich(GSEA):
 
 class GSEAPrerank(GSEA):
     """Runs the prerank GSEA module.
+
+    Parameters:
+    qval_scaling: bool
+        If True, will instead rank by -log10(qval) * log2fc.
     """
 
     class Config(GSEA.Config):
         save_key: str = f"uns.{UNS.GSEA_PRERANK}"
         filter_by: List[Filter] = DEFAULT_PRERANK_FILTERS
+        qval_scaling: bool = False
         seed: int = 123  # Prerank doesn't accept null seeds
 
         @validator('kwargs')
@@ -251,11 +259,15 @@ class GSEAPrerank(GSEA):
     @retry(5, msg="Error sending gene list", logger=logger, sleep=1)
     def _gsea(
         test: DETestSummary,
+        *,
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
+        qval_scaling: bool = False,  # pass inside cfg.kwargs
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
-        rnk = pd.DataFrame(data=test.log2fc, index=test.name)
+        data = (test.log2fc if not qval_scaling
+                else test.log2fc * -np.log10(test.qvals))
+        rnk = pd.DataFrame(data=data, index=test.name)
         logger.info(f"Using {len(rnk)} genes.")
         try:
             results = gp.prerank(rnk=rnk, gene_sets=gene_sets,
@@ -305,6 +317,8 @@ class FindLeadGenes(BaseProcessor):
             # TODO make sure this comforms with GSEA prerank results
             if not isinstance(df, pd.DataFrame):
                 raise ValueError("Expected a test results in DataFrame format.")
+            if len(df) == 0:  # No results for this df
+                continue
             if 'Lead_genes' not in df:
                 raise ValueError("Expected a `Lead_genes` column in the DataFrame.")
 

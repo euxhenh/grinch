@@ -22,7 +22,11 @@ class BaseTransformer(BaseProcessor, abc.ABC):
         x_key: str
         x_emb_key: str
         save_stats: bool = True
-        stats_key: Optional[str]
+        stats_key: str | None = None
+
+        @validator('stats_key')
+        def init_stats_key_with_x_emb(cls, val, values):
+            return val or f"uns.{values['x_emb_key'].split('.', 1)[1]}_"
 
     cfg: Config
 
@@ -55,7 +59,6 @@ class PCA(BaseTransformer):
     class Config(BaseTransformer.Config):
         x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_PCA}"
-        stats_key: str = f"uns.{UNS.X_PCA_}"
         # PCA args
         n_components: Optional[int | float | str] = None
         whiten: bool = False
@@ -89,7 +92,6 @@ class TruncatedSVD(BaseTransformer):
     class Config(BaseTransformer.Config):
         x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
-        stats_key: str = f"uns.{UNS.X_TRUNCATED_SVD_}"
         # Truncated SVD args
         n_components: int = Field(2, ge=1)
         algorithm: str = 'randomized'
@@ -122,7 +124,6 @@ class UMAP(BaseTransformer):
     class Config(BaseTransformer.Config):
         x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_UMAP}"
-        stats_key: Optional[str] = None
         # UMAP args
         n_neighbors: int = Field(15, ge=1)
         n_components: int = Field(2, ge=1)
