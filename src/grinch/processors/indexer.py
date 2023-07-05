@@ -23,6 +23,10 @@ class BaseIndexer(BaseProcessor, abc.ABC):
         def ensure_correct_axis(cls, axis):
             return validate_axis(axis)
 
+        @validator('filter_by', pre=True, always=True)
+        def ensure_filter_list(cls, val):
+            return [val] if isinstance(val, Filter) else val
+
         @validator('filter_by')
         def at_least_one_filter(cls, val):
             if len(val) < 1:
@@ -77,6 +81,7 @@ class IndexProcessor(BaseIndexer):
         self.processor = self.cfg.processor.initialize()
 
     def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
+        # TODO improve naming and add indexing stats
         # dont let the processor do the adata modifications, since we are
         # passing a view
         key = ['obs_indices', 'var_indices'][int(self.cfg.axis)]
