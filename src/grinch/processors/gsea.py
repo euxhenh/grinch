@@ -1,5 +1,4 @@
 import abc
-import inspect
 import logging
 from functools import partial
 from typing import Any, Callable, Dict, List, Type
@@ -17,7 +16,7 @@ from ..custom_types import NP1D_int, NP1D_str
 from ..de_test_summary import DETestSummary, TestSummary
 from ..shortcuts import FDRqVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
-from ..utils.validation import pop_args
+from ..utils.validation import pop_args, all_not_None
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
@@ -265,8 +264,10 @@ class GSEAPrerank(GSEA):
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
+        if not all_not_None(test.log2fc, test.qvals):
+            raise ValueError("Log2fc and qvals should not be None.")
         data = (test.log2fc if not qval_scaling
-                else test.log2fc * -np.log10(test.qvals))
+                else test.log2fc * -np.log10(test.qvals))  # type: ignore
         rnk = pd.DataFrame(data=data, index=test.name)
         logger.info(f"Using {len(rnk)} genes.")
         try:

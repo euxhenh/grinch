@@ -8,7 +8,7 @@ from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
 from umap import UMAP as _UMAP
 
-from ..aliases import OBSM, UNS
+from ..aliases import OBSM
 from ..utils.validation import check_has_processor, pop_args
 from .base_processor import BaseProcessor, adata_modifier
 
