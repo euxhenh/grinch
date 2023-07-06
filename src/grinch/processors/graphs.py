@@ -91,8 +91,7 @@ class KNNGraph(BaseGraphConstructor):
 
     def _connect(self, x: NP2D_float) -> csr_matrix:
         self.processor.fit(x)
-        adj = self.processor.kneighbors_graph(mode='distance')
-        return adj
+        return self.processor.kneighbors_graph(mode='distance')
 
 
 class FuzzySimplicialSetGraph(BaseGraphConstructor):
@@ -102,22 +101,26 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
 
     Parameters
     __________
+    x_key: str
+        Can be f"obsp.{OBSP.KNN_DISTANCE}" in which case will use
+        precomputed knn distances as a warm start for umap. In this case
+        must also set `precomputed=True`.
     precomputed: bool
         If True, will consider x as pre-computed neighbors.
     """
 
     class Config(BaseGraphConstructor.Config):
-        x_key: str = f"obsp.{OBSP.KNN_DISTANCE}"
         conn_key: str = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
-        dist_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"
-        precomputed: bool = True
+        dist_key: str = f"obsp.{OBSP.UMAP_DISTANCE}"
+        affinity_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"
+        precomputed: bool = False
         n_neighbors: int = 15
         metric: str = "euclidean"
 
         @validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['X', 'n_neighbors', 'random_state', 'metric',
-                             'knn_indices', 'knn_dists'], val)
+                             'knn_indices', 'knn_dists', 'return_dists'], val)
 
     cfg: Config
 
@@ -133,4 +136,6 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
         )
 
     def _connect(self, x: NP2D_float | spmatrix) -> spmatrix:
-        return self.processor.fit_predict(x)
+        self.processor.fit(x)
+        self.store_item(self.cfg.affinity_key, self.processor.affinity_adj_)
+        return self.processor.distance_adj_

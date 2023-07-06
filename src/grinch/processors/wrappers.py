@@ -109,7 +109,8 @@ class FuzzySimplicialSet:
         self.random_state = random_state
         self.kwargs = kwargs
 
-        self.adj: spmatrix = None
+        self.affinity_adj_: spmatrix = None
+        self.distance_adj_: spmatrix = None
 
     def fit(self, X: NP2D_float | spmatrix):
         kwargs = self.kwargs.copy()
@@ -123,13 +124,16 @@ class FuzzySimplicialSet:
             kwargs['X'] = X
             kwargs['n_neighbors'] = self.n_neighbors
 
-        adj = fuzzy_simplicial_set(
+        kwargs.pop('return_dists', None)
+        affinity_adj, _, _, distance_adj = fuzzy_simplicial_set(
             metric=self.metric,
             random_state=self.random_state,
+            return_dists=True,
             **kwargs,
-        )[0]
+        )
 
-        self.adj = adj
+        self.affinity_adj_ = affinity_adj
+        self.distance_adj_ = distance_adj.tocsr()
 
     def predict(self, _):
         raise NotImplementedError(
@@ -139,4 +143,4 @@ class FuzzySimplicialSet:
 
     def fit_predict(self, X: NP2D_float | spmatrix) -> spmatrix:
         self.fit(X)
-        return self.adj
+        return self.distance_adj_

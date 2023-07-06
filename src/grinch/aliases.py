@@ -59,6 +59,7 @@ class AnnDataKeys:
         KNN_CONNECTIVITY = auto()
         KNN_DISTANCE = auto()
         UMAP_CONNECTIVITY = auto()
+        UMAP_DISTANCE = auto()
         UMAP_AFFINITY = auto()
 
     class VARP:
