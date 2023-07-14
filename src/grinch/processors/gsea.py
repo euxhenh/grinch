@@ -273,6 +273,9 @@ class GSEAPrerank(GSEA):
         try:
             results = gp.prerank(rnk=rnk, gene_sets=gene_sets,
                                  outdir=None, **kwargs).res2d
+        except KeyError as ke:
+            logger.warning(f"Possibly no overlap found. {str(ke)}")
+            return EMPTY_PRERANK_TEST
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")

@@ -122,7 +122,7 @@ class TruncatedSVD(BaseTransformer):
 class UMAP(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        x_key: str = "X"
+        x_key: str = f"obsm.{OBSM.X_PCA}"
         x_emb_key: str = f"obsm.{OBSM.X_UMAP}"
         # UMAP args
         n_neighbors: int = Field(15, ge=1)
