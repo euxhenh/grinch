@@ -78,6 +78,7 @@ def test_umap(X):
     cfg = OmegaConf.create(
         {
             '_target_': 'src.grinch.UMAP.Config',
+            'x_key': 'X',
             'n_components': 2,
             'seed': SEED,
             'spread': 0.8,
