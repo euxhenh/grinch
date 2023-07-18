@@ -1,4 +1,5 @@
 import abc
+import logging
 from typing import Optional
 
 import numpy as np
@@ -10,6 +11,8 @@ from .aliases import OBS, VAR
 from .conf import BaseConfigurable
 from .utils import any_not_None, true_inside
 from .utils.stats import _var
+
+logger = logging.getLogger(__name__)
 
 
 class BaseFilter(BaseConfigurable):
@@ -35,8 +38,6 @@ class BaseFilter(BaseConfigurable):
             ensure_min_features=2,
             ensure_min_samples=2,
         )
-        # Make sure there are no negative counts
-        check_non_negative(adata.X, f'{self.__class__.__name__}')
 
         self._filter(adata)
 
@@ -59,11 +60,14 @@ class FilterCells(BaseFilter):
     cfg: Config
 
     def _filter(self, adata: AnnData) -> None:
+        # Make sure there are no negative counts
+        check_non_negative(adata.X, f'{self.__class__.__name__}')
         # Keep all cells by default
         to_keep = np.ones(adata.shape[0], dtype=bool)
 
         counts_per_cell = np.ravel(adata.X.sum(axis=1))
         if any_not_None(self.cfg.min_counts, self.cfg.max_counts):
+
             to_keep &= true_inside(
                 counts_per_cell,
                 self.cfg.min_counts,
@@ -88,9 +92,9 @@ class FilterCells(BaseFilter):
 
         adata._inplace_subset_obs(to_keep)
 
-        self.log(
+        logger.info(
             f"Keeping {adata.shape[0]}/{len(to_keep)} cells.",
-            shape=adata.shape,
+            # shape=adata.shape,
         )
 
 
@@ -112,22 +116,25 @@ class FilterGenes(BaseFilter):
         # Keep all genes by default
         to_keep = np.ones(adata.shape[1], dtype=bool)
 
-        counts_per_gene = np.ravel(adata.X.sum(axis=0))
         if any_not_None(self.cfg.min_counts, self.cfg.max_counts):
+            check_non_negative(adata.X, f'{self.__class__.__name__}')
+            counts_per_gene = np.ravel(adata.X.sum(axis=0))
             to_keep &= true_inside(
                 counts_per_gene,
                 self.cfg.min_counts,
                 self.cfg.max_counts,
             )
+            adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
 
-        # Values are ensured to be non-negative
-        cells_per_gene = np.ravel((adata.X > 0).sum(axis=0))
         if any_not_None(self.cfg.min_cells, self.cfg.max_cells):
+            cells_per_gene = np.ravel((adata.X > 0).sum(axis=0))
+            check_non_negative(adata.X, f'{self.__class__.__name__}')
             to_keep &= true_inside(
                 cells_per_gene,
                 self.cfg.min_cells,
                 self.cfg.max_cells,
             )
+            adata.var[VAR.N_CELLS] = cells_per_gene.astype(np.float32)
 
         gene_var = _var(adata.X, axis=0, ddof=self.cfg.ddof)
         if any_not_None(self.cfg.min_var, self.cfg.max_var):
@@ -139,14 +146,11 @@ class FilterGenes(BaseFilter):
                 "Less than 1 gene remained."
             )
 
-        # Set these after the exception above
-        adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
-        adata.var[VAR.N_CELLS] = cells_per_gene.astype(np.float32)
         adata.var[VAR.VARIANCE] = gene_var.astype(np.float32)
 
         adata._inplace_subset_var(to_keep)
 
-        self.log(
+        logger.info(
             f"Keeping {adata.shape[1]}/{len(to_keep)} genes.",
-            shape=adata.shape,
+            # shape=adata.shape,
         )
