@@ -29,6 +29,7 @@ class AnnDataKeys:
         FEATURE_NAME = auto()
         IS_LEAD = auto()
         LEAD_GROUP = auto()
+        CUSTOM_LEAD_GENES = auto()
 
     class OBSM:
         X_EMB = auto()
@@ -54,6 +55,7 @@ class AnnDataKeys:
         PCOVER_ = auto()
         KNN_ = auto()
         N_GENE_ID_TO_NAME_FAILED = auto()
+        ALL_CUSTOM_LEAD_GENES = auto()
 
     class OBSP:
         KNN_CONNECTIVITY = auto()

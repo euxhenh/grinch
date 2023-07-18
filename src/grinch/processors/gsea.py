@@ -16,7 +16,7 @@ from ..custom_types import NP1D_int, NP1D_str
 from ..de_test_summary import DETestSummary, TestSummary
 from ..shortcuts import FDRqVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
-from ..utils.validation import pop_args, all_not_None
+from ..utils.validation import all_not_None, pop_args
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ENRICH_FILTERS: List[Filter] = [qVal_Filter_05(), log2fc_Filter_1()]
 
-DEFAULT_PRERANK_FILTERS: List[Filter] = [qVal_Filter_05()]
+# By default all genes are inputted into prerank. DE tests are still needed
+# in order to scale log2fc by the q-values before ranking.
+DEFAULT_PRERANK_FILTERS: List[Filter] = []
 
 DEFAULT_LEAD_GENE_FILTERS: List[Filter] = [FDRqVal_Filter_05()]
 
@@ -186,8 +188,9 @@ class GSEA(BaseProcessor, abc.ABC):
             )
         test.name = gene_list_all
         # Apply all filters
-        gene_mask: NP1D_int = test.where(*filter_by, as_mask=True)
-        test = test[gene_mask]
+        if len(filter_by) > 0:
+            gene_mask: NP1D_int = test.where(*filter_by, as_mask=True)
+            test = test[gene_mask]
 
         if len(test) == 0:  # empty list
             logger.warning('Encountered empty gene list.')
@@ -230,7 +233,12 @@ class GSEAEnrich(GSEA):
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")
-            return EMPTY_ENRICH_TEST
+            results = EMPTY_ENRICH_TEST
+        to_numeric_cols = ['P-value', 'Adjusted P-value', 'Old P-value',
+                           'Old Adjusted P-value', 'Odds Ratio',
+                           'Combined Score', 'N_Genes_Tested']
+        for col in to_numeric_cols:
+            results[col] = pd.to_numeric(results[col])
         return results
 
 
@@ -260,7 +268,7 @@ class GSEAPrerank(GSEA):
         test: DETestSummary,
         *,
         gene_sets: List[str] | str = DEFAULT_GENE_SET,
-        qval_scaling: bool = False,  # pass inside cfg.kwargs
+        qval_scaling: bool = True,  # pass inside cfg.kwargs
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
@@ -275,11 +283,11 @@ class GSEAPrerank(GSEA):
                                  outdir=None, **kwargs).res2d
         except KeyError as ke:
             logger.warning(f"Possibly no overlap found. {str(ke)}")
-            return EMPTY_PRERANK_TEST
+            results = EMPTY_PRERANK_TEST
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")
-            return EMPTY_PRERANK_TEST
+            results = EMPTY_PRERANK_TEST
         to_numeric_cols = ['ES', 'NES', 'NOM p-val', 'FDR q-val', 'FWER p-val']
         for col in to_numeric_cols:
             results[col] = pd.to_numeric(results[col])
@@ -340,3 +348,41 @@ class FindLeadGenes(BaseProcessor):
         lead_group = np.char.rstrip(lead_group, ";")  # remove trailing ;
         self.store_item(self.cfg.all_leads_save_key, all_leads)
         self.store_item(self.cfg.lead_group_save_key, lead_group)
+
+
+class FindLeadGenesForProcess(BaseProcessor):
+    """Finds all lead genes associated with a list of processes and
+    overlaps them with genes in adata.
+    """
+
+    class Config(BaseProcessor.Config):
+        gene_sets: str | List[str] = 'GO_Biological_Process_2023'
+        organism: str = 'Human'
+        terms: str | List[str]
+        save_key: str = f'var.{VAR.CUSTOM_LEAD_GENES}'
+        all_leads_save_key: str = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
+        gene_names_key: str = "var_names"
+
+        @validator('gene_sets', 'terms')
+        def to_list(cls, val):
+            if isinstance(val, str):
+                return [val]
+            return val
+
+    cfg: Config
+
+    def _process(self, adata: AnnData) -> None:
+        genes = []
+        for gene_set in self.cfg.gene_sets:
+            lib = gp.get_library(name=gene_set, organism=self.cfg.organism)
+            for term in self.cfg.terms:
+                # TODO allow regex
+                genes.extend(lib[term])
+
+        lead_genes = np.unique(genes)
+        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
+        gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
+        is_lead = np.in1d(gene_list_all, lead_genes)
+        logger.info(f"Found {is_lead.sum()}/{len(lead_genes)} custom lead genes.")
+        self.store_item(self.cfg.save_key, is_lead)
+        self.store_item(self.cfg.all_leads_save_key, lead_genes)
