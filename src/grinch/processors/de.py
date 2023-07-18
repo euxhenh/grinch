@@ -153,6 +153,8 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         x_control = None
         if self.cfg.is_ovo and self.cfg.control_key is not None:
             x_control = self.get_repr(adata, self.cfg.control_key)
+            if not isinstance(x_control, np.ndarray) or not sp.issparse(x_control):
+                raise ValueError("`x_control` should be an array or a sparse matrix.")
             # Transpose if coming from a varp column
             if self.cfg.control_key.startswith('varm'):
                 x_control = x_control.T
@@ -275,7 +277,7 @@ class KSTest(PairwiseDETest):
 
         x, = indexable(x)
 
-        y = None
+        y, m2 = None, None
         if self.cfg.is_ovo:
             if x_control is not None:
                 y = x_control

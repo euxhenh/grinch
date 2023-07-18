@@ -119,6 +119,9 @@ class Splitter(BaseConfigurable):
             )
             data_splitter.TEST_SPLIT = adata[test_idx]
 
-        data_splitter.TRAIN_SPLIT = adata[train_idx]
+        if any_not_None(data_splitter.VAL_SPLIT, data_splitter.TEST_SPLIT):
+            data_splitter.TRAIN_SPLIT = adata[train_idx]
+        else:  # avoid creating view
+            data_splitter.TRAIN_SPLIT = adata
 
         return data_splitter
