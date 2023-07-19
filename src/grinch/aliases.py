@@ -16,6 +16,8 @@ class AnnDataKeys:
         N_GENES = auto()
         LABEL = auto()
         KMEANS = auto()
+        GAUSSIAN_MIXTURE = auto()
+        GAUSSIAN_MIXTURE_SCORE = auto()
         LEIDEN = auto()
         LOG_REG = auto()
 
@@ -37,6 +39,7 @@ class AnnDataKeys:
         X_PCA = auto()
         X_TRUNCATED_SVD = auto()
         X_UMAP = auto()
+        GAUSSIAN_MIXTURE_PROBA = auto()
 
     class VARM:
         LOG_REG_COEF = auto()
@@ -45,6 +48,7 @@ class AnnDataKeys:
         X_PCA_ = auto()
         X_TRUNCATED_SVD_ = auto()
         KMEANS_ = auto()
+        GAUSSIAN_MIXTURE_ = auto()
         LEIDEN_ = auto()
         LOG_REG_ = auto()
         TTEST = auto()

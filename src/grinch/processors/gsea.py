@@ -14,7 +14,7 @@ from ..aliases import UNS, VAR
 from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_int, NP1D_str
 from ..de_test_summary import DETestSummary, TestSummary
-from ..shortcuts import FDRqVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
+from ..shortcuts import FWERpVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
 from ..utils.validation import all_not_None, pop_args
 from .base_processor import BaseProcessor
@@ -28,9 +28,11 @@ DEFAULT_ENRICH_FILTERS: List[Filter] = [qVal_Filter_05(), log2fc_Filter_1()]
 # in order to scale log2fc by the q-values before ranking.
 DEFAULT_PRERANK_FILTERS: List[Filter] = []
 
-DEFAULT_LEAD_GENE_FILTERS: List[Filter] = [FDRqVal_Filter_05()]
+DEFAULT_LEAD_GENE_FILTERS: List[Filter] = [FWERpVal_Filter_05()]
 
 DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
+
+DEFAULT_PRERANK_GENE_SET = "GO_Biological_Process_2023"
 
 EMPTY_ENRICH_TEST = pd.DataFrame(columns=[
     'Gene_set', 'Term', 'Overlap', 'P-value', 'Adjusted P-value',
@@ -78,7 +80,7 @@ class GSEA(BaseProcessor, abc.ABC):
         read_key: str = f"uns.{UNS.TTEST}"
         save_key: str
 
-        gene_sets: List[str] | str = DEFAULT_GENE_SET
+        gene_sets: str | List[str] = DEFAULT_GENE_SET
         # Dict of keys to use for filtering DE genes; keys are ignored
         filter_by: List[Filter]
         gene_names_key: str = "var_names"
@@ -94,7 +96,7 @@ class GSEA(BaseProcessor, abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _gsea(test: DETestSummary, gene_sets: List[str] | str, **kwargs):
+    def _gsea(test: DETestSummary, gene_sets: str | List[str], **kwargs):
         raise NotImplementedError
 
     def _process(self, adata: AnnData) -> None:
@@ -148,7 +150,7 @@ class GSEA(BaseProcessor, abc.ABC):
         *,
         filter_by: List[Filter],
         gsea_func: Callable,
-        gene_sets: List[str] | str = DEFAULT_GENE_SET,
+        gene_sets: str | List[str] = DEFAULT_GENE_SET,
         test_type: Type[TestSummary] = DETestSummary,
         **kwargs,
     ) -> pd.DataFrame:
@@ -219,7 +221,7 @@ class GSEAEnrich(GSEA):
     def _gsea(
         test: DETestSummary,
         *,
-        gene_sets: List[str] | str = DEFAULT_GENE_SET,
+        gene_sets: str | List[str] = DEFAULT_GENE_SET,
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.enrichr."""
@@ -253,7 +255,8 @@ class GSEAPrerank(GSEA):
     class Config(GSEA.Config):
         save_key: str = f"uns.{UNS.GSEA_PRERANK}"
         filter_by: List[Filter] = DEFAULT_PRERANK_FILTERS
-        qval_scaling: bool = False
+        gene_sets: str | List[str] = DEFAULT_PRERANK_GENE_SET
+        qval_scaling: bool = True
         seed: int = 123  # Prerank doesn't accept null seeds
 
         @validator('kwargs')
@@ -267,15 +270,16 @@ class GSEAPrerank(GSEA):
     def _gsea(
         test: DETestSummary,
         *,
-        gene_sets: List[str] | str = DEFAULT_GENE_SET,
+        gene_sets: str | List[str] = DEFAULT_PRERANK_GENE_SET,
         qval_scaling: bool = True,  # pass inside cfg.kwargs
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
         if not all_not_None(test.log2fc, test.qvals):
             raise ValueError("Log2fc and qvals should not be None.")
-        data = (test.log2fc if not qval_scaling
-                else test.log2fc * -np.log10(test.qvals))  # type: ignore
+        data = test.log2fc
+        if qval_scaling:
+            data = data * (-np.log10(test.qvals))  # type: ignore
         rnk = pd.DataFrame(data=data, index=test.name)
         logger.info(f"Using {len(rnk)} genes.")
         try:

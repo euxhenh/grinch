@@ -62,12 +62,18 @@ def test_enrich(X):
 
 
 def test_lead_genes():
+    fcfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FDRqVal_Filter_05",
+        }
+    )
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.FindLeadGenes.Config",
+            "filter_by": fcfg,
         }
     )
-    cfg = instantiate(cfg)
+    cfg = instantiate(cfg, _convert_='all')
     find_lead = cfg.initialize()
     adata = AnnData(np.random.random((1, 8)))
     adata.var_names = list('ABCDEFGH')

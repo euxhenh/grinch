@@ -70,17 +70,17 @@ abs_log2fc_Filter_2 = partial(
 )
 
 # For lead gene discovery in a GSEA prerank test
-FDRqVal_Filter_01 = partial(
+FDRqVal_Filter_05 = partial(
     Filter,
     key='FDR q-val',
-    cutoff=0.01,
+    cutoff=0.05,
     greater_is_True=False,
     dtype='float',
 )
 
-FDRqVal_Filter_05 = partial(
+FWERpVal_Filter_05 = partial(
     Filter,
-    key='FDR q-val',
+    key='FWER p-val',
     cutoff=0.05,
     greater_is_True=False,
     dtype='float',

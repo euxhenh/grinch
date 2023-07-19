@@ -88,6 +88,29 @@ def test_kmeans_x_pca(X):
 
 
 @pytest.mark.parametrize("X", X_mods_no_sparse)
+def test_gmix_x(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.GaussianMixture.Config",
+            "x_key": "X",
+            "n_components": 2,
+            "seed": 42,
+        }
+    )
+    cfg = instantiate(cfg)
+    kmeans = cfg.initialize()
+    adata = AnnData(X)
+    kmeans(adata)
+    outp = adata.obs[OBS.GAUSSIAN_MIXTURE]
+    assert np.unique(outp[:2]).size == 1
+    assert np.unique(outp[2:]).size == 1
+    assert outp[0] != outp[-1]
+    proba = adata.obsm[OBSM.GAUSSIAN_MIXTURE_PROBA]
+    assert (proba[:2, 0] > proba[:2, 1]).all()
+    assert (proba[2:, 0] < proba[2:, 1]).all()
+
+
+@pytest.mark.parametrize("X", X_mods_no_sparse)
 def test_log_reg_x(X):
     adata = AnnData(X)
     cfg_pca = OmegaConf.create(

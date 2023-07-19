@@ -59,6 +59,7 @@ class GRPipeline(BaseConfigurable):
         if adata is None:
             if self.cfg.data_readpath is None:
                 raise ValueError("A path to adata or an adata object is required.")
+            logger.info(f"Reading AnnData from '{self.cfg.data_readpath}'...")
             adata = anndata.read_h5ad(self.cfg.data_readpath)
         ds = DataSplitter(adata) if not isinstance(adata, DataSplitter) else adata
 

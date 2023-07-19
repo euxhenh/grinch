@@ -7,6 +7,7 @@ from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
+from sklearn.mixture import GaussianMixture as _GaussianMixture
 from sklearn.utils import indexable
 
 from ..aliases import OBS, OBSM, OBSP, UNS
@@ -63,6 +64,10 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
         self.store_item(self.cfg.labels_key, labels)
+        self._post_process(adata)
+
+    def _post_process(self, adata: AnnData) -> None:
+        pass
 
 
 def centroids_from_Xy(X, y: NP1D_Any) -> Dict[str, NP1D_float]:
@@ -107,6 +112,48 @@ class KMeans(BaseUnsupervisedPredictor):
     def _processor_stats() -> List[str]:
         return BaseUnsupervisedPredictor._processor_stats() + \
             ['cluster_centers_']
+
+
+class GaussianMixture(BaseUnsupervisedPredictor):
+
+    class Config(BaseUnsupervisedPredictor.Config):
+        labels_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE}"
+        proba_key: str = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
+        score_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
+        stats_key: str = f"uns.{UNS.GAUSSIAN_MIXTURE_}"
+        n_components: int = Field(8, ge=1)
+        covariance_type: str = 'diag'  # non-default value
+        max_iter: int = Field(500, ge=1)
+
+        @validator('kwargs')
+        def remove_explicit_args(cls, val):
+            return pop_args(['n_components', 'random_state', 'max_iter',
+                             'covariance_type'], val)
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /):
+        super().__init__(cfg)
+
+        self.processor: _GaussianMixture = _GaussianMixture(
+            n_components=self.cfg.n_components,
+            random_state=self.cfg.seed,
+            max_iter=self.cfg.max_iter,
+            covariance_type=self.cfg.covariance_type,
+            **self.cfg.kwargs,
+        )
+
+    def _post_process(self, adata: AnnData) -> None:
+        x = self.get_repr(adata, self.cfg.x_key)
+        proba = self.processor.predict_proba(x)
+        score = self.processor.score_samples(x)
+        self.store_item(self.cfg.proba_key, proba)
+        self.store_item(self.cfg.score_key, score)
+
+    @staticmethod
+    def _processor_stats() -> List[str]:
+        return BaseUnsupervisedPredictor._processor_stats() + \
+            ['means_', 'weights_', 'covariances_', 'precisions_', 'converged_']
 
 
 class Leiden(BaseUnsupervisedPredictor):
