@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from functools import cache, wraps
+from functools import wraps
 from typing import Dict, Hashable, List, Optional, Tuple, overload
 
 import numpy as np
