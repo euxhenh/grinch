@@ -78,9 +78,9 @@ FDRqVal_Filter_01 = partial(
     dtype='float',
 )
 
-FDRqVal_Filter_05 = partial(
+FWERpVal_Filter_05 = partial(
     Filter,
-    key='FDR q-val',
+    key='FWER p-val',
     cutoff=0.05,
     greater_is_True=False,
     dtype='float',

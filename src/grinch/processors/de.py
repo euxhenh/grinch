@@ -95,8 +95,11 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         def ensure_control_if_ovo(cls, control_key, values):
             if values['test_type'] == "one_vs_one":
                 if not only_one_not_None(control_key, values['control_label']):
-                    raise ValueError("Only one of `control_label` or "
-                                     "`control_key` should not be None.")
+                    raise ValueError(
+                        "Only one of `control_label` or "
+                        "`control_key` should not be None "
+                        "if running in `one_vs_one` mode."
+                    )
             return control_key
 
         @property
@@ -115,14 +118,14 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
     def get_pqvals(self, pvals):
         """Performs basic processing on p and computes qvals."""
-        not_none_mask = ~np.isnan(pvals)
+        not_nan_mask = ~np.isnan(pvals)
 
         qvals = np.full_like(pvals, 1.0 if self.cfg.replace_nan else np.nan)
         # only correct not nan's.
-        qvals[not_none_mask] = _correct(pvals[not_none_mask],
-                                        method=self.cfg.correction)[1]
+        qvals[not_nan_mask] = _correct(pvals[not_nan_mask],
+                                       method=self.cfg.correction)[1]
         if self.cfg.replace_nan:
-            pvals[~not_none_mask] = 1.0
+            pvals[~not_nan_mask] = 1.0
         return pvals, qvals
 
     def get_log2fc(self, m1, m2):
@@ -142,19 +145,12 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
             return
 
         x = self.get_repr(adata, self.cfg.x_key)
-        x = check_array(
-            x,
-            accept_sparse='csr',
-            ensure_2d=True,
-            ensure_min_features=2,
-            ensure_min_samples=2,
-        )
+        x = check_array(x, accept_sparse='csr')
 
         x_control = None
         if self.cfg.is_ovo and self.cfg.control_key is not None:
             x_control = self.get_repr(adata, self.cfg.control_key)
-            if not isinstance(x_control, np.ndarray) or not sp.issparse(x_control):
-                raise ValueError("`x_control` should be an array or a sparse matrix.")
+            x_control = check_array(x_control, accept_sparse='csr')
             # Transpose if coming from a varp column
             if self.cfg.control_key.startswith('varm'):
                 x_control = x_control.T

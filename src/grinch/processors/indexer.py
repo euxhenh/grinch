@@ -1,5 +1,6 @@
 import abc
 import gc
+import logging
 from typing import List
 
 from anndata import AnnData
@@ -10,12 +11,14 @@ from ..custom_types import NP1D_bool
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
+logger = logging.getLogger(__name__)
+
 
 class BaseIndexer(BaseProcessor, abc.ABC):
     """A base class for indexing operations."""
 
     class Config(BaseProcessor.Config):
-        filter_by: List[Filter]
+        filter_by: List[Filter] = Field(min_items=1)
         # Can be 0, 1 or 'obs', 'var'
         axis: int | str = Field(0, ge=0, le=1, pattern='^(obs|var)$')
 
@@ -26,12 +29,6 @@ class BaseIndexer(BaseProcessor, abc.ABC):
         @validator('filter_by', pre=True, always=True)
         def ensure_filter_list(cls, val):
             return [val] if isinstance(val, Filter) else val
-
-        @validator('filter_by')
-        def at_least_one_filter(cls, val):
-            if len(val) < 1:
-                raise ValueError("At least one filter should be provided.")
-            return val
 
     cfg: Config
 
@@ -86,4 +83,5 @@ class IndexProcessor(BaseIndexer):
         # passing a view
         key = ['obs_indices', 'var_indices'][int(self.cfg.axis)]
         kwargs = {key: mask}
+        logger.info(f"Running '{self.processor.__class__.__name__}'.")
         self.processor(adata, **kwargs)
