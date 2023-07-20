@@ -22,7 +22,7 @@ from .predictors import (
 from .repeat import RepeatProcessor
 from .splitter import DataSplitter, Splitter
 from .tools import FilterNaN, GeneIdToName, ReplaceNaN, StoreAsMask
-from .transformers import PCA, UMAP, BaseTransformer, TruncatedSVD
+from .transformers import MDS, PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
     'adata_modifier',
@@ -53,6 +53,7 @@ __all__ = [
     'RepeatProcessor',
     'Splitter',
     'PCA',
+    'MDS',
     'UMAP',
     'BaseTransformer',
     'TruncatedSVD',

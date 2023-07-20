@@ -1,12 +1,13 @@
 import abc
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
 from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
+from sklearn.mixture import BayesianGaussianMixture as _BayesianGaussianMixture
 from sklearn.mixture import GaussianMixture as _GaussianMixture
 from sklearn.utils import indexable
 
@@ -121,6 +122,7 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         proba_key: str = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
         score_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
         stats_key: str = f"uns.{UNS.GAUSSIAN_MIXTURE_}"
+        model_type: Literal['GaussianMixture', 'BayesianGaussianMixture'] = 'GaussianMixture'
         n_components: int = Field(8, ge=1)
         covariance_type: str = 'diag'  # non-default value
         max_iter: int = Field(500, ge=1)
@@ -135,7 +137,12 @@ class GaussianMixture(BaseUnsupervisedPredictor):
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        self.processor: _GaussianMixture = _GaussianMixture(
+        if self.cfg.model_type == 'GaussianMixture':
+            model = _GaussianMixture
+        else:
+            model = _BayesianGaussianMixture
+
+        self.processor = model(
             n_components=self.cfg.n_components,
             random_state=self.cfg.seed,
             max_iter=self.cfg.max_iter,

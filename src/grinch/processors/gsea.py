@@ -1,5 +1,6 @@
 import abc
 import logging
+import re
 from functools import partial
 from typing import Any, Callable, Dict, List, Type
 
@@ -360,14 +361,14 @@ class FindLeadGenesForProcess(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
-        gene_sets: str | List[str] = 'GO_Biological_Process_2023'
+        gene_set: str = 'GO_Biological_Process_2023'
         organism: str = 'Human'
         terms: str | List[str]
         save_key: str = f'var.{VAR.CUSTOM_LEAD_GENES}'
         all_leads_save_key: str = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
         gene_names_key: str = "var_names"
 
-        @validator('gene_sets', 'terms')
+        @validator('terms')
         def to_list(cls, val):
             if isinstance(val, str):
                 return [val]
@@ -377,12 +378,21 @@ class FindLeadGenesForProcess(BaseProcessor):
 
     def _process(self, adata: AnnData) -> None:
         genes = []
-        for gene_set in self.cfg.gene_sets:
-            lib = gp.get_library(name=gene_set, organism=self.cfg.organism)
-            for term in self.cfg.terms:
-                # TODO allow regex
-                genes.extend(lib[term])
+        lib = gp.get_library(name=self.cfg.gene_set, organism=self.cfg.organism)
+        all_terms = list(lib)
+        matched = 0
+        for term in self.cfg.terms:
+            r = re.compile(term)
+            try:
+                selected_terms = list(filter(r.match, all_terms))
+                matched += len(selected_terms)
+                for selected_term in selected_terms:
+                    genes.extend(lib[selected_term])
+            except Exception as e:
+                logger.warning(f"Could not match term '{term}'. Skipping...")
+                print(e)
 
+        logging.info(f"Matched a total of {matched} terms.")
         lead_genes = np.unique(genes)
         gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
