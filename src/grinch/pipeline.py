@@ -83,7 +83,7 @@ class GRPipeline(BaseConfigurable):
                     logger.warning("Returning incomplete adata.")
                 return ds
 
-        ds.uns[self.cfg.cfg_save_key] = self.cfg.dict()
+        ds.TRAIN_SPLIT.uns[self.cfg.cfg_save_key] = self.cfg.dict()
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)
