@@ -8,6 +8,7 @@ from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from tqdm.auto import tqdm
 
+from .aliases import UNS
 from .conf import BaseConfigurable
 from .processors import (
     BasePredictor,
@@ -27,6 +28,7 @@ class GRPipeline(BaseConfigurable):
         data_writepath: Optional[str]
         processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
+        cfg_save_key: str = "pipeline"
         # It may be desirable to write only the columns of adata without
         # the data matrix so save memory. In that case, set no_data_write
         # to True. This will replace the data matrix with a sparse matrix
@@ -81,6 +83,7 @@ class GRPipeline(BaseConfigurable):
                     logger.warning("Returning incomplete adata.")
                 return ds
 
+        ds.TRAIN_SPLIT.uns[self.cfg.cfg_save_key] = self.cfg.dict()
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)

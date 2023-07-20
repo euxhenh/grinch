@@ -6,6 +6,7 @@ from anndata import AnnData
 from pydantic import Field, validate_arguments, validator
 from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
+from sklearn.manifold import MDS as _MDS
 from umap import UMAP as _UMAP
 
 from ..aliases import OBSM
@@ -19,10 +20,11 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     """A base estimator class for objects that implement `fit_transform`."""
 
     class Config(BaseProcessor.Config):
-        x_key: str
+        x_key: str = "X"
         x_emb_key: str
         save_stats: bool = True
         stats_key: str | None = None
+        kwargs: Dict[str, Any] = {}
 
         @validator('stats_key')
         def init_stats_key_with_x_emb(cls, val, values):
@@ -57,7 +59,6 @@ class BaseTransformer(BaseProcessor, abc.ABC):
 class PCA(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_PCA}"
         # PCA args
         n_components: Optional[int | float | str] = None
@@ -90,7 +91,6 @@ class PCA(BaseTransformer):
 class TruncatedSVD(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        x_key: str = "X"
         x_emb_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
         # Truncated SVD args
         n_components: int = Field(2, ge=1)
@@ -119,10 +119,32 @@ class TruncatedSVD(BaseTransformer):
         ]
 
 
+class MDS(BaseTransformer):
+
+    class Config(BaseTransformer.Config):
+        x_emb_key: str = f"obsm.{OBSM.X_MDS}"
+        n_components: int = Field(2, ge=1)
+
+        @validator('kwargs')
+        def remove_explicit_args(cls, val):
+            return pop_args(['n_components', 'random_state'], val)
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /):
+        super().__init__(cfg)
+
+        self.processor: _MDS = _MDS(
+            n_components=self.cfg.n_components,
+            random_state=self.cfg.seed,
+            **self.cfg.kwargs,
+        )
+
+
 class UMAP(BaseTransformer):
 
     class Config(BaseTransformer.Config):
-        x_key: str = f"obsm.{OBSM.X_PCA}"
+        x_key: str = f"obsm.{OBSM.X_PCA}"  # Different x key from parent
         x_emb_key: str = f"obsm.{OBSM.X_UMAP}"
         # UMAP args
         n_neighbors: int = Field(15, ge=1)

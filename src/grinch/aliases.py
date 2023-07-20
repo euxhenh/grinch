@@ -37,6 +37,7 @@ class AnnDataKeys:
         X_EMB = auto()
         X_EMB_2D = auto()
         X_PCA = auto()
+        X_MDS = auto()
         X_TRUNCATED_SVD = auto()
         X_UMAP = auto()
         GAUSSIAN_MIXTURE_PROBA = auto()
@@ -60,6 +61,7 @@ class AnnDataKeys:
         KNN_ = auto()
         N_GENE_ID_TO_NAME_FAILED = auto()
         ALL_CUSTOM_LEAD_GENES = auto()
+        PIPELINE = auto()
 
     class OBSP:
         KNN_CONNECTIVITY = auto()
