@@ -12,3 +12,4 @@ conf/*
 !conf/example_DE_analysis.yaml
 docs
 *.h5ad
+figs
