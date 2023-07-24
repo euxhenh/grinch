@@ -45,11 +45,27 @@ log2fc_Filter_1 = partial(
     dtype='float',
 )
 
+log2fc_Filter_m1 = partial(
+    Filter,
+    key='log2fc',
+    cutoff=-1,
+    greater_is_True=False,
+    dtype='float',
+)
+
 log2fc_Filter_2 = partial(
     Filter,
     key='log2fc',
     cutoff=2,
     greater_is_True=True,
+    dtype='float',
+)
+
+log2fc_Filter_m2 = partial(
+    Filter,
+    key='log2fc',
+    cutoff=-2,
+    greater_is_True=False,
     dtype='float',
 )
 

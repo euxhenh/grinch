@@ -11,6 +11,7 @@ from anndata import AnnData
 from pydantic import validator
 from sklearn.utils.validation import column_or_1d
 
+from .. import de_test_summary as de_ts
 from ..aliases import UNS, VAR
 from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_int, NP1D_str
@@ -22,29 +23,12 @@ from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
 
-
+DEFAULT_GENE_SET_ENRICH: str | List[str] = "HuBMAP_ASCTplusB_augmented_2022"
 DEFAULT_ENRICH_FILTERS: List[Filter] = [qVal_Filter_05(), log2fc_Filter_1()]
 
-# By default all genes are inputted into prerank. DE tests are still needed
-# in order to scale log2fc by the q-values before ranking.
-DEFAULT_PRERANK_FILTERS: List[Filter] = []
+DEFAULT_GENE_SET_PRERANK: str | List[str] = "GO_Biological_Process_2023"
 
-DEFAULT_LEAD_GENE_FILTERS: List[Filter] = [FWERpVal_Filter_05()]
-
-DEFAULT_GENE_SET = "HuBMAP_ASCTplusB_augmented_2022"
-
-DEFAULT_PRERANK_GENE_SET = "GO_Biological_Process_2023"
-
-EMPTY_ENRICH_TEST = pd.DataFrame(columns=[
-    'Gene_set', 'Term', 'Overlap', 'P-value', 'Adjusted P-value',
-    'Old P-value', 'Old Adjusted P-value', 'Odds Ratio', 'Combined Score',
-    'Genes', 'N_Genes_Tested',
-])
-
-EMPTY_PRERANK_TEST = pd.DataFrame(columns=[
-    'Name', 'Term', 'ES', 'NES', 'NOM p-val', 'FDR q-val', 'FWER p-val',
-    'Tag %', 'Gene %', 'Lead_genes'
-])
+DEFAULT_FILTERS_LEAD_GENES: List[Filter] = [FWERpVal_Filter_05()]
 
 
 class GSEA(BaseProcessor, abc.ABC):
@@ -74,19 +58,19 @@ class GSEA(BaseProcessor, abc.ABC):
         Key to use for parsing gene symbols (names). Can be 'var_names' or
         any other key 'var.*'.
     kwargs: dict
-        These will be passed to gp.enrichr.
+        These will be passed to GSEA.
     """
 
     class Config(BaseProcessor.Config):
         read_key: str = f"uns.{UNS.TTEST}"
         save_key: str
 
-        gene_sets: str | List[str] = DEFAULT_GENE_SET
+        gene_sets: str | List[str]
         # Dict of keys to use for filtering DE genes; keys are ignored
         filter_by: List[Filter]
         gene_names_key: str = "var_names"
         # not to be used in a config
-        test_type: Type[TestSummary] = DETestSummary
+        test_type: str | Type[TestSummary] = "DETestSummary"
         kwargs: Dict[str, Any] = {}
 
         @validator('filter_by', pre=True, always=True)
@@ -100,16 +84,26 @@ class GSEA(BaseProcessor, abc.ABC):
     def _gsea(test: DETestSummary, gene_sets: str | List[str], **kwargs):
         raise NotImplementedError
 
-    def _process(self, adata: AnnData) -> None:
+    def get_gene_list_all(self, adata):
         # Get list of all gene names
         gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
+        return gene_list_all
+
+    def _process(self, adata: AnnData) -> None:
+        gene_list_all = self.get_gene_list_all(adata)
 
         if len(gene_list_all) != adata.shape[1]:
             logger.warning(
-                "Gene list has a different dimension than AnnData's column dimension. "
-                "Please make sure 'read_key' is what you intended to use."
+                "Gene list has a different dimension than AnnData's "
+                "column dimension. Please make sure 'read_key' is what "
+                "you intended to use."
             )
+
+        if isinstance(self.cfg.test_type, str):
+            test_type = getattr(de_ts, self.cfg.test_type)
+        else:
+            test_type = self.cfg.test_type
 
         _gsea_f = partial(
             self._process_de_test,
@@ -117,7 +111,7 @@ class GSEA(BaseProcessor, abc.ABC):
             gene_sets=self.cfg.gene_sets,
             filter_by=self.cfg.filter_by,
             gsea_func=type(self)._gsea,
-            test_type=self.cfg.test_type,
+            test_type=test_type,
             seed=self.cfg.seed,
             **self.cfg.kwargs,
         )
@@ -132,7 +126,7 @@ class GSEA(BaseProcessor, abc.ABC):
         self,
         test_dict: Dict[str, Dict | pd.DataFrame | TestSummary],
         prefix: str,
-        func: Callable
+        func: Callable,
     ) -> None:
         """Recursively processes a dict."""
         for k, v in test_dict.items():
@@ -151,7 +145,7 @@ class GSEA(BaseProcessor, abc.ABC):
         *,
         filter_by: List[Filter],
         gsea_func: Callable,
-        gene_sets: str | List[str] = DEFAULT_GENE_SET,
+        gene_sets: str | List[str],
         test_type: Type[TestSummary] = DETestSummary,
         **kwargs,
     ) -> pd.DataFrame:
@@ -186,8 +180,7 @@ class GSEA(BaseProcessor, abc.ABC):
                 "Expected gene_list to be of same length "
                 f"as {test_type.__name__}, but "
                 f"found gene_list of length {len(gene_list_all)} "
-                f"and {test_type.__name__} "
-                f"of length {len(test)}."
+                f"and {test_type.__name__} of length {len(test)}."
             )
         test.name = gene_list_all
         # Apply all filters
@@ -209,6 +202,7 @@ class GSEAEnrich(GSEA):
 
     class Config(GSEA.Config):
         save_key: str = f"uns.{UNS.GSEA_ENRICH}"
+        gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH
         filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
 
         @validator('kwargs')
@@ -222,13 +216,14 @@ class GSEAEnrich(GSEA):
     def _gsea(
         test: DETestSummary,
         *,
-        gene_sets: str | List[str] = DEFAULT_GENE_SET,
-        **kwargs
+        gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH,
+        **kwargs,
     ) -> pd.DataFrame:
         """Wrapper around gp.enrichr."""
         gene_list = test.name.tolist()  # type: ignore
         logger.info(f"Using {len(gene_list)} genes.")
         _ = kwargs.pop("seed", None)
+
         try:
             results = gp.enrichr(gene_list=gene_list, gene_sets=gene_sets,
                                  no_plot=True, **kwargs).results
@@ -236,13 +231,24 @@ class GSEAEnrich(GSEA):
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")
-            results = EMPTY_ENRICH_TEST
+            results = GSEAEnrich.empty_test()
+
         to_numeric_cols = ['P-value', 'Adjusted P-value', 'Old P-value',
                            'Old Adjusted P-value', 'Odds Ratio',
                            'Combined Score', 'N_Genes_Tested']
         for col in to_numeric_cols:
-            results[col] = pd.to_numeric(results[col])
+            if col in results:  # Custom sets have no old p values
+                results[col] = pd.to_numeric(results[col])
+        results.sort_values(by=['Adjusted P-value'], inplace=True)
         return results
+
+    @staticmethod
+    def empty_test() -> pd.DataFrame:
+        return pd.DataFrame(columns=[
+            'Gene_set', 'Term', 'Overlap', 'P-value', 'Adjusted P-value',
+            'Old P-value', 'Old Adjusted P-value', 'Odds Ratio',
+            'Combined Score', 'Genes', 'N_Genes_Tested',
+        ])
 
 
 class GSEAPrerank(GSEA):
@@ -255,8 +261,12 @@ class GSEAPrerank(GSEA):
 
     class Config(GSEA.Config):
         save_key: str = f"uns.{UNS.GSEA_PRERANK}"
-        filter_by: List[Filter] = DEFAULT_PRERANK_FILTERS
-        gene_sets: str | List[str] = DEFAULT_PRERANK_GENE_SET
+        gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK
+        # By default all genes are inputted into prerank. DE tests are
+        # still needed in order to scale log2fc by the q-values before
+        # ranking.
+        filter_by: List[Filter] = []
+
         qval_scaling: bool = True
         seed: int = 123  # Prerank doesn't accept null seeds
 
@@ -271,32 +281,43 @@ class GSEAPrerank(GSEA):
     def _gsea(
         test: DETestSummary,
         *,
-        gene_sets: str | List[str] = DEFAULT_PRERANK_GENE_SET,
+        gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK,
         qval_scaling: bool = True,  # pass inside cfg.kwargs
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
         if not all_not_None(test.log2fc, test.qvals):
             raise ValueError("Log2fc and qvals should not be None.")
+
         data = test.log2fc
         if qval_scaling:
             data = data * (-np.log10(test.qvals))  # type: ignore
         rnk = pd.DataFrame(data=data, index=test.name)
+
         logger.info(f"Using {len(rnk)} genes.")
         try:
             results = gp.prerank(rnk=rnk, gene_sets=gene_sets,
                                  outdir=None, **kwargs).res2d
         except KeyError as ke:
             logger.warning(f"Possibly no overlap found. {str(ke)}")
-            results = EMPTY_PRERANK_TEST
+            results = GSEAPrerank.empty_test()
         except ValueError as ve:
             # Occurs when no gene set has a hit
             logger.warning(f"No hits found. {str(ve)}")
-            results = EMPTY_PRERANK_TEST
+            results = GSEAPrerank.empty_test()
+
         to_numeric_cols = ['ES', 'NES', 'NOM p-val', 'FDR q-val', 'FWER p-val']
         for col in to_numeric_cols:
             results[col] = pd.to_numeric(results[col])
         return results
+
+    @staticmethod
+    def empty_test() -> pd.DataFrame:
+        # Return a new dataframe to avoid referencing
+        return pd.DataFrame(columns=[
+            'Name', 'Term', 'ES', 'NES', 'NOM p-val', 'FDR q-val',
+            'FWER p-val', 'Tag %', 'Gene %', 'Lead_genes'
+        ])
 
 
 class FindLeadGenes(BaseProcessor):
@@ -308,7 +329,7 @@ class FindLeadGenes(BaseProcessor):
         read_key: str = f"uns.{UNS.GSEA_PRERANK}"
         all_leads_save_key: str = f"var.{VAR.IS_LEAD}"
         lead_group_save_key: str = f"var.{VAR.LEAD_GROUP}"
-        filter_by: List[Filter] = DEFAULT_LEAD_GENE_FILTERS
+        filter_by: List[Filter] = DEFAULT_FILTERS_LEAD_GENES
         gene_names_key: str = "var_names"
 
         @validator('filter_by', pre=True, always=True)
@@ -365,6 +386,7 @@ class FindLeadGenesForProcess(BaseProcessor):
         organism: str = 'Human'
         terms: str | List[str]
         save_key: str = f'var.{VAR.CUSTOM_LEAD_GENES}'
+        regex: bool = False
         all_leads_save_key: str = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
         gene_names_key: str = "var_names"
 
@@ -379,20 +401,24 @@ class FindLeadGenesForProcess(BaseProcessor):
     def _process(self, adata: AnnData) -> None:
         genes = []
         lib = gp.get_library(name=self.cfg.gene_set, organism=self.cfg.organism)
-        all_terms = list(lib)
-        matched = 0
-        for term in self.cfg.terms:
-            r = re.compile(term)
-            try:
-                selected_terms = list(filter(r.match, all_terms))
-                matched += len(selected_terms)
-                for selected_term in selected_terms:
-                    genes.extend(lib[selected_term])
-            except Exception as e:
-                logger.warning(f"Could not match term '{term}'. Skipping...")
-                print(e)
+        if self.cfg.regex:
+            all_terms = list(lib)
+            matched = 0
+            for term in self.cfg.terms:
+                r = re.compile(term)
+                try:
+                    selected_terms = list(filter(r.match, all_terms))
+                    matched += len(selected_terms)
+                    for selected_term in selected_terms:
+                        genes.extend(lib[selected_term])
+                except Exception as e:
+                    logger.warning(f"Could not match term '{term}'. Skipping...")
+                    print(e)
+            logging.info(f"Matched a total of {matched} terms.")
+        else:
+            for term in self.cfg.terms:
+                genes.extend(lib[term])
 
-        logging.info(f"Matched a total of {matched} terms.")
         lead_genes = np.unique(genes)
         gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
