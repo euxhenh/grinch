@@ -384,7 +384,7 @@ class FindLeadGenesForProcess(BaseProcessor):
     class Config(BaseProcessor.Config):
         gene_set: str = 'GO_Biological_Process_2023'
         organism: str = 'Human'
-        terms: str | List[str]
+        terms: str | List[str] = '.*'  # by default take all
         save_key: str = f'var.{VAR.CUSTOM_LEAD_GENES}'
         regex: bool = False
         all_leads_save_key: str = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
