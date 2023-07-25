@@ -62,6 +62,7 @@ class GRPipeline(BaseConfigurable):
                 raise ValueError("A path to adata or an adata object is required.")
             logger.info(f"Reading AnnData from '{self.cfg.data_readpath}'...")
             adata = anndata.read_h5ad(self.cfg.data_readpath)
+        logger.info(adata)
         ds = DataSplitter(adata) if not isinstance(adata, DataSplitter) else adata
 
         it = tqdm(self.processors) if self.cfg.verbose else self.processors
@@ -82,7 +83,7 @@ class GRPipeline(BaseConfigurable):
                     logger.warning("Returning incomplete adata.")
                 return ds
 
-        ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.dict()
+        # ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.dict()
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)
