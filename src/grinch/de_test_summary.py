@@ -3,7 +3,7 @@ from typing import Dict, Literal, Tuple, overload
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, Extra, validator
+from pydantic import BaseModel, field_validator
 from sklearn.utils import check_consistent_length
 from sklearn.utils.validation import column_or_1d
 
@@ -14,15 +14,16 @@ from .utils.stats import _correct
 
 class TestSummary(BaseModel, abc.ABC):
     """A base class for Test summaries."""
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
-        extra = Extra.ignore
-        validate_all = True
+    model_config = {
+        'arbitrary_types_allowed': True,
+        'validate_assignment': True,
+        'extra': 'forbid',
+        'validate_default': True,
+    }
 
     name: NP1D_str | None = None
 
-    @validator('*', pre=True)
+    @field_validator('*', mode='before')
     def _to_np(cls, v) -> NP1D_Any | None:
         # Convert to numpy before performing any validation
         return v if v is None else column_or_1d(v)
@@ -39,7 +40,7 @@ class TestSummary(BaseModel, abc.ABC):
 
     def __str__(self):
         s = f"{self.__class__.__name__} with fields "
-        for field in self.__fields__:
+        for field in self.model_fields:
             if getattr(self, field) is not None:
                 s += f"'{field}', "
         s += f"of length {len(self)}."
@@ -47,7 +48,7 @@ class TestSummary(BaseModel, abc.ABC):
 
     def __repr__(self) -> str:
         s = f"{self.__class__.__name__}(\n"
-        for field in self.__fields__:
+        for field in self.model_fields:
             if (arr := getattr(self, field)) is not None:
                 if arr.dtype == np.float_:
                     arr = np.round(arr, 3)
@@ -59,12 +60,12 @@ class TestSummary(BaseModel, abc.ABC):
     def __getitem__(self, val):
         return type(self)(**{
             field: (arr[val] if arr is not None else None)
-            for field, arr in self.dict().items()
+            for field, arr in self.model_dump().items()
         })
 
     def _tuple(self, exclude_none: bool = False) -> Tuple[NP1D_float | None, ...]:
         """Converts self to tuple. To be used internally only."""
-        data: Dict[str, NP1D_float] = self.dict(exclude_none=exclude_none)
+        data: Dict[str, NP1D_float] = self.model_dump(exclude_none=exclude_none)
         return tuple(data.values())
 
     def _get_key(self, key):
@@ -75,7 +76,7 @@ class TestSummary(BaseModel, abc.ABC):
 
     def df(self) -> pd.DataFrame:
         """Converts self to a pandas dataframe."""
-        return pd.DataFrame(data=self.dict(exclude_none=True))
+        return pd.DataFrame(data=self.model_dump(exclude_none=True))
 
     def array(self, dtype=None) -> np.ndarray:
         """Stacks all numeric vectors in the dataclass and returns an array
@@ -137,10 +138,10 @@ class PvalTestSummary(TestSummary):
     pvals: NP1D_float
     qvals: NP1D_float | None = None
 
-    @validator('qvals', pre=True)
-    def _init_qvals(cls, qvals, values) -> NP1D_float:
+    @field_validator('qvals', mode='before')
+    def _init_qvals(cls, qvals, info) -> NP1D_float:
         """Make sure qvals are initialized."""
-        return qvals if qvals is not None else _correct(values['pvals'])[1]
+        return qvals if qvals is not None else _correct(info.data['pvals'])[1]
 
     def __len__(self) -> int:
         return len(self.pvals)

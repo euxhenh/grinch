@@ -1,10 +1,10 @@
 import abc
 import gc
 import logging
-from typing import List
+from typing import List, Literal
 
 from anndata import AnnData
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_bool
@@ -18,15 +18,15 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     """A base class for indexing operations."""
 
     class Config(BaseProcessor.Config):
-        filter_by: List[Filter] = Field(min_items=1)
+        filter_by: List[Filter] = Field(min_length=1)
         # Can be 0, 1 or 'obs', 'var'
-        axis: int | str = Field(0, ge=0, le=1, pattern='^(obs|var)$')
+        axis: int | Literal['obs', 'var'] = 0
 
-        @validator('axis')
+        @field_validator('axis')
         def ensure_correct_axis(cls, axis):
             return validate_axis(axis)
 
-        @validator('filter_by', pre=True, always=True)
+        @field_validator('filter_by', mode='before')
         def ensure_filter_list(cls, val):
             return [val] if isinstance(val, Filter) else val
 

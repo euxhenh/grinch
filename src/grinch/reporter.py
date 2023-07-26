@@ -1,19 +1,20 @@
 from typing import Any, Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
 
 
 class Report(BaseModel):
+
+    model_config = {
+        'arbitrary_types_allowed': True,
+        'extra': 'forbid',
+    }
+
     cls: str
     config: Dict[str, Any] | None = None
     message: Optional[str] = None
     shape: Optional[Tuple[int, int]] = None
     artifacts: Optional[str | List[str]] = None
-
-    class Config:
-        arbitrary_types_allowed = True
-        smart_union = True
-        extra = Extra.forbid
 
 
 class Reporter:
@@ -24,4 +25,4 @@ class Reporter:
         self.counter: int = 0
 
     def log(self, report: Report):
-        rep = report.dict(exclude_none=True)  # noqa
+        rep = report.model_dump(exclude_none=True)  # noqa

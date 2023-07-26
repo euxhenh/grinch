@@ -5,7 +5,7 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, validate_arguments, validator
+from pydantic import Field, field_validator, validate_call
 from sklearn.model_selection import train_test_split
 
 from ..conf import BaseConfigurable
@@ -65,14 +65,14 @@ class Splitter(BaseConfigurable):
                 if self.val_fraction + self.test_fraction >= 1:  # type: ignore
                     raise ValueError("Val and test fraction should sum less than one.")
 
-        @validator('stratify_key')
+        @field_validator('stratify_key')
         def rep_format_is_correct(cls, val):
             return (BaseProcessor.Config._validate_single_rep_key(val)
                     if val is not None else val)
 
     cfg: Config
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData | DataSplitter) -> DataSplitter:
         """Splits the adata into train/validation/test subsets and return a
         DataSplitter. If adata is already a DataSplitter, will raise an

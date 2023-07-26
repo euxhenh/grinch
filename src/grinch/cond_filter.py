@@ -1,8 +1,8 @@
 import logging
-from typing import Any, overload, Literal
+from typing import Any, Literal, overload
 
 import numpy as np
-from pydantic import BaseModel, Extra, Field, validate_arguments, validator
+from pydantic import BaseModel, Field, field_validator, validate_call
 from sklearn.utils import column_or_1d
 
 from .custom_types import NP1D_bool, NP1D_float, NP1D_int
@@ -25,6 +25,11 @@ class Filter(BaseModel):
     If key is None, will assume the passed object to call is the array to
     filter itself.
     """
+    model_config = {
+        'validate_assignment': True,
+        'validate_default': True,
+        'extra': 'forbid',
+    }
 
     key: str | None = None
     cutoff: float | None = None
@@ -33,14 +38,9 @@ class Filter(BaseModel):
     ordered: bool = False
     dtype: str = Field('float', pattern='(float|bool)')
 
-    class Config:
-        validate_assignment = True
-        extra = Extra.forbid
-        validate_all = True
-
-    @validator('top_k')
-    def _val_condition(cls, top_k, values):
-        if all_not_None(top_k, values['cutoff']):
+    @field_validator('top_k')
+    def _val_condition(cls, top_k, info):
+        if all_not_None(top_k, info.data['cutoff']):
             raise ValueError("Only one or none of 'cutoff' or 'top_k' must be specified.")
         return top_k
 
@@ -115,7 +115,7 @@ class Filter(BaseModel):
     @overload
     def __call__(self, obj: Any, as_mask: Literal[False]) -> NP1D_int: ...
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, obj, as_mask=True):
         """Applies filtering conditions and returns a mask or index array.
         """
@@ -156,7 +156,7 @@ class StackedFilter:
     @overload
     def __call__(self, obj: Any, as_mask: Literal[False]) -> NP1D_int: ...
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, obj, as_mask=True):
         # Get first mask
         mask = self.fcs[0](obj, as_mask=True)

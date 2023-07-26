@@ -1,7 +1,8 @@
 import logging
+from typing import Literal
 
 from anndata import AnnData
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from ..aliases import GROUP_SEP
 from ..custom_types import NP1D_str
@@ -43,14 +44,14 @@ class GroupProcess(BaseProcessor):
         processor: BaseProcessor.Config
         # Key to group by, must be recognized by np.unique.
         group_key: str
-        axis: int | str = Field(0, ge=0, le=1, pattern='^(obs|var)$')
+        axis: int | Literal['obs', 'var'] = Field(0, ge=0, le=1)
         group_prefix: str = f'g-{{group_key}}{GROUP_SEP}{{label}}.'
         min_points_per_group: int = Field(default_factory=int, ge=0)
         # Whether to drop the groups which have less than
         # `min_points_per_group` points or not.
         drop_small_groups: bool = False
 
-        @validator('axis')
+        @field_validator('axis')
         def ensure_correct_axis(cls, axis):
             return validate_axis(axis)
 

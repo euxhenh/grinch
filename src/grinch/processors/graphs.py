@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from scipy.sparse import csr_matrix, spmatrix
 from sklearn.neighbors import NearestNeighbors as _NearestNeighbors
 from sklearn.utils.validation import _ensure_sparse_format
@@ -74,7 +74,7 @@ class KNNGraph(BaseGraphConstructor):
         n_neighbors: int = Field(15, gt=0)
         n_jobs: int = Field(4, gt=0)
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['n_neighbors', 'n_jobs'], val)
 
@@ -117,7 +117,7 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
         n_neighbors: int = 15
         metric: str = "euclidean"
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['X', 'n_neighbors', 'random_state', 'metric',
                              'knn_indices', 'knn_dists', 'return_dists'], val)

@@ -5,7 +5,7 @@ from typing import List, Optional
 
 import anndata
 from anndata import AnnData
-from pydantic import Field, validate_arguments, validator
+from pydantic import Field, field_validator, validate_call
 from tqdm.auto import tqdm
 
 from .conf import BaseConfigurable
@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 class GRPipeline(BaseConfigurable):
 
     class Config(BaseConfigurable.Config):
-        data_readpath: Optional[str]
-        data_writepath: Optional[str]
+        data_readpath: str | None = None
+        data_writepath: str | None = None
         processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
         save_key: str = "pipeline"
@@ -34,7 +34,7 @@ class GRPipeline(BaseConfigurable):
         # of all zeros.
         no_data_write: bool = False
 
-        @validator('data_readpath', 'data_writepath')
+        @field_validator('data_readpath', 'data_writepath')
         def expand_paths(cls, val):
             return expanduser(val) if val is not None else None
 
@@ -50,7 +50,7 @@ class GRPipeline(BaseConfigurable):
                 c.seed = self.cfg.seed
             self.processors.append(c.initialize())
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: Optional[AnnData] = None, **kwargs) -> DataSplitter:
         """Applies processor to the different data splits in DataSplitter.
         It differentiates between predictors (calls processor.predict),
@@ -83,7 +83,7 @@ class GRPipeline(BaseConfigurable):
                     logger.warning("Returning incomplete adata.")
                 return ds
 
-        # ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.dict()
+        # ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.model_dump()
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)

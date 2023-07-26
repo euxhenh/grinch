@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from anndata import AnnData
-from pydantic import Field, validate_arguments, validator
+from pydantic import Field, field_validator, validate_call
 from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
 from sklearn.manifold import MDS as _MDS
@@ -26,9 +26,9 @@ class BaseTransformer(BaseProcessor, abc.ABC):
         stats_key: str | None = None
         kwargs: Dict[str, Any] = {}
 
-        @validator('stats_key')
-        def init_stats_key_with_x_emb(cls, val, values):
-            return val or f"uns.{values['x_emb_key'].split('.', 1)[1]}_"
+        @field_validator('stats_key')
+        def init_stats_key_with_x_emb(cls, val, info):
+            return val or f"uns.{info.data['x_emb_key'].split('.', 1)[1]}_"
 
     cfg: Config
 
@@ -45,7 +45,7 @@ class BaseTransformer(BaseProcessor, abc.ABC):
         self.store_item(self.cfg.x_emb_key, x_emb)
 
     @adata_modifier
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def transform(self, adata: AnnData) -> None:
         """Applies a transform only. Uses the same key as x_key.
         """
@@ -125,7 +125,7 @@ class MDS(BaseTransformer):
         x_emb_key: str = f"obsm.{OBSM.X_MDS}"
         n_components: int = Field(2, ge=1)
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['n_components', 'random_state'], val)
 
@@ -154,7 +154,7 @@ class UMAP(BaseTransformer):
         # Other arguments to pass to UMAP
         kwargs: Dict[str, Any] = {}
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['n_neighbors', 'n_components', 'spread', 'random_state'], val)
 

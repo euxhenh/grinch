@@ -10,7 +10,7 @@ import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
 from diptest import diptest
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from scipy.stats import ks_2samp
 from sklearn.utils import check_array, column_or_1d, indexable
 from tqdm.auto import tqdm
@@ -71,7 +71,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         is_logged: bool = True
         # If the data is logged, this should point to the base of the
         # logarithm used. Can be 'e' or a positive float.
-        base: Optional[float | str] = Field('e', gt=0, pattern='^e$')
+        base: float | str | None = Field('e')
         correction: str = 'fdr_bh'
         replace_nan: bool = True
 
@@ -81,20 +81,20 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
         show_progress_bar: bool = Field(True, exclude=True)
 
-        @validator('save_key')
+        @field_validator('save_key')
         def _starts_with_uns(cls, save_key):
             if save_key.split('.')[0] != 'uns':
                 raise ValueError("Anndata column for DE Test should be 'uns'.")
             return save_key
 
-        @validator('base')
-        def _remove_base_if_not_logged(cls, base, values):
-            return None if not values['is_logged'] else base
+        @field_validator('base')
+        def _remove_base_if_not_logged(cls, base, info):
+            return None if not info.data['is_logged'] else base
 
-        @validator('control_key')
-        def ensure_control_if_ovo(cls, control_key, values):
-            if values['test_type'] == "one_vs_one":
-                if not only_one_not_None(control_key, values['control_label']):
+        @field_validator('control_key')
+        def ensure_control_if_ovo(cls, control_key, info):
+            if info.data['test_type'] == "one_vs_one":
+                if not only_one_not_None(control_key, info.data['control_label']):
                     raise ValueError(
                         "Only one of `control_label` or "
                         "`control_key` should not be None "
@@ -217,7 +217,7 @@ class TTest(PairwiseDETest):
             if self.cfg.show_progress_bar
             else unq_labels
         )
-        for label in to_iter:
+        for label in to_iter:  # type: ignore
             if self.cfg.is_ovo and label == self.cfg.control_label:
                 continue
             ts: DETestSummary = self._single_test(pmv, label, control_stats)
@@ -284,7 +284,7 @@ class KSTest(PairwiseDETest):
                 _, m2, _ = pmv.compute([self.cfg.control_label], ddof=1)
                 y = x[_control_group]
 
-        for label, group in zip(to_iter, groups):
+        for label, group in zip(to_iter, groups):  # type: ignore
             if self.cfg.is_ovo and self.cfg.control_label is not None:
                 if self.cfg.control_label == label:
                     continue
@@ -338,11 +338,11 @@ class BimodalTest(BaseProcessor):
         max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
                                            exclude=True)
 
-        @validator('max_workers')
+        @field_validator('max_workers')
         def init_max_workers(cls, val):
             return 2 * mp.cpu_count() if val is None else val
 
-        @validator('save_key')
+        @field_validator('save_key')
         def _starts_with_uns(cls, save_key):
             if save_key.split('.')[0] != 'uns':
                 raise ValueError(

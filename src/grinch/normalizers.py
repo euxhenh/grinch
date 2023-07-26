@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import scipy.sparse as sp
 from anndata import AnnData
-from pydantic import Field, validate_arguments, validator
+from pydantic import Field, field_validator, validate_call
 from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_array, check_non_negative
 
@@ -31,13 +31,13 @@ class BaseNormalizer(BaseConfigurable):
         save_input: bool = True
         input_layer_name: Optional[str] = None
 
-        @validator('input_layer_name')
+        @field_validator('input_layer_name')
         def resolve_input_layer_name(cls, value):
             return f'pre_{cls.init_type.__name__}'.lower() if value is None else value
 
     cfg: Config
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> Optional[AnnData]:
         if not self.cfg.inplace:
             adata = adata.copy()

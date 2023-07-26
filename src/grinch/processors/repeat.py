@@ -2,7 +2,7 @@ import logging
 from typing import Any, List
 
 from anndata import AnnData
-from pydantic import validator
+from pydantic import field_validator
 
 from .base_processor import BaseProcessor
 
@@ -22,11 +22,11 @@ class RepeatProcessor(BaseProcessor):
         repeat_prefix: str = 'r-{repeat_var}-{repeat_val}-'
         upstream_splitter: str = '-'
 
-        @validator('repeat_var')
-        def has_field(cls, val, values):
-            if not hasattr(values['processor'], val):
+        @field_validator('repeat_var')
+        def has_field(cls, val, info):
+            if not hasattr(info.data['processor'], val):
                 raise KeyError(
-                    f"Processor Config {values['processor'].__qualname__} "
+                    f"Processor Config {info.data['processor'].__qualname__} "
                     f"has no key '{val}'."
                 )
             return val

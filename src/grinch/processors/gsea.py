@@ -8,13 +8,13 @@ import gseapy as gp
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import validator
+from pydantic import field_validator
 from sklearn.utils.validation import column_or_1d
 
 from .. import de_test_summary as de_ts
 from ..aliases import UNS, VAR
 from ..cond_filter import Filter, StackedFilter
-from ..custom_types import NP1D_int, NP1D_str
+from ..custom_types import NP1D_bool, NP1D_str
 from ..de_test_summary import DETestSummary, TestSummary
 from ..shortcuts import FWERpVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
@@ -73,7 +73,7 @@ class GSEA(BaseProcessor, abc.ABC):
         test_type: str | Type[TestSummary] = "DETestSummary"
         kwargs: Dict[str, Any] = {}
 
-        @validator('filter_by', pre=True, always=True)
+        @field_validator('filter_by', mode='before')
         def ensure_filter_list(cls, val):
             return [val] if isinstance(val, Filter) else val
 
@@ -185,7 +185,7 @@ class GSEA(BaseProcessor, abc.ABC):
         test.name = gene_list_all
         # Apply all filters
         if len(filter_by) > 0:
-            gene_mask: NP1D_int = test.where(*filter_by, as_mask=True)
+            gene_mask: NP1D_bool = test.where(*filter_by, as_mask=True)
             test = test[gene_mask]
 
         if len(test) == 0:  # empty list
@@ -205,7 +205,7 @@ class GSEAEnrich(GSEA):
         gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH
         filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['gene_list', 'gene_sets', 'no_plot'], val)
 
@@ -270,7 +270,7 @@ class GSEAPrerank(GSEA):
         qval_scaling: bool = True
         seed: int = 123  # Prerank doesn't accept null seeds
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['rnk', 'gene_sets', 'outdir', 'seed'], val)
 
@@ -332,7 +332,7 @@ class FindLeadGenes(BaseProcessor):
         filter_by: List[Filter] = DEFAULT_FILTERS_LEAD_GENES
         gene_names_key: str = "var_names"
 
-        @validator('filter_by', pre=True, always=True)
+        @field_validator('filter_by', mode='before')
         def ensure_filter_list(cls, val):
             return [val] if isinstance(val, Filter) else val
 
@@ -390,7 +390,7 @@ class FindLeadGenesForProcess(BaseProcessor):
         all_leads_save_key: str = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
         gene_names_key: str = "var_names"
 
-        @validator('terms')
+        @field_validator('terms')
         def to_list(cls, val):
             if isinstance(val, str):
                 return [val]

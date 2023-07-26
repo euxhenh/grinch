@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, validate_arguments, validator
+from pydantic import Field, field_validator, validate_call
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 from sklearn.mixture import BayesianGaussianMixture as _BayesianGaussianMixture
@@ -37,7 +37,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
         return BaseProcessor._processor_must_implement() + ['predict']
 
     @adata_modifier
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def predict(self, adata: AnnData) -> None:
         """Calls predict on the underlying predictor."""
         check_has_processor(self)
@@ -93,7 +93,7 @@ class KMeans(BaseUnsupervisedPredictor):
         # KMeans args
         n_clusters: int = Field(8, ge=1)
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['n_clusters', 'random_state'], val)
 
@@ -122,12 +122,12 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         proba_key: str = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
         score_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
         stats_key: str = f"uns.{UNS.GAUSSIAN_MIXTURE_}"
-        model_type: Literal['GaussianMixture', 'BayesianGaussianMixture'] = 'GaussianMixture'
+        mixture_kind: Literal['GaussianMixture', 'BayesianGaussianMixture'] = 'GaussianMixture'
         n_components: int = Field(8, ge=1)
         covariance_type: str = 'diag'  # non-default value
         max_iter: int = Field(500, ge=1)
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['n_components', 'random_state', 'max_iter',
                              'covariance_type'], val)
@@ -137,7 +137,7 @@ class GaussianMixture(BaseUnsupervisedPredictor):
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        if self.cfg.model_type == 'GaussianMixture':
+        if self.cfg.mixture_kind == 'GaussianMixture':
             model = _GaussianMixture
         else:
             model = _BayesianGaussianMixture
@@ -179,7 +179,7 @@ class Leiden(BaseUnsupervisedPredictor):
         compute_centroids: bool = True
         x_key_for_centroids: str = "X"
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['partition_type', 'graph', 'weights',
                              'n_iterations', 'seed'], val)
@@ -254,7 +254,7 @@ class LogisticRegression(BaseSupervisedPredictor):
         max_iter: int = Field(500, gt=0)
         n_jobs: Optional[int] = Field(-1, ge=-1)
 
-        @validator('kwargs')
+        @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             return pop_args(['penalty', 'C', 'max_iter',
                              'n_jobs', 'random_state'], val)

@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import UNS, DETestSummary
+from grinch import UNS, DETestSummary, KSTestSummary
 
 from ._utils import assert_allclose, to_view
 
@@ -21,13 +21,14 @@ X = np.array([
 label = [0, 0, 0, 1, 1, 1]
 
 X_mods = [X, sp.csr_matrix(X), to_view(X)]
-tests = [("TTest", UNS.TTEST), ("KSTest", UNS.KSTEST)]
+tests = [("TTest", UNS.TTEST, DETestSummary),
+         ("KSTest", UNS.KSTEST, KSTestSummary)]
 
 
 # Test all combinations
 @pytest.mark.parametrize("X", X_mods)
-@pytest.mark.parametrize("test,key", tests)
-def test_tests(X, test, key):
+@pytest.mark.parametrize("test,key,summary", tests)
+def test_tests(X, test, key, summary):
     cfg = OmegaConf.create(
         {
             "_target_": f"src.grinch.{test}.Config",
@@ -42,7 +43,7 @@ def test_tests(X, test, key):
     test(adata)
     pvals = adata.uns[key]['label-0']['pvals'].to_numpy()
     log2fc = adata.uns[key]['label-0']['log2fc'].to_numpy()
-    dd = DETestSummary.from_df(adata.uns[key]['label-0'])
+    dd = summary.from_df(adata.uns[key]['label-0'])
     assert_allclose(dd.pvals, pvals)
     assert_allclose(dd.log2fc, log2fc)
 
@@ -60,7 +61,7 @@ def test_tests(X, test, key):
 
     pvals = adata.uns[key]['label-1']['pvals'].to_numpy()
     log2fc = adata.uns[key]['label-1']['log2fc'].to_numpy()
-    dd = DETestSummary.from_df(adata.uns[key]['label-1'])
+    dd = summary.from_df(adata.uns[key]['label-1'])
     assert_allclose(dd.pvals, pvals)
     assert_allclose(dd.log2fc, log2fc)
 
