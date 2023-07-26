@@ -1,9 +1,9 @@
 import abc
 import inspect
 from itertools import islice
-from typing import List, Optional, Tuple
+from typing import ClassVar, List, Tuple
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, Field
 
 from .reporter import Report, Reporter
 
@@ -67,17 +67,12 @@ class _BaseConfigurable(abc.ABC):
 
 class BaseConfig(BaseModel):
 
-    class Config:
-        # Allow arbitrary user types for fields
-        arbitrary_types_allowed = True
-        # Perform validation on assignment as well
-        validate_assignment = True
-        # Prevent undesired coercion by checking all types in Union
-        smart_union = True
-        # Don't allow extra fields
-        extra = Extra.forbid
-        # validate all, check if there are any bugs in validator's code
-        validate_all = True
+    model_config = {
+        'arbitrary_types_allowed': True,
+        'validate_assignment': True,
+        'extra': 'forbid',
+        'validate_default': True,
+    }
 
     @property
     def init_type(self):
@@ -104,8 +99,8 @@ class BaseConfig(BaseModel):
 class BaseConfigurable(_BaseConfigurable):
 
     class Config(BaseConfig):
-        seed: Optional[int] = None
-        sanity_check: bool = Field(False, exclude=True)
+        seed: int | None = None
+        sanity_check: ClassVar[bool] = Field(False)
 
     cfg: Config
 
@@ -117,7 +112,7 @@ class BaseConfigurable(_BaseConfigurable):
         self,
         message: str,
         shape: Tuple[int, int] | None = None,
-        artifacts: Optional[str | List[str]] = None
+        artifacts: str | List[str] | None = None
     ) -> None:
         """Sends a report to reporter for logging.
 
@@ -132,7 +127,7 @@ class BaseConfigurable(_BaseConfigurable):
         """
         report = Report(
             cls=self.__class__.__name__,
-            config=self.cfg.dict(),
+            config=self.cfg.model_dump(),
             message=message,
             shape=shape,
             artifacts=artifacts,

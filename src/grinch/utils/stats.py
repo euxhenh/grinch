@@ -282,7 +282,7 @@ class PartMeanVar:
 
         unq_labels, groups = group_indices(y)
         if show_progress_bar:
-            unq_labels = tqdm(unq_labels, desc='Fitting data')
+            unq_labels = tqdm(unq_labels, desc='Fitting data')  # type: ignore
 
         # support sparse matrices as well
         def square_func(x): return x.power(2) if sp.issparse(X) else x**2

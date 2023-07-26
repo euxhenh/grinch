@@ -1,11 +1,11 @@
 import inspect
 from operator import attrgetter
-from typing import Any, Dict, List, Optional, Tuple, TypeAlias
+from typing import Any, Dict, List, Tuple, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
 
-REP_KEY: TypeAlias = Optional[str | List[str] | Dict[str, str]]
+REP_KEY: TypeAlias = str | List[str] | Dict[str, str] | None
 REP: TypeAlias = Dict[str, Any] | List[Any] | Any
 
 NP1D_Any = np.ndarray[Tuple[Any], np.dtype[Any]]

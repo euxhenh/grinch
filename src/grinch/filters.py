@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, validate_arguments
+from pydantic import Field, validate_call
 from sklearn.utils.validation import check_array, check_non_negative
 
 from .aliases import OBS, VAR
@@ -26,7 +26,7 @@ class BaseFilter(BaseConfigurable):
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> Optional[AnnData]:
         if not self.cfg.inplace:
             adata = adata.copy()

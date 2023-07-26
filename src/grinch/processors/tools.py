@@ -1,6 +1,6 @@
 import logging
 from numbers import Number
-from typing import Dict, Optional
+from typing import Dict, Literal, Optional
 
 import numpy as np
 from anndata import AnnData
@@ -68,7 +68,7 @@ class ReplaceNaN(BaseProcessor):
     class Config(BaseProcessor.Config):
         read_key: str
         save_key: Optional[str]
-        replace_value: Number | str = Field(0.0, pattern='^median$')
+        replace_value: Number | Literal['median'] = Field(0.0)
 
     cfg: Config
 

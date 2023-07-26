@@ -44,7 +44,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     cfg = instantiate_config(args.conf)
     if args.pc:
-        cfg_obj = OmegaConf.to_yaml(cfg.dict())
+        cfg_obj = OmegaConf.to_yaml(cfg.model_dump())
         logging.info(cfg_obj)
     obj = cfg.initialize()
     obj()

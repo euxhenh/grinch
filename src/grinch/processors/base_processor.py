@@ -9,7 +9,7 @@ from operator import itemgetter
 from typing import Any, Callable, Dict, List
 
 from anndata import AnnData
-from pydantic import validate_arguments, validator
+from pydantic import field_validator, validate_call
 
 from ..aliases import ALLOWED_KEYS
 from ..conf import BaseConfigurable
@@ -132,8 +132,8 @@ class BaseProcessor(BaseConfigurable):
                 )
             return val
 
-        @validator('*')
-        def rep_format_is_correct(cls, val, field):
+        @field_validator('*')
+        def rep_format_is_correct(cls, val, info):
             """Select the representation to use. If val is str: if 'X',
             will use adata.X, otherwise it must contain a dot that splits
             the annotation key that will be used and the column key. E.g.,
@@ -147,7 +147,7 @@ class BaseProcessor(BaseConfigurable):
 
             This validator will only check fields that end with '_key'.
             """
-            if not field.name.endswith('_key'):
+            if not info.field_name.endswith('_key'):
                 return val
 
             match val:
@@ -162,7 +162,7 @@ class BaseProcessor(BaseConfigurable):
                     return None
                 case _:
                     raise ValueError(
-                        f"Could not interpret format for {field.name}. "
+                        f"Could not interpret format for {info.field_name}. "
                         "Please make sure it is a str, list[str], "
                         "or dict[str, str]."
                     )
@@ -241,7 +241,7 @@ class BaseProcessor(BaseConfigurable):
             self.store_item(self.cfg.stats_key, stats)  # type: ignore
 
     @adata_modifier
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(
         self,
         adata: AnnData,
