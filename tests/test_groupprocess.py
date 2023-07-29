@@ -35,7 +35,7 @@ def test_groupby(X):
     adata.obs['ct'] = ["p1", "p2", "p2", "p2", "p1", "p1"]
     # gcfg = instantiate(gcfg, _convert_='partial')
     gcfg = instantiate(gcfg)
-    groupprocess = gcfg.initialize()
+    groupprocess = gcfg.create()
     groupprocess(adata)
     gr0 = adata.uns['g-mem']['0']
     gr1 = adata.uns['g-mem']['1']
@@ -62,7 +62,7 @@ def test_groupby_ttest(X):
     adata.obs['ct'] = ["p1", "p2", "p2", "p2", "p1", "p1"]
     # gcfg = instantiate(gcfg, _convert_='partial')
     gcfg = instantiate(gcfg)
-    groupprocess = gcfg.initialize()
+    groupprocess = gcfg.create()
     groupprocess(adata)
     gr0 = adata.uns['g-mem']['0']
     gr1 = adata.uns['g-mem']['1']
@@ -96,7 +96,7 @@ def test_nested_groupby(X):
     adata.obs['ct'] = ["p1", "p2", "p2", "p2", "p1", "p1"]
     # gcfg = instantiate(gcfg, _convert_='partial')
     gcfg = instantiate(gcfg)
-    groupprocess = gcfg.initialize()
+    groupprocess = gcfg.create()
     groupprocess(adata)
     gr0 = adata.uns['g-mem']['0']
     gr1 = adata.uns['g-mem']['1']

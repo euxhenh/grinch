@@ -23,7 +23,7 @@ def test_knn(X):
         }
     )
     cfg = instantiate(cfg)
-    knn = cfg.initialize()
+    knn = cfg.create()
     adata = AnnData(X)
     knn(adata)
 

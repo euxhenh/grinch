@@ -43,7 +43,7 @@ def test_indexer_obs(X):
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    index = cfg.initialize()
+    index = cfg.create()
     adata = AnnData(X)
     adata.var['pick'] = [0, 1, 1, 0]
     index(adata)

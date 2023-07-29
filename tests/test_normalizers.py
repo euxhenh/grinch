@@ -29,7 +29,7 @@ def test_normalize_total(X):
         }
     )
     cfg = instantiate(cfg)
-    normalize_total = cfg.initialize()
+    normalize_total = cfg.create()
     adata = AnnData(X.copy())
     normalize_total(adata)
     X_normalized = np.array([
@@ -52,7 +52,7 @@ def test_normalize_median(X):
         }
     )
     cfg = instantiate(cfg)
-    normalize_total = cfg.initialize()
+    normalize_total = cfg.create()
     adata = AnnData(X.copy())
     normalize_total(adata)
     X_normalized = np.array([
@@ -74,9 +74,10 @@ def test_log1p(X):
         }
     )
     cfg = instantiate(cfg)
-    log1p = cfg.initialize()
+    log1p = cfg.create()
     adata = AnnData(X.copy())
     log1p(adata)
     X_logged = np.log1p(X)
+    print(adata)
     assert_allclose(X_logged, adata.X)
     assert_allclose(X, adata.layers['pre_log1p'])

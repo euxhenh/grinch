@@ -46,5 +46,5 @@ if __name__ == "__main__":
     if args.pc:
         cfg_obj = OmegaConf.to_yaml(cfg.model_dump())
         logging.info(cfg_obj)
-    obj = cfg.initialize()
+    obj = cfg.create()
     obj()

@@ -75,7 +75,7 @@ class IndexProcessor(BaseIndexer):
         super().__init__(cfg)
 
         self.cfg.processor.inplace = True
-        self.processor = self.cfg.processor.initialize()
+        self.processor = self.cfg.processor.create()
 
     def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
         # TODO improve naming and add indexing stats

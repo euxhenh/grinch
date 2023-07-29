@@ -37,7 +37,7 @@ def test_repeat(X):
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    rep = cfg.initialize()
+    rep = cfg.create()
     adata = AnnData(X)
     adata.var['pick'] = [0, 1, 1, 0]
     rep(adata)

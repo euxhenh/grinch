@@ -95,12 +95,12 @@ class GroupProcess(BaseProcessor):
                     continue
 
             logger.info(
-                f"Running '{self.cfg.processor.init_type.__name__}' "
+                f"Running '{self.cfg.processor._init_type.__name__}' "
                 f"for group '{self.cfg.group_key}={label}'."
             )
 
             self.cfg.update_processor_save_key_prefix(label)
-            processor: BaseProcessor = self.cfg.processor.initialize()
+            processor: BaseProcessor = self.cfg.processor.create()
             arg = 'obs_indices' if self.cfg.axis == 0 else 'var_indices'
             storage = processor(adata, return_storage=True, **{arg: group})
             # Prefix should be handled by the processor

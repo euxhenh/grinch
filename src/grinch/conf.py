@@ -1,23 +1,42 @@
-import abc
 import inspect
 from contextlib import contextmanager
 from itertools import islice
 from pathlib import Path
-from typing import ClassVar, List, Tuple
+from typing import ClassVar, Generic, List, Tuple, Type, TypeVar
 
 import matplotlib.pyplot as plt
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 from .reporter import Report, Reporter
 
 reporter = Reporter()
 
+BaseConfigurableT = TypeVar("BaseConfigurableT", bound="BaseConfigurable")
 
-class _BaseConfigurable(abc.ABC):
-    """A base class for configurable classes.
+
+class _BaseConfigurable:
+    """A base meta class for configurable classes. Each subclass C will
+    inherit a Config inner class that knows C's type. The type is set upon
+    class definition via this meta class. This allows the construction of
+    an instance of C by calling C.Config().create() thus allowing
+    reproducibility of the object given its Config only.
     """
-    class Config:
-        ...
+    class Config(Generic[BaseConfigurableT], BaseModel):
+        """A base config class for initializing configurable objects.
+        """
+        model_config = {
+            'arbitrary_types_allowed': True,
+            'validate_assignment': True,
+            'extra': 'forbid',
+            'validate_default': True,
+        }
+
+        _init_type: Type[BaseConfigurableT] = PrivateAttr(None)
+
+        def create(self, *args, **kwargs) -> BaseConfigurableT:
+            """Initialize and return an object of type `self._init_type`.
+            """
+            return self._init_type(self, *args, **kwargs)
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -65,43 +84,16 @@ class _BaseConfigurable(abc.ABC):
             )
 
         # Store outer class type in `Config`
-        cls.Config.init_type = cls  # type: ignore
+        cls.Config._init_type = cls  # type: ignore
 
-
-class BaseConfig(BaseModel):
-
-    model_config = {
-        'arbitrary_types_allowed': True,
-        'validate_assignment': True,
-        'extra': 'forbid',
-        'validate_default': True,
-    }
-
-    @property
-    def init_type(self):
-        """Return the type of the object that this class belongs to. Useful
-        when trying to call static or class methods of the underlying type.
-        """
-        if hasattr(self, '__init_type'):
-            return self.__init_type
-        return None
-
-    @init_type.setter
-    def init_type(self, value):
-        self.__init_type = value
-
-    def initialize(self, *args, **kwargs):
-        """Initialize and return an object of type `self.init_type`.
-        """
-        initialized_obj: BaseConfigurable | None = None
-        if self.init_type is not None:
-            initialized_obj = self.init_type(self, *args, **kwargs)
-        return initialized_obj
+    def __init__(self, cfg: Config, /):
+        self.cfg = cfg
+        self._reporter = reporter
 
 
 class BaseConfigurable(_BaseConfigurable):
 
-    class Config(BaseConfig):
+    class Config(_BaseConfigurable.Config):
         seed: int | None = None
         logs_path: Path = Path('./grinch_logs')  # Default
         sanity_check: ClassVar[bool] = Field(False, exclude=True)
@@ -112,10 +104,6 @@ class BaseConfigurable(_BaseConfigurable):
             return Path(val)
 
     cfg: Config
-
-    def __init__(self, cfg: Config, /):
-        self.cfg = cfg
-        self._reporter = reporter
 
     @property
     def logs_path(self) -> Path:

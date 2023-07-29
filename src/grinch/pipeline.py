@@ -51,7 +51,7 @@ class GRPipeline(BaseConfigurable):
                 path = self.cfg.data_writepath or self.cfg.data_readpath
                 if path is not None:
                     c.logs_path = c.logs_path / path.split('/')[-1]
-            self.processors.append(c.initialize())
+            self.processors.append(c.create())
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: Optional[AnnData] = None, **kwargs) -> DataSplitter:
