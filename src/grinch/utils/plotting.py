@@ -1,7 +1,7 @@
 import logging
 
 import matplotlib.pyplot as plt
-import numpy.typing as npt
+import numpy as np
 import seaborn as sns
 from scipy.stats import norm
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def plot1d(
-    rvs: npt.ArrayLike,
+    rvs: np.ndarray,
     dist: str,
     *,
     title: str | None = None,

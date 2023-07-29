@@ -121,7 +121,7 @@ class BaseConfigurable(_BaseConfigurable):
         self._reporter = reporter
 
     @property
-    def logs_path(self) -> Path:
+    def logs_path(self) -> Path | None:
         return self.cfg.logs_path
 
     @contextmanager
@@ -131,12 +131,12 @@ class BaseConfigurable(_BaseConfigurable):
         plt.ioff()
 
         if all_not_None(self.logs_path, save_path):
-            self.logs_path.mkdir(parents=True, exist_ok=True)
+            self.logs_path.mkdir(parents=True, exist_ok=True)  # type: ignore
             # Set good defaults
             kwargs.setdefault('dpi', 300)
             kwargs.setdefault('bbox_inches', 'tight')
             kwargs.setdefault('transparent', True)
-            plt.savefig(self.logs_path / save_path, **kwargs)
+            plt.savefig(self.logs_path / save_path, **kwargs)  # type: ignore
 
         plt.clf()
         plt.show()

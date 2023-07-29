@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Dict, Hashable, List, Optional, Tuple, overload
+from typing import Any, Dict, Hashable, List, Tuple, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -101,11 +101,25 @@ def _var(x, axis=None, ddof=0, mean=None):
     return var
 
 
+@overload
 def mean_var(
     x: npt.ArrayLike,
-    axis: Optional[int] = None,
-    ddof: int = 0
-) -> Tuple[int | np.ndarray, int | np.ndarray]:
+    axis: None = None,
+    ddof: int = 0,
+) -> Tuple[float, float]:
+    ...
+
+
+@overload
+def mean_var(
+    x: npt.ArrayLike,
+    axis: int,
+    ddof: int = 0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    ...
+
+
+def mean_var(x, axis=None, ddof=0):
     """Returns both mean and variance.
 
     Parameters
@@ -135,7 +149,7 @@ def mean_var(
 def ttest(
     a: npt.ArrayLike,
     b: npt.ArrayLike,
-    axis: Optional[int] = 0
+    axis: int | None = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Performs a Welch's t-test (unequal sample sizes, unequal vars).
     Extends scipy's ttest_ind to support sparse matrices.
