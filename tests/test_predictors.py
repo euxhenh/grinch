@@ -39,7 +39,7 @@ def test_kmeans_x(X):
         }
     )
     cfg = instantiate(cfg)
-    kmeans = cfg.initialize()
+    kmeans = cfg.create()
     adata = AnnData(X)
     kmeans(adata)
     outp = adata.obs[OBS.KMEANS]
@@ -60,7 +60,7 @@ def test_kmeans_x_pca(X):
         }
     )
     cfg_pca = instantiate(cfg_pca)
-    pca = cfg_pca.initialize()
+    pca = cfg_pca.create()
     pca(adata)
 
     cfg = OmegaConf.create(
@@ -72,7 +72,7 @@ def test_kmeans_x_pca(X):
         }
     )
     cfg = instantiate(cfg)
-    kmeans = cfg.initialize()
+    kmeans = cfg.create()
     kmeans(adata)
     outp = adata.obs[OBS.KMEANS]
     assert np.unique(outp[:2]).size == 1
@@ -98,7 +98,7 @@ def test_gmix_x(X):
         }
     )
     cfg = instantiate(cfg)
-    kmeans = cfg.initialize()
+    kmeans = cfg.create()
     adata = AnnData(X)
     kmeans(adata)
     outp = adata.obs[OBS.GAUSSIAN_MIXTURE]
@@ -122,7 +122,7 @@ def test_log_reg_x(X):
         }
     )
     cfg_pca = instantiate(cfg_pca)
-    pca = cfg_pca.initialize()
+    pca = cfg_pca.create()
     pca(adata)
 
     cfg_kmeans = OmegaConf.create(
@@ -134,7 +134,7 @@ def test_log_reg_x(X):
         }
     )
     cfg_kmeans = instantiate(cfg_kmeans)
-    kmeans = cfg_kmeans.initialize()
+    kmeans = cfg_kmeans.create()
     kmeans(adata)
 
     cfg = OmegaConf.create(
@@ -148,7 +148,7 @@ def test_log_reg_x(X):
     )
     # Need to start using convert all for lists and dicts
     cfg = instantiate(cfg, _convert_='all')
-    lr = cfg.initialize()
+    lr = cfg.create()
     lr(adata)
     outp = adata.obs[OBS.LOG_REG]
     assert np.unique(outp[:2]).size == 1
@@ -174,7 +174,7 @@ def test_leiden(X):
         }
     )
     cfg_knn = instantiate(cfg_knn)
-    knn = cfg_knn.initialize()
+    knn = cfg_knn.create()
     knn(adata)
 
     cfg = OmegaConf.create(
@@ -185,7 +185,7 @@ def test_leiden(X):
         }
     )
     cfg = instantiate(cfg)
-    leiden = cfg.initialize()
+    leiden = cfg.create()
     leiden(adata)
     pred = adata.obs[OBS.LEIDEN]
     true = np.array([0, 0, 1, 1, 1])

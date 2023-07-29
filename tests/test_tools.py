@@ -27,7 +27,7 @@ def test_fnan(X):
         }
     )
     cfg = instantiate(cfg)
-    fnan = cfg.initialize()
+    fnan = cfg.create()
     adata = AnnData(X)
     adata.obs['vals'] = [0, 1, np.nan, 4]
     fnan(adata)
@@ -44,7 +44,7 @@ def test_fnan_2(X):
         }
     )
     cfg = instantiate(cfg)
-    fnan = cfg.initialize()
+    fnan = cfg.create()
     adata = AnnData(X)
     adata.obs['vals'] = ['0', '1', 'nan', '4']
     fnan(adata)

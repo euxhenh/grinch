@@ -28,7 +28,7 @@ def test_splitter(X):
         }
     )
     cfg = instantiate(cfg)
-    splitter = cfg.initialize()
+    splitter = cfg.create()
     adata = AnnData(X)
     datasplitter = splitter(adata)
     assert_allclose(adata.X, datasplitter.TRAIN_SPLIT.X)
@@ -44,7 +44,7 @@ def test_splitter_val(X):
         }
     )
     cfg = instantiate(cfg)
-    splitter = cfg.initialize()
+    splitter = cfg.create()
     adata = AnnData(X)
     datasplitter = splitter(adata)
     idx_train, idx_val = train_test_split(np.arange(X.shape[0]), test_size=2/5, random_state=42)
@@ -64,7 +64,7 @@ def test_splitter_test(X):
         }
     )
     cfg = instantiate(cfg)
-    splitter = cfg.initialize()
+    splitter = cfg.create()
     adata = AnnData(X)
     datasplitter = splitter(adata)
     idx_train, idx_test = train_test_split(np.arange(X.shape[0]), test_size=3/5, random_state=42)
@@ -85,7 +85,7 @@ def test_splitter_val_test(X):
         }
     )
     cfg = instantiate(cfg)
-    splitter = cfg.initialize()
+    splitter = cfg.create()
     adata = AnnData(X)
     datasplitter = splitter(adata)
     idx_train, idx_val = train_test_split(np.arange(X.shape[0]), test_size=2/5, random_state=42)

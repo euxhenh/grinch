@@ -1,7 +1,7 @@
 from . import custom_types as typing
 from .aliases import ADK, OBS, OBSM, OBSP, UNS, VAR, VARM, VARP, AnnDataKeys
 from .cond_filter import Filter, StackedFilter
-from .conf import BaseConfig, BaseConfigurable
+from .conf import BaseConfigurable
 from .de_test_summary import (
     BimodalTestSummary,
     DETestSummary,
@@ -28,7 +28,6 @@ __all__ = [
     'VARP',
     'UNS',
     'AnnDataKeys',
-    'BaseConfig',
     'BaseConfigurable',
     'BimodalTestSummary',
     'GRPipeline',

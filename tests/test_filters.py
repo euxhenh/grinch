@@ -28,7 +28,7 @@ def test_min_counts(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_cells = cfg.initialize()
+    filter_cells = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_cells(adata)
@@ -48,7 +48,7 @@ def test_max_counts(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_cells = cfg.initialize()
+    filter_cells = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_cells(adata)
@@ -69,7 +69,7 @@ def test_min_max_counts(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_cells = cfg.initialize()
+    filter_cells = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_cells(adata)
@@ -90,7 +90,7 @@ def test_min_max_genes(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_cells = cfg.initialize()
+    filter_cells = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_cells(adata)
@@ -112,7 +112,7 @@ def test_all(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_cells = cfg.initialize()
+    filter_cells = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_cells(adata)
@@ -135,7 +135,7 @@ def test_inplace(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_cells = cfg.initialize()
+    filter_cells = cfg.create()
     adata = AnnData(X)
     adata_new = filter_cells(adata)
     X_filtered = X[[0, 2]]
@@ -154,7 +154,7 @@ def test_gene_min_counts(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_genes(adata)
@@ -174,7 +174,7 @@ def test_gene_max_counts(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_genes(adata)
@@ -195,7 +195,7 @@ def test_gene_min_max_counts(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_genes(adata)
@@ -216,7 +216,7 @@ def test_min_max_cells(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_genes(adata)
@@ -238,7 +238,7 @@ def test_gene_all(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_genes(adata)
@@ -261,7 +261,7 @@ def test_gene_inplace(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     adata_new = filter_genes(adata)
     X_filtered = X[:, [1]]
@@ -282,7 +282,7 @@ def test_min_max_var(X):
         }
     )
     cfg = instantiate(cfg)
-    filter_genes = cfg.initialize()
+    filter_genes = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     filter_genes(adata)

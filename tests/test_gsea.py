@@ -33,7 +33,7 @@ def test_enrich(X):
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    gsea = cfg.initialize()
+    gsea = cfg.create()
     adata = AnnData(X)
     ts = DETestSummary(pvals=[0.02, 0.5, 1, 0.01, 0.8])
     adata.uns[UNS.TTEST] = ts.df()
@@ -74,7 +74,7 @@ def test_lead_genes():
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    find_lead = cfg.initialize()
+    find_lead = cfg.create()
     adata = AnnData(np.random.random((1, 8)))
     adata.var_names = list('ABCDEFGH')
 

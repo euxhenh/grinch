@@ -30,11 +30,11 @@ class BaseNormalizer(BaseConfigurable):
     class Config(BaseConfigurable.Config):
         inplace: bool = True
         save_input: bool = True
-        input_layer_name: str | None = None
+        input_layer_name: str = Field(None)
 
-        @field_validator('input_layer_name')
+        @field_validator('input_layer_name', mode='before')
         def resolve_input_layer_name(cls, value):
-            return f'pre_{cls.init_type.__name__}'.lower() if value is None else value
+            return f'pre_{cls._init_type.__name__}'.lower() if value is None else value
 
     cfg: Config
 

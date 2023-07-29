@@ -36,7 +36,7 @@ def test_tests(X, test, key, summary):
         }
     )
     cfg = instantiate(cfg)
-    test = cfg.initialize()
+    test = cfg.create()
     adata = AnnData(X)
     adata.obs['label'] = label
 

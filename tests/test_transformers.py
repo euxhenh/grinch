@@ -42,7 +42,7 @@ def test_pca(X):
         }
     )
     cfg = instantiate(cfg)
-    pca = cfg.initialize()
+    pca = cfg.create()
     pca_sk = PCA(n_components=3, random_state=SEED)
     adata = AnnData(X)
     pca(adata)
@@ -62,7 +62,7 @@ def test_truncated(X):
         }
     )
     cfg = instantiate(cfg)
-    tsvd = cfg.initialize()
+    tsvd = cfg.create()
     tsvd_sk = TruncatedSVD(n_components=3, random_state=SEED)
     adata = AnnData(X)
     tsvd(adata)
@@ -100,7 +100,7 @@ def test_umap(X):
         init='random',
     )
     adata = AnnData(X)
-    up = cfg.initialize()
+    up = cfg.create()
     up(adata)
     x_emb_up = umap_up.fit_transform(X)
 

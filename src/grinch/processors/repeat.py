@@ -50,8 +50,8 @@ class RepeatProcessor(BaseProcessor):
     def _process(self, adata: AnnData) -> None:
 
         for val in self.cfg.repeat_vals:
-            logger.info(f"Repeating '{self.cfg.processor.init_type.__name__}' with value {val}.")
+            logger.info(f"Repeating '{self.cfg.processor._init_type.__name__}' with value {val}.")
             setattr(self.cfg.processor, self.cfg.repeat_var, val)
             self.cfg.update_processor_save_key_prefix(val)
-            processor: BaseProcessor = self.cfg.processor.initialize()
+            processor: BaseProcessor = self.cfg.processor.create()
             processor(adata)
