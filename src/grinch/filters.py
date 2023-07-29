@@ -10,6 +10,7 @@ from sklearn.utils.validation import check_array, check_non_negative
 from .aliases import OBS, VAR
 from .conf import BaseConfigurable
 from .utils import any_not_None, true_inside
+from .utils.plotting import plot1d
 from .utils.stats import _var
 
 logger = logging.getLogger(__name__)
@@ -52,10 +53,10 @@ class FilterCells(BaseFilter):
     """Filters cells based on counts and number of expressed genes."""
 
     class Config(BaseFilter.Config):
-        min_counts: Optional[float] = Field(None, ge=0)
-        max_counts: Optional[float] = Field(None, ge=0)
-        min_genes: Optional[int] = Field(None, ge=0)
-        max_genes: Optional[int] = Field(None, ge=0)
+        min_counts: float | None = Field(None, ge=0)
+        max_counts: float | None = Field(None, ge=0)
+        min_genes: int | None = Field(None, ge=0)
+        max_genes: int | None = Field(None, ge=0)
 
     cfg: Config
 
@@ -66,6 +67,13 @@ class FilterCells(BaseFilter):
         to_keep = np.ones(adata.shape[0], dtype=bool)
 
         counts_per_cell = np.ravel(adata.X.sum(axis=1))
+
+        if self.cfg.interactive:
+            with self.interactive('counts_per_cell.png'):
+                plot1d(counts_per_cell, 'nbinom', title='Counts per Cell')
+                self.cfg.min_counts = eval(input("Enter min_counts="))
+                self.cfg.max_counts = eval(input("Enter max_counts="))
+
         if any_not_None(self.cfg.min_counts, self.cfg.max_counts):
             to_keep &= true_inside(
                 counts_per_cell,
@@ -75,6 +83,13 @@ class FilterCells(BaseFilter):
 
         # Values are ensured to be non-negative
         genes_per_cell = np.ravel((adata.X > 0).sum(axis=1))
+
+        if self.cfg.interactive:
+            with self.interactive('genes_per_cell.png'):
+                plot1d(genes_per_cell, 'nbinom', title='Genes per Cell')
+                self.cfg.min_genes = eval(input("Enter min_genes="))
+                self.cfg.max_genes = eval(input("Enter max_genes="))
+
         if any_not_None(self.cfg.min_genes, self.cfg.max_genes):
             to_keep &= true_inside(
                 genes_per_cell,
@@ -115,6 +130,13 @@ class FilterGenes(BaseFilter):
         to_keep = np.ones(adata.shape[1], dtype=bool)
 
         counts_per_gene = np.ravel(adata.X.sum(axis=0))
+
+        if self.cfg.interactive:
+            with self.interactive('counts_per_gene.png'):
+                plot1d(counts_per_gene, 'halfnorm', title='Counts per Gene')
+                self.cfg.min_counts = eval(input("Enter min_counts="))
+                self.cfg.max_counts = eval(input("Enter max_counts="))
+
         if any_not_None(self.cfg.min_counts, self.cfg.max_counts):
             to_keep &= true_inside(
                 counts_per_gene,
@@ -123,6 +145,13 @@ class FilterGenes(BaseFilter):
             )
 
         cells_per_gene = np.ravel((adata.X > 0).sum(axis=0))
+
+        if self.cfg.interactive:
+            with self.interactive('cells_per_gene.png'):
+                plot1d(cells_per_gene, 'nbinom', title='Cells per Gene')
+                self.cfg.min_cells = eval(input("Enter min_cells="))
+                self.cfg.max_cells = eval(input("Enter max_cells="))
+
         if any_not_None(self.cfg.min_cells, self.cfg.max_cells):
             to_keep &= true_inside(
                 cells_per_gene,
@@ -132,6 +161,13 @@ class FilterGenes(BaseFilter):
 
         # TODO separate variance filter into a new module
         gene_var = _var(adata.X, axis=0, ddof=self.cfg.ddof)
+
+        if self.cfg.interactive:
+            with self.interactive('gene_var.png'):
+                plot1d(gene_var, 'halfnorm', title='Gene Variance')
+                self.cfg.min_var = eval(input("Enter min_var="))
+                self.cfg.max_var = eval(input("Enter max_var="))
+
         if any_not_None(self.cfg.min_var, self.cfg.max_var):
             to_keep &= true_inside(gene_var, self.cfg.min_var, self.cfg.max_var)
 

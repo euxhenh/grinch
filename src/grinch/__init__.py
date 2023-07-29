@@ -11,7 +11,7 @@ from .de_test_summary import (
 )
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
-from .normalizers import Log1P, NormalizeTotal
+from .normalizers import Log1P, NormalizeTotal, Scale
 from .pipeline import GRPipeline
 from .processors import *  # noqa
 from .reporter import Report, Reporter
@@ -43,6 +43,7 @@ __all__ = [
     'Filter',
     'StackedFilter',
     'Log1P',
+    'Scale',
     'NormalizeTotal',
     'instantiate_config',
 ]

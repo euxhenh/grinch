@@ -1,9 +1,12 @@
 import abc
 import inspect
+from contextlib import contextmanager
 from itertools import islice
+from pathlib import Path
 from typing import ClassVar, List, Tuple
 
-from pydantic import BaseModel, Field
+import matplotlib.pyplot as plt
+from pydantic import BaseModel, Field, field_validator
 
 from .reporter import Report, Reporter
 
@@ -100,13 +103,40 @@ class BaseConfigurable(_BaseConfigurable):
 
     class Config(BaseConfig):
         seed: int | None = None
-        sanity_check: ClassVar[bool] = Field(False)
+        logs_path: Path = Path('./grinch_logs')  # Default
+        sanity_check: ClassVar[bool] = Field(False, exclude=True)
+        interactive: bool = Field(False, exclude=True)
+
+        @field_validator('logs_path', mode='before')
+        def convert_to_Path(cls, val):
+            return Path(val)
 
     cfg: Config
 
     def __init__(self, cfg: Config, /):
         self.cfg = cfg
         self._reporter = reporter
+
+    @property
+    def logs_path(self) -> Path:
+        return self.cfg.logs_path
+
+    @contextmanager
+    def interactive(self, save_path: str | Path | None = None, **kwargs):
+        plt.ion()
+        yield None
+        plt.ioff()
+
+        if save_path is not None:
+            self.logs_path.mkdir(parents=True, exist_ok=True)
+            # Set good defaults
+            kwargs.setdefault('dpi', 300)
+            kwargs.setdefault('bbox_inches', 'tight')
+            kwargs.setdefault('transparent', True)
+            plt.savefig(self.logs_path / save_path, **kwargs)
+
+        plt.clf()
+        plt.close()
 
     def log(
         self,
