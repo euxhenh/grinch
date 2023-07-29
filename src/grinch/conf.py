@@ -104,14 +104,12 @@ class BaseConfigurable(_BaseConfigurable):
 
     class Config(BaseConfig):
         seed: int | None = None
-        logs_path: Path | None = Path('./grinch_logs')  # Default
+        logs_path: Path = Path('./grinch_logs')  # Default
         sanity_check: ClassVar[bool] = Field(False, exclude=True)
         interactive: bool = Field(False, exclude=True)
 
         @field_validator('logs_path', mode='before')
         def convert_to_Path(cls, val):
-            if val is None:
-                return None
             return Path(val)
 
     cfg: Config
@@ -121,7 +119,7 @@ class BaseConfigurable(_BaseConfigurable):
         self._reporter = reporter
 
     @property
-    def logs_path(self) -> Path | None:
+    def logs_path(self) -> Path:
         return self.cfg.logs_path
 
     @contextmanager
@@ -130,16 +128,16 @@ class BaseConfigurable(_BaseConfigurable):
         yield None
         plt.ioff()
 
-        if all_not_None(self.logs_path, save_path):
-            self.logs_path.mkdir(parents=True, exist_ok=True)  # type: ignore
+        if save_path is not None:
+            self.logs_path.mkdir(parents=True, exist_ok=True)
             # Set good defaults
             kwargs.setdefault('dpi', 300)
             kwargs.setdefault('bbox_inches', 'tight')
             kwargs.setdefault('transparent', True)
-            plt.savefig(self.logs_path / save_path, **kwargs)  # type: ignore
+            plt.savefig(self.logs_path / save_path, **kwargs)
 
         plt.clf()
-        plt.show()
+        plt.close()
 
     def log(
         self,

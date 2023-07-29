@@ -48,6 +48,7 @@ class GRPipeline(BaseConfigurable):
         for c in self.cfg.processors:
             if self.cfg.seed is not None:
                 c.seed = self.cfg.seed
+                c.logs_path = c.logs_path / self.cfg.data_writepath.split('/')[-1]
             self.processors.append(c.initialize())
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
