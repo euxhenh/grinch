@@ -9,6 +9,7 @@ from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_array, check_non_negative
 
 from .conf import BaseConfigurable
+from .utils.stats import mean_var
 
 
 class BaseNormalizer(BaseConfigurable):
@@ -29,7 +30,7 @@ class BaseNormalizer(BaseConfigurable):
     class Config(BaseConfigurable.Config):
         inplace: bool = True
         save_input: bool = True
-        input_layer_name: Optional[str] = None
+        input_layer_name: str | None = None
 
         @field_validator('input_layer_name')
         def resolve_input_layer_name(cls, value):
@@ -104,3 +105,34 @@ class Log1P(BaseNormalizer):
         check_non_negative(adata.X, f'{self.__class__.__name__}')
         to_log = adata.X.data if sp.issparse(adata.X) else adata.X
         np.log1p(to_log, out=to_log)
+
+
+class Scale(BaseNormalizer):
+    """Scales to standard deviation and optionally zero mean.
+    """
+
+    class Config(BaseNormalizer.Config):
+        max_value: float | None = Field(None, gt=0)
+        with_mean: bool = True
+        with_std: bool = True
+
+    cfg: Config
+
+    def _normalize(self, adata: AnnData) -> None:
+        X = adata.X
+        # Run before densifying: faster computation if sparse
+        mean, var = mean_var(X, axis=0)
+        var[var == 0] = 1
+        std = var ** (1/2)
+
+        if self.cfg.with_mean and sp.issparse(adata.X):
+            X = X.toarray()
+        if self.cfg.with_mean:
+            X -= mean
+        X /= std
+
+        if self.cfg.max_value is not None:
+            to_clip = X.data if sp.issparse(X) else X
+            np.clip(to_clip, None, self.cfg.max_value, out=to_clip)
+
+        adata.X = X
