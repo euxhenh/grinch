@@ -278,7 +278,8 @@ def stats1d(
     if params is None:
         params = sc_dist.fit(rvs)
     mean, var = sc_dist.stats(*params)
-    stats = {'dist_mean': mean, 'dist_std': var ** (1/2),
+    stats = {'dist': dist,
+             'dist_mean': mean, 'dist_std': var ** (1/2),
              'dist_q05': sc_dist.ppf(alpha, *params),
              'dist_q95': sc_dist.ppf(1 - alpha, *params),
              'min': rvs.min(), 'max': rvs.max(),

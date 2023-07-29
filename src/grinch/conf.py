@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field, field_validator
 
 from .reporter import Report, Reporter
-from .utils.validation import all_not_None
 
 reporter = Reporter()
 
