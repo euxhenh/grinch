@@ -2,6 +2,7 @@ import abc
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
 from pydantic import Field, field_validator, validate_call
@@ -9,6 +10,8 @@ from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_array, check_non_negative
 
 from .conf import BaseConfigurable
+from .external.combat import combat
+from .processors import BaseProcessor
 from .utils.stats import mean_var
 
 
@@ -68,6 +71,34 @@ class BaseNormalizer(BaseConfigurable):
     @abc.abstractmethod
     def _normalize(self, adata: AnnData) -> None:
         raise NotImplementedError
+
+
+class Combat(BaseNormalizer):
+    """Performs batch correction using Combat
+    Source:
+    https://academic.oup.com/biostatistics/article/8/1/118/252073?login=false
+
+    Uses code from https://github.com/brentp/combat.py/tree/master
+    """
+    class Config(BaseNormalizer.Config):
+        batch_key: str
+
+    cfg: Config
+
+    def _normalize(self, adata: AnnData) -> None:
+        batch: pd.Series = BaseProcessor._get_repr(adata, self.cfg.batch_key)
+        if not isinstance(batch, pd.Series):
+            raise ValueError("Batch should be a pandas series")
+
+        if sp.issparse(adata.X):
+            if adata.is_view:
+                adata._init_as_actual(adata.copy())
+            adata.X = adata.X.toarray()
+
+        data = pd.DataFrame(adata.X)
+        data.index = batch.index
+        corrected_data = combat(data.T, batch).T
+        adata.X = corrected_data.to_numpy()
 
 
 class NormalizeTotal(BaseNormalizer):

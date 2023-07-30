@@ -11,7 +11,7 @@ from .de_test_summary import (
 )
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
-from .normalizers import Log1P, NormalizeTotal, Scale
+from .normalizers import Combat, Log1P, NormalizeTotal, Scale
 from .pipeline import GRPipeline
 from .processors import *  # noqa
 from .reporter import Report, Reporter
@@ -41,6 +41,7 @@ __all__ = [
     'KSTestSummary',
     'Filter',
     'StackedFilter',
+    'Combat',
     'Log1P',
     'Scale',
     'NormalizeTotal',
