@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
+import pandas as pd
 from anndata import AnnData
 from pydantic import Field, field_validator, validate_call
 from sklearn.cluster import KMeans as _KMeans
@@ -27,6 +28,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
     class Config(BaseProcessor.Config):
         x_key: str = f"obsm.{OBSM.X_PCA}"
         labels_key: str
+        categorical_labels: bool = True
         save_stats: bool = True
         kwargs: Dict[str, Any] = {}
 
@@ -44,6 +46,8 @@ class BasePredictor(BaseProcessor, abc.ABC):
 
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.predict(x)
+        if self.cfg.categorical_labels:
+            labels = pd.Categorical(labels)
         self.store_item(self.cfg.labels_key, labels)
 
 
@@ -64,6 +68,8 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         # Fits the data and stores predictions.
         x = self.get_repr(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
+        if self.cfg.categorical_labels:
+            labels = pd.Categorical(labels)
         self.store_item(self.cfg.labels_key, labels)
         self._post_process(adata)
 
@@ -240,6 +246,8 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
         else:
             self.processor.fit(x, y)
             labels = self.processor.predict(x)
+        if self.cfg.categorical_labels:
+            labels = pd.Categorical(labels)
         self.store_item(self.cfg.labels_key, labels)
 
 

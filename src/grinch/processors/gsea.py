@@ -291,7 +291,12 @@ class GSEAPrerank(GSEA):
 
         data = test.log2fc
         if qval_scaling:
-            data = data * (-np.log10(test.qvals))  # type: ignore
+            if test.qvals.min() < 1e-50:
+                logger.warning("Some q-values are <1e-50.")
+                qvals = np.clip(test.qvals, 1e-50, None)
+            else:
+                qvals = test.qvals
+            data = data * (-np.log10(qvals))
         rnk = pd.DataFrame(data=data, index=test.name)
 
         logger.info(f"Using {len(rnk)} genes.")
