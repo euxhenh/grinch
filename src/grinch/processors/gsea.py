@@ -296,7 +296,7 @@ class GSEAPrerank(GSEA):
                 qvals = np.clip(test.qvals, 1e-50, None)
             else:
                 qvals = test.qvals
-            data = data * (-np.log10(qvals))  # type: ignore
+            data = data * (-np.log10(qvals))
         rnk = pd.DataFrame(data=data, index=test.name)
 
         logger.info(f"Using {len(rnk)} genes.")

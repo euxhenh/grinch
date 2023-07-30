@@ -3,7 +3,7 @@ from typing import Dict, Literal, Tuple, overload
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sklearn.utils import check_consistent_length
 from sklearn.utils.validation import column_or_1d
 
@@ -136,7 +136,7 @@ class PvalTestSummary(TestSummary):
         they will be automatically computed using 'fdr_bh' correction.
     """
     pvals: NP1D_float
-    qvals: NP1D_float | None = None
+    qvals: NP1D_float = Field(None)
 
     @field_validator('qvals', mode='before')
     def _init_qvals(cls, qvals, info) -> NP1D_float:
