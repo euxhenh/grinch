@@ -1,7 +1,7 @@
 import logging
 import traceback
 from os.path import expanduser
-from typing import List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 import anndata
 from anndata import AnnData
@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 class GRPipeline(BaseConfigurable):
 
     class Config(BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GRPipeline']
+
         data_readpath: str | None = None
         data_writepath: str | None = None
         processors: List[BaseConfigurable.Config]
@@ -42,7 +46,6 @@ class GRPipeline(BaseConfigurable):
 
     def __init__(self, cfg: Config, /) -> None:
         super().__init__(cfg)
-
         self.processors = []
 
         for c in self.cfg.processors:
@@ -86,7 +89,7 @@ class GRPipeline(BaseConfigurable):
                     logger.warning("Returning incomplete adata.")
                 return ds
 
-        # ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.model_dump()
+        ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.model_dump_json()
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(self.cfg.data_writepath, no_data_write=self.cfg.no_data_write)

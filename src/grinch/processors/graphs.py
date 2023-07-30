@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple
 
 import numpy as np
 from anndata import AnnData
@@ -30,6 +30,10 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseGraphConstructor']
+
         x_key: str = f"obsm.{OBSM.X_PCA}"
         conn_key: str
         dist_key: str
@@ -69,6 +73,10 @@ class KNNGraph(BaseGraphConstructor):
     """Distance graph constructor based on exact kNN."""
 
     class Config(BaseGraphConstructor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'KNNGraph']
+
         conn_key: str = f"obsp.{OBSP.KNN_CONNECTIVITY}"
         dist_key: str = f"obsp.{OBSP.KNN_DISTANCE}"
         n_neighbors: int = Field(15, gt=0)
@@ -110,6 +118,10 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
     """
 
     class Config(BaseGraphConstructor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'FuzzySimplicialSetGraph']
+
         conn_key: str = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
         dist_key: str = f"obsp.{OBSP.UMAP_DISTANCE}"
         affinity_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"

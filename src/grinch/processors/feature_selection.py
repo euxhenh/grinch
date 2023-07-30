@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 import numpy as np
 from anndata import AnnData
@@ -13,6 +13,10 @@ from .base_processor import BaseProcessor
 class PhenotypeCover(BaseProcessor):
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'PhenotypeCover']
+
         x_key: str = "X"
         y_key: str
         feature_mask_key: str = f"var.{VAR.PCOVER_M}"

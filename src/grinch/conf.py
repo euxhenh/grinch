@@ -2,14 +2,10 @@ import inspect
 from contextlib import contextmanager
 from itertools import islice
 from pathlib import Path
-from typing import ClassVar, Generic, List, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, Callable, Generic, Type, TypeVar
 
 import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field, PrivateAttr, field_validator
-
-from .reporter import Report, Reporter
-
-reporter = Reporter()
 
 BaseConfigurableT = TypeVar("BaseConfigurableT", bound="BaseConfigurable")
 
@@ -21,7 +17,7 @@ class _BaseConfigurable:
     an instance of C by calling C.Config().create() thus allowing
     reproducibility of the object given its Config only.
     """
-    class Config(Generic[BaseConfigurableT], BaseModel):
+    class Config(BaseModel, Generic[BaseConfigurableT]):
         """A base config class for initializing configurable objects.
         """
         model_config = {
@@ -31,12 +27,12 @@ class _BaseConfigurable:
             'validate_default': True,
         }
 
-        _init_type: Type[BaseConfigurableT] = PrivateAttr(None)
+        _init_cls: Type[BaseConfigurableT] = PrivateAttr()
 
         def create(self, *args, **kwargs) -> BaseConfigurableT:
-            """Initialize and return an object of type `self._init_type`.
+            """Initialize and return an object of type `self._init_cls`.
             """
-            return self._init_type(self, *args, **kwargs)
+            return self._init_cls(self, *args, **kwargs)
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -84,19 +80,22 @@ class _BaseConfigurable:
             )
 
         # Store outer class type in `Config`
-        cls.Config._init_type = cls  # type: ignore
+        cls.Config._init_cls = cls  # type: ignore
 
     def __init__(self, cfg: Config, /):
         self.cfg = cfg
-        self._reporter = reporter
 
 
 class BaseConfigurable(_BaseConfigurable):
 
     class Config(_BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseConfigurable']
+
         seed: int | None = None
         logs_path: Path = Path('./grinch_logs')  # Default
-        sanity_check: ClassVar[bool] = Field(False, exclude=True)
+        sanity_check: bool = Field(False, exclude=True)
         interactive: bool = Field(False, exclude=True)
 
         @field_validator('logs_path', mode='before')
@@ -125,29 +124,3 @@ class BaseConfigurable(_BaseConfigurable):
 
         plt.clf()
         plt.close()
-
-    def log(
-        self,
-        message: str,
-        shape: Tuple[int, int] | None = None,
-        artifacts: str | List[str] | None = None
-    ) -> None:
-        """Sends a report to reporter for logging.
-
-        Parameters
-        __________
-        message: str
-        shape: tuple[int, int]
-            Shape of the anndata at the point of logging.
-        artifacts: str or list of str
-            If any artifacts were saved (e.g., images), passing the
-            filepath(s) here will log them along with the message.
-        """
-        report = Report(
-            cls=self.__class__.__name__,
-            config=self.cfg.model_dump(),
-            message=message,
-            shape=shape,
-            artifacts=artifacts,
-        )
-        self._reporter.log(report)

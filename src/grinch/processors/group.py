@@ -1,5 +1,5 @@
 import logging
-from typing import Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 from anndata import AnnData
 from pydantic import Field, field_validator
@@ -41,6 +41,10 @@ class GroupProcess(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GroupProcess']
+
         processor: BaseProcessor.Config
         # Key to group by, must be recognized by np.unique.
         group_key: str
@@ -95,7 +99,7 @@ class GroupProcess(BaseProcessor):
                     continue
 
             logger.info(
-                f"Running '{self.cfg.processor._init_type.__name__}' "
+                f"Running '{self.cfg.processor._init_cls.__name__}' "
                 f"for group '{self.cfg.group_key}={label}'."
             )
 

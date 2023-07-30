@@ -1,4 +1,6 @@
 from . import custom_types as typing
+from . import processors as pr
+from . import shortcuts
 from .aliases import ADK, OBS, OBSM, OBSP, UNS, VAR, VARM, VARP, AnnDataKeys
 from .cond_filter import Filter, StackedFilter
 from .conf import BaseConfigurable
@@ -47,3 +49,6 @@ __all__ = [
     'NormalizeTotal',
     'instantiate_config',
 ]
+
+__all__.extend(pr.__all__)
+__all__.extend(shortcuts.__all__)

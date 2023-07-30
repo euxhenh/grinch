@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -31,13 +31,17 @@ class BaseNormalizer(BaseConfigurable):
     """
 
     class Config(BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseNormalizer']
+
         inplace: bool = True
         save_input: bool = True
         input_layer_name: str = Field(None)
 
         @field_validator('input_layer_name', mode='before')
         def resolve_input_layer_name(cls, value):
-            return f'pre_{cls._init_type.__name__}'.lower() if value is None else value
+            return f'pre_{cls._init_cls.__name__}'.lower() if value is None else value
 
     cfg: Config
 
@@ -81,6 +85,10 @@ class Combat(BaseNormalizer):
     Uses code from https://github.com/brentp/combat.py/tree/master
     """
     class Config(BaseNormalizer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'Combat']
+
         batch_key: str
 
     cfg: Config
@@ -105,6 +113,10 @@ class NormalizeTotal(BaseNormalizer):
     """Normalizes each cell so that total counts are equal."""
 
     class Config(BaseNormalizer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'NormalizeTotal']
+
         total_counts: Optional[float] = Field(None, gt=0)
 
     cfg: Config
@@ -128,7 +140,9 @@ class Log1P(BaseNormalizer):
     """Log(X+1) transforms the data. Uses natural logarithm."""
 
     class Config(BaseNormalizer.Config):
-        ...
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'Log1P']
 
     cfg: Config
 
@@ -143,6 +157,10 @@ class Scale(BaseNormalizer):
     """
 
     class Config(BaseNormalizer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'Scale']
+
         max_value: float | None = Field(None, gt=0)
         with_mean: bool = True
         with_std: bool = True
