@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -26,6 +26,10 @@ class BasePredictor(BaseProcessor, abc.ABC):
     """A base class for estimators, clustering algorithms, etc."""
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BasePredictor']
+
         x_key: str = f"obsm.{OBSM.X_PCA}"
         labels_key: str
         categorical_labels: bool = True
@@ -55,7 +59,9 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
     """A base class for unsupervised predictors, e.g., clustering."""
 
     class Config(BasePredictor.Config):
-        ...
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseUnsupervisedPredictor']
 
     cfg: Config
 
@@ -94,6 +100,10 @@ def centroids_from_Xy(X, y: NP1D_Any) -> Dict[str, NP1D_float]:
 class KMeans(BaseUnsupervisedPredictor):
 
     class Config(BaseUnsupervisedPredictor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'KMeans']
+
         labels_key: str = f"obs.{OBS.KMEANS}"
         stats_key: str = f"uns.{UNS.KMEANS_}"
         # KMeans args
@@ -124,6 +134,10 @@ class KMeans(BaseUnsupervisedPredictor):
 class GaussianMixture(BaseUnsupervisedPredictor):
 
     class Config(BaseUnsupervisedPredictor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GaussianMixture']
+
         labels_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE}"
         proba_key: str = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
         score_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
@@ -172,6 +186,10 @@ class GaussianMixture(BaseUnsupervisedPredictor):
 class Leiden(BaseUnsupervisedPredictor):
 
     class Config(BaseUnsupervisedPredictor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'Leiden']
+
         x_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"
         labels_key: str = f"obs.{OBS.LEIDEN}"
         stats_key: str = f"uns.{UNS.LEIDEN_}"
@@ -227,6 +245,10 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
     """A base class for unsupervised predictors, e.g., clustering."""
 
     class Config(BasePredictor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseSupervisedPredictor']
+
         y_key: str
 
     cfg: Config
@@ -254,6 +276,10 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
 class LogisticRegression(BaseSupervisedPredictor):
 
     class Config(BaseSupervisedPredictor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'LogisticRegression']
+
         labels_key: str = f"obs.{OBS.LOG_REG}"
         stats_key: str = f"uns.{UNS.LOG_REG_}"
         # LogisticRegression kwargs

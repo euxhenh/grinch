@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 from anndata import AnnData
 from pydantic import Field, field_validator, validate_call
@@ -20,6 +20,10 @@ class BaseTransformer(BaseProcessor, abc.ABC):
     """A base estimator class for objects that implement `fit_transform`."""
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseTransformer']
+
         x_key: str = "X"
         x_emb_key: str
         save_stats: bool = True
@@ -59,6 +63,10 @@ class BaseTransformer(BaseProcessor, abc.ABC):
 class PCA(BaseTransformer):
 
     class Config(BaseTransformer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'PCA']
+
         x_emb_key: str = f"obsm.{OBSM.X_PCA}"
         n_components: int | float | str | None = 50
         whiten: bool = False
@@ -90,6 +98,10 @@ class PCA(BaseTransformer):
 class TruncatedSVD(BaseTransformer):
 
     class Config(BaseTransformer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'TruncatedSVD']
+
         x_emb_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
         # Truncated SVD args
         n_components: int = Field(2, ge=1)
@@ -121,6 +133,10 @@ class TruncatedSVD(BaseTransformer):
 class MDS(BaseTransformer):
 
     class Config(BaseTransformer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'MDS']
+
         x_emb_key: str = f"obsm.{OBSM.X_MDS}"
         n_components: int = Field(2, ge=1)
 
@@ -143,6 +159,10 @@ class MDS(BaseTransformer):
 class UMAP(BaseTransformer):
 
     class Config(BaseTransformer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'UMAP']
+
         x_key: str = f"obsm.{OBSM.X_PCA}"  # Different x key from parent
         x_emb_key: str = f"obsm.{OBSM.X_UMAP}"
         # UMAP args

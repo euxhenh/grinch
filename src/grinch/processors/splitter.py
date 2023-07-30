@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 from anndata import AnnData
@@ -53,6 +53,10 @@ class Splitter(BaseConfigurable):
     """A class for train/validation/test splitting the data."""
 
     class Config(BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'Splitter']
+
         val_fraction: Optional[float] = Field(None, gt=0, lt=1)
         test_fraction: Optional[float] = Field(None, gt=0, lt=1)
         shuffle: bool = True

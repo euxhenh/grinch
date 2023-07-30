@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 from anndata import AnnData
@@ -20,6 +20,10 @@ class BaseFilter(BaseConfigurable):
     """A base class for filters."""
 
     class Config(BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseFilter']
+
         inplace: bool = True
 
     cfg: Config
@@ -53,6 +57,10 @@ class FilterCells(BaseFilter):
     """Filters cells based on counts and number of expressed genes."""
 
     class Config(BaseFilter.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'FilterCells']
+
         min_counts: float | None = Field(None, ge=0)
         max_counts: float | None = Field(None, ge=0)
         min_genes: int | None = Field(None, ge=0)
@@ -114,6 +122,10 @@ class FilterGenes(BaseFilter):
     """Filters cells based on counts and number of expressed genes."""
 
     class Config(BaseFilter.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'FilterGenes']
+
         min_counts: float | None = Field(None, ge=0)
         max_counts: float | None = Field(None, ge=0)
         min_cells: int | None = Field(None, ge=0)

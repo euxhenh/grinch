@@ -6,7 +6,7 @@ import logging
 from functools import partial
 from itertools import islice, starmap
 from operator import itemgetter
-from typing import Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 from anndata import AnnData
 from pydantic import field_validator, validate_call
@@ -103,6 +103,10 @@ class BaseProcessor(BaseConfigurable):
     """
 
     class Config(BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseProcessor']
+
         inplace: bool = True
         read_key_prefix: str = ''
         save_key_prefix: str = ''

@@ -1,6 +1,6 @@
 import logging
 from numbers import Number
-from typing import Dict, Literal, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Literal, Optional
 
 import numpy as np
 from anndata import AnnData
@@ -19,6 +19,10 @@ class GeneIdToName(BaseProcessor):
     """Used to convert gene naming convention.
     """
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GeneIdToName']
+
         read_key: str = "var_names"
         save_key: str = f"var.{VAR.FEATURE_NAME}"
         stats_key: str = f"uns.{UNS.N_GENE_ID_TO_NAME_FAILED}"
@@ -52,6 +56,10 @@ class StoreAsMask(BaseProcessor):
     # Simple class that stores a mask of Filters
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'StoreAsMask']
+
         filter_by: Dict[str, Filter]
         save_key: str
 
@@ -66,6 +74,10 @@ class StoreAsMask(BaseProcessor):
 class ReplaceNaN(BaseProcessor):
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'ReplaceNaN']
+
         read_key: str
         save_key: Optional[str]
         replace_value: Number | Literal['median'] = Field(0.0)
@@ -95,6 +107,10 @@ class ReplaceNaN(BaseProcessor):
 class FilterNaN(BaseProcessor):
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'FilterNaN']
+
         read_key: str
 
     cfg: Config
@@ -124,6 +140,10 @@ class ApplyOp(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'ApplyOp']
+
         read_key: str
         save_key: str | None = None
         op: str

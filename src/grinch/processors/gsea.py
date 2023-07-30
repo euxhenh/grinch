@@ -2,7 +2,7 @@ import abc
 import logging
 import re
 from functools import partial
-from typing import Any, Callable, Dict, List, Type
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Type
 
 import gseapy as gp
 import numpy as np
@@ -62,6 +62,10 @@ class GSEA(BaseProcessor, abc.ABC):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GSEA']
+
         read_key: str = f"uns.{UNS.TTEST}"
         save_key: str
 
@@ -201,6 +205,10 @@ class GSEAEnrich(GSEA):
     """
 
     class Config(GSEA.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GSEAEnrich']
+
         save_key: str = f"uns.{UNS.GSEA_ENRICH}"
         gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH
         filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
@@ -260,6 +268,10 @@ class GSEAPrerank(GSEA):
     """
 
     class Config(GSEA.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'GSEAPrerank']
+
         save_key: str = f"uns.{UNS.GSEA_PRERANK}"
         gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK
         # By default all genes are inputted into prerank. DE tests are
@@ -314,6 +326,7 @@ class GSEAPrerank(GSEA):
         to_numeric_cols = ['ES', 'NES', 'NOM p-val', 'FDR q-val', 'FWER p-val']
         for col in to_numeric_cols:
             results[col] = pd.to_numeric(results[col])
+        results.sort_values(by=['FWER p-val'], inplace=True)
         return results
 
     @staticmethod
@@ -331,6 +344,10 @@ class FindLeadGenes(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'FindLeadGenes']
+
         read_key: str = f"uns.{UNS.GSEA_PRERANK}"
         all_leads_save_key: str = f"var.{VAR.IS_LEAD}"
         lead_group_save_key: str = f"var.{VAR.LEAD_GROUP}"
@@ -387,6 +404,10 @@ class FindLeadGenesForProcess(BaseProcessor):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'FindLeadGenesForProcess']
+
         gene_set: str = 'GO_Biological_Process_2023'
         organism: str = 'Human'
         terms: str | List[str] = '.*'  # by default take all
