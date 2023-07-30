@@ -60,7 +60,6 @@ class PCA(BaseTransformer):
 
     class Config(BaseTransformer.Config):
         x_emb_key: str = f"obsm.{OBSM.X_PCA}"
-        # PCA args
         n_components: int | float | str | None = 50
         whiten: bool = False
         svd_solver: str = 'auto'
