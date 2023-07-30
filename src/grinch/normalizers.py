@@ -10,7 +10,7 @@ from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_array, check_non_negative
 
 from .conf import BaseConfigurable
-from .external.combat import combat
+from .external.combat import combat  # type: ignore
 from .processors import BaseProcessor
 from .utils.stats import mean_var
 
