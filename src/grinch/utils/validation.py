@@ -20,6 +20,18 @@ def any_not_None(*args):
     return sum(arg is not None for arg in args) > 0
 
 
+def all_None(*args):
+    """Returns True if all are None.
+    Examples
+    ________
+    >>> all_None(1, 2, None)
+    False
+    >>> all_None(None, None)
+    True
+    """
+    return not any_not_None(*args)
+
+
 def all_not_None(*args):
     """Returns True if all items are not None."""
     return sum(arg is None for arg in args) == 0

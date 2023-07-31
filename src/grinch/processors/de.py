@@ -4,7 +4,7 @@ import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
-from typing import Iterable, Literal, Optional, Tuple
+from typing import ClassVar, Iterable, Literal, Optional, Tuple
 
 import numpy as np
 import scipy.sparse as sp
@@ -26,7 +26,7 @@ from ..utils.stats import (
     mean_var,
     ttest_from_mean_var,
 )
-from ..utils.validation import only_one_not_None
+from ..utils.validation import all_None, any_not_None, only_one_not_None
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,18 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
     replace_nan: bool
         If True, will not allow nan's in the TTest Summary dataframes.
         These will be replaced with appropriate values (1 for p-values).
+    test_type: 'one_vs_all' or 'one_vs_one'.
+        If 'one_vs_all' will run the ttest by comparing the mean of one
+        cluster vs the mean of all other clusters combined. If 'one_vs_one'
+        will compare against a single cluster specified by `control_label`.
+    control_label: str
+        The label to use in a 'one_vs_one' test type. Must be present in
+        the array specified by `group_key`.
+    control_key: str
+        Alternatively, the control data matrix can be obtained from a
+        separate key. This is useful when, e.g., you wish to cluster and
+        work with only a subset of the data, but comparison for ttest
+        should be done against control.
     """
 
     class Config(BaseProcessor.Config):
@@ -75,7 +87,13 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         correction: str = 'fdr_bh'
         replace_nan: bool = True
 
-        test_type: Literal["one_vs_all", "one_vs_one"] = "one_vs_all"
+        # If any of the following is not None, will perform a one_vs_one
+        # test. E.g., if control samples are given in `control_key`, then for
+        # each group G determined by `group_key`, will run the test G vs
+        # control. If both `experimental` and `control` samples are given,
+        # will perform a single one_vs_one test between those two.
+        experimental_label: str | None = None
+        experimental_key: str | None = None
         control_label: str | None = None
         control_key: str | None = None
 
@@ -91,20 +109,10 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         def _remove_base_if_not_logged(cls, base, info):
             return None if not info.data['is_logged'] else base
 
-        @field_validator('control_key')
-        def ensure_control_if_ovo(cls, control_key, info):
-            if info.data['test_type'] == "one_vs_one":
-                if not only_one_not_None(control_key, info.data['control_label']):
-                    raise ValueError(
-                        "Only one of `control_label` or "
-                        "`control_key` should not be None "
-                        "if running in `one_vs_one` mode."
-                    )
-            return control_key
-
         @property
         def is_ovo(self) -> bool:
-            return self.test_type == "one_vs_one"
+            return any_not_None(self.control_key, self.control_label,
+                                self.experimental_key, self.experimental_label)
 
         def get_label_key(self, label: str) -> str:
             key = (
@@ -133,37 +141,49 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         return log2fc
 
     def _process(self, adata: AnnData) -> None:
+
+        def extract_ovo_repr(adata, key):
+            """Used if using a experimental or control data stored
+            in a different key.
+            """
+            if key is None:
+                return None
+            x = self.get_repr(adata, key)
+            x = check_array(x, accept_sparse='csr')
+            if key.startswith('var'):
+                x = x.T  # Transpose to (samples, features)
+            if x.shape[1] != adata.shape[1]:
+                raise ValueError(
+                    "Found differing number of features for `x` and "
+                    f"`adata`: {x.shape[1]} vs {adata.shape[1]}."
+                )
+            return x
+
         group_labels: NP1D_Any = column_or_1d(
             self.get_repr(adata, self.cfg.group_key)
         )
         unq_labels = np.unique(group_labels)
-        if len(unq_labels) <= 1:
+        x = self.get_repr(adata, self.cfg.x_key)
+        x = check_array(x, accept_sparse='csr')
+
+        x_experimental = None
+        x_control = None
+        if self.cfg.is_ovo:
+            x_experimental = extract_ovo_repr(adata, self.cfg.experimental_key)
+            x_control = extract_ovo_repr(adata, self.cfg.control_key)
+
+        if len(unq_labels) <= 1 and all_None(x_control, x_experimental):
             logger.warning(
                 "Found only one unique value "
                 f"under key '{self.cfg.group_key}'."
             )
             return
 
-        x = self.get_repr(adata, self.cfg.x_key)
-        x = check_array(x, accept_sparse='csr')
 
-        x_control = None
-        if self.cfg.is_ovo and self.cfg.control_key is not None:
-            x_control = self.get_repr(adata, self.cfg.control_key)
-            x_control = check_array(x_control, accept_sparse='csr')
-            # Transpose if coming from a varp column
-            if self.cfg.control_key.startswith('varm'):
-                x_control = x_control.T
-            if x_control.shape[1] != x.shape[1]:
-                raise ValueError(
-                    "Found differing number of features for `x` and "
-                    f"`x_control`: {x.shape[1]} vs {x_control.shape[1]}."
-                )
-
-        self._test(x, group_labels, x_control=x_control)
+        self._test(x, group_labels, x_experimental=x_experimental, x_control=x_control)
 
     @abc.abstractmethod
-    def _test(self, x, group_labels, x_control) -> None:
+    def _test(self, x, group_labels, x_experimental, x_control) -> None:
         raise NotImplementedError
 
 
@@ -172,21 +192,6 @@ class TTest(PairwiseDETest):
     t-Test to determine if a gene is differentially expressed in one group
     vs the other. An efficient implementation of mean and var computation
     is used to quickly run all one-vs-all tests.
-
-    Parameters
-    __________
-    test_type: 'one_vs_all' or 'one_vs_one'.
-        If 'one_vs_all' will run the ttest by comparing the mean of one
-        cluster vs the mean of all other clusters combined. If 'one_vs_one'
-        will compare against a single cluster specified by `control_label`.
-    control_label: str
-        The label to use in a 'one_vs_one' test type. Must be present in
-        the array specified by `group_key`.
-    control_key: str
-        Alternatively, the control data matrix can be obtained from a
-        separate key. This is useful when, e.g., you wish to cluster and
-        work with only a subset of the data, but comparison for ttest
-        should be done against control.
     """
 
     class Config(PairwiseDETest.Config):
@@ -194,7 +199,7 @@ class TTest(PairwiseDETest):
 
     cfg: Config
 
-    def _test(self, x, group_labels: NP1D_Any, x_control=None) -> None:
+    def _test(self, x, group_labels: NP1D_Any, x_experimental=None, x_control=None) -> None:
         # efficient mean and variance computation
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
         unq_labels = np.unique(group_labels)
@@ -254,7 +259,7 @@ class KSTest(PairwiseDETest):
 
     cfg: Config
 
-    def _test(self, x, group_labels: NP1D_Any, x_control=None) -> None:
+    def _test(self, x, group_labels: NP1D_Any, x_experimental=None, x_control=None) -> None:
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
         spmat_warning = "KS Test cannot work with sparse matrices. Densifying..."
         if sp.issparse(x):
