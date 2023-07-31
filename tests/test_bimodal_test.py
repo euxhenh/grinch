@@ -29,7 +29,7 @@ def test_bimodal_test(X):
         }
     )
     cfg = instantiate(cfg)
-    bimodal = cfg.initialize()
+    bimodal = cfg.create()
     adata = AnnData(X)
 
     bimodal(adata)

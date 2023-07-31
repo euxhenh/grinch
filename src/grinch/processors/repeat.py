@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, Callable, List
 
 from anndata import AnnData
 from pydantic import field_validator
@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 class RepeatProcessor(BaseProcessor):
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'RepeatProcessor']
+
         # NOTE: If the field that is to be repeated is mandatory in the
         # processor config, it needs to be initialized to any value
         # otherwise hydra will complain.
@@ -50,8 +54,8 @@ class RepeatProcessor(BaseProcessor):
     def _process(self, adata: AnnData) -> None:
 
         for val in self.cfg.repeat_vals:
-            logger.info(f"Repeating '{self.cfg.processor.init_type.__name__}' with value {val}.")
+            logger.info(f"Repeating '{self.cfg.processor._init_cls.__name__}' with value {val}.")
             setattr(self.cfg.processor, self.cfg.repeat_var, val)
             self.cfg.update_processor_save_key_prefix(val)
-            processor: BaseProcessor = self.cfg.processor.initialize()
+            processor = self.cfg.processor.create()
             processor(adata)

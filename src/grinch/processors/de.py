@@ -4,7 +4,7 @@ import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
-from typing import ClassVar, Iterable, Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Literal, Optional, Tuple
 
 import numpy as np
 import scipy.sparse as sp
@@ -76,6 +76,10 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
     """
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'PairwiseDETest']
+
         x_key: str = "X"
         save_key: str
         group_key: str
@@ -195,6 +199,10 @@ class TTest(PairwiseDETest):
     """
 
     class Config(PairwiseDETest.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'TTest']
+
         save_key: str = f"uns.{UNS.TTEST}"
 
     cfg: Config
@@ -251,6 +259,10 @@ class KSTest(PairwiseDETest):
     """
 
     class Config(PairwiseDETest.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'KSTest']
+
         save_key: str = f"uns.{UNS.KSTEST}"
         method: str = 'auto'
         alternative: str = 'two-sided'
@@ -335,6 +347,10 @@ class KSTest(PairwiseDETest):
 class BimodalTest(BaseProcessor):
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BimodalTest']
+
         x_key: str = "X"
         save_key: str = f"uns.{UNS.BIMODALTEST}"
         correction: str = 'fdr_bh'

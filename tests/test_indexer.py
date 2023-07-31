@@ -32,7 +32,7 @@ def test_indexer_obs(X):
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    index = cfg.initialize()
+    index = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     adata.obs['pick'] = [0, 1, 1]
@@ -60,7 +60,7 @@ def test_indexer_var(X):
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    index = cfg.initialize()
+    index = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     adata.var['pick'] = [2, 0, 1, 1]
@@ -102,7 +102,7 @@ def test_indexer_obs_multiple(X):
         }
     )
     cfg = instantiate(cfg, _convert_='all')
-    index = cfg.initialize()
+    index = cfg.create()
     adata = AnnData(X)
     X_original = adata.X.copy()
     adata.obs['pick'] = [0, 1, 1]

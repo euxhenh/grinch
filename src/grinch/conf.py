@@ -1,20 +1,38 @@
-import abc
 import inspect
+from contextlib import contextmanager
 from itertools import islice
-from typing import ClassVar, List, Tuple
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Generic, Type, TypeVar
 
-from pydantic import BaseModel, Field
+import matplotlib.pyplot as plt
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
-from .reporter import Report, Reporter
-
-reporter = Reporter()
+BaseConfigurableT = TypeVar("BaseConfigurableT", bound="BaseConfigurable")
 
 
-class _BaseConfigurable(abc.ABC):
-    """A base class for configurable classes.
+class _BaseConfigurable:
+    """A base meta class for configurable classes. Each subclass C will
+    inherit a Config inner class that knows C's type. The type is set upon
+    class definition via this meta class. This allows the construction of
+    an instance of C by calling C.Config().create() thus allowing
+    reproducibility of the object given its Config only.
     """
-    class Config:
-        ...
+    class Config(BaseModel, Generic[BaseConfigurableT]):
+        """A base config class for initializing configurable objects.
+        """
+        model_config = {
+            'arbitrary_types_allowed': True,
+            'validate_assignment': True,
+            'extra': 'forbid',
+            'validate_default': True,
+        }
+
+        _init_cls: Type[BaseConfigurableT] = PrivateAttr()
+
+        def create(self, *args, **kwargs) -> BaseConfigurableT:
+            """Initialize and return an object of type `self._init_cls`.
+            """
+            return self._init_cls(self, *args, **kwargs)
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -62,74 +80,47 @@ class _BaseConfigurable(abc.ABC):
             )
 
         # Store outer class type in `Config`
-        cls.Config.init_type = cls  # type: ignore
+        cls.Config._init_cls = cls  # type: ignore
 
-
-class BaseConfig(BaseModel):
-
-    model_config = {
-        'arbitrary_types_allowed': True,
-        'validate_assignment': True,
-        'extra': 'forbid',
-        'validate_default': True,
-    }
-
-    @property
-    def init_type(self):
-        """Return the type of the object that this class belongs to. Useful
-        when trying to call static or class methods of the underlying type.
-        """
-        if hasattr(self, '__init_type'):
-            return self.__init_type
-        return None
-
-    @init_type.setter
-    def init_type(self, value):
-        self.__init_type = value
-
-    def initialize(self, *args, **kwargs):
-        """Initialize and return an object of type `self.init_type`.
-        """
-        initialized_obj: BaseConfigurable | None = None
-        if self.init_type is not None:
-            initialized_obj = self.init_type(self, *args, **kwargs)
-        return initialized_obj
+    def __init__(self, cfg: Config, /):
+        self.cfg = cfg
 
 
 class BaseConfigurable(_BaseConfigurable):
 
-    class Config(BaseConfig):
+    class Config(_BaseConfigurable.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseConfigurable']
+
         seed: int | None = None
-        sanity_check: ClassVar[bool] = Field(False)
+        logs_path: Path = Path('./grinch_logs')  # Default
+        sanity_check: bool = Field(False, exclude=True)
+        interactive: bool = Field(False, exclude=True)
+
+        @field_validator('logs_path', mode='before')
+        def convert_to_Path(cls, val):
+            return Path(val)
 
     cfg: Config
 
-    def __init__(self, cfg: Config, /):
-        self.cfg = cfg
-        self._reporter = reporter
+    @property
+    def logs_path(self) -> Path:
+        return self.cfg.logs_path
 
-    def log(
-        self,
-        message: str,
-        shape: Tuple[int, int] | None = None,
-        artifacts: str | List[str] | None = None
-    ) -> None:
-        """Sends a report to reporter for logging.
+    @contextmanager
+    def interactive(self, save_path: str | Path | None = None, **kwargs):
+        plt.ion()
+        yield None
+        plt.ioff()
 
-        Parameters
-        __________
-        message: str
-        shape: tuple[int, int]
-            Shape of the anndata at the point of logging.
-        artifacts: str or list of str
-            If any artifacts were saved (e.g., images), passing the
-            filepath(s) here will log them along with the message.
-        """
-        report = Report(
-            cls=self.__class__.__name__,
-            config=self.cfg.model_dump(),
-            message=message,
-            shape=shape,
-            artifacts=artifacts,
-        )
-        self._reporter.log(report)
+        if save_path is not None:
+            self.logs_path.mkdir(parents=True, exist_ok=True)
+            # Set good defaults
+            kwargs.setdefault('dpi', 300)
+            kwargs.setdefault('bbox_inches', 'tight')
+            kwargs.setdefault('transparent', True)
+            plt.savefig(self.logs_path / save_path, **kwargs)
+
+        plt.clf()
+        plt.close()

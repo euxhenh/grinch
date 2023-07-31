@@ -28,7 +28,7 @@ def test_phenotype_cover(X):
         }
     )
     cfg = instantiate(cfg)
-    gpc = cfg.initialize()
+    gpc = cfg.create()
     adata = AnnData(X)
     adata.obs['anns'] = [0, 1, 0, 1]
     gpc(adata)

@@ -101,3 +101,18 @@ FWERpVal_Filter_05 = partial(
     greater_is_True=False,
     dtype='float',
 )
+
+__all__ = [
+    'pVal_Filter_01',
+    'pVal_Filter_05',
+    'qVal_Filter_01',
+    'qVal_Filter_05',
+    'log2fc_Filter_1',
+    'log2fc_Filter_m1',
+    'log2fc_Filter_2',
+    'log2fc_Filter_m2',
+    'abs_log2fc_Filter_1',
+    'abs_log2fc_Filter_2',
+    'FDRqVal_Filter_05',
+    'FWERpVal_Filter_05',
+]

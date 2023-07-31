@@ -1,7 +1,7 @@
 import abc
 import gc
 import logging
-from typing import List, Literal
+from typing import TYPE_CHECKING, Callable, List, Literal
 
 from anndata import AnnData
 from pydantic import Field, field_validator
@@ -18,6 +18,10 @@ class BaseIndexer(BaseProcessor, abc.ABC):
     """A base class for indexing operations."""
 
     class Config(BaseProcessor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'BaseIndexer']
+
         filter_by: List[Filter] = Field(min_length=1)
         # Can be 0, 1 or 'obs', 'var'
         axis: int | Literal['obs', 'var'] = 0
@@ -48,7 +52,9 @@ class InplaceIndexer(BaseIndexer):
     """
 
     class Config(BaseIndexer.Config):
-        ...
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'InplaceIndexer']
 
     cfg: Config
 
@@ -67,6 +73,10 @@ class IndexProcessor(BaseIndexer):
     """
 
     class Config(BaseIndexer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'IndexProcessor']
+
         processor: BaseProcessor.Config
 
     cfg: Config
@@ -75,7 +85,7 @@ class IndexProcessor(BaseIndexer):
         super().__init__(cfg)
 
         self.cfg.processor.inplace = True
-        self.processor = self.cfg.processor.initialize()
+        self.processor = self.cfg.processor.create()
 
     def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
         # TODO improve naming and add indexing stats

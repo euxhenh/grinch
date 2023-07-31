@@ -1,17 +1,21 @@
 import logging
 from dataclasses import dataclass
 from functools import wraps
-from typing import Dict, Hashable, List, Optional, Tuple, overload
+from typing import Any, Dict, Hashable, List, Tuple, overload
 
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
+import scipy.stats as scs
+from rich.pretty import pretty_repr
+from scipy.stats import rv_continuous
 from scipy.stats._stats_py import (
     Ttest_indResult,
     _ttest_ind_from_stats,
     _unequal_var_ttest_denom,
 )
 from sklearn.utils import check_consistent_length, indexable
+from statsmodels.discrete.discrete_model import NegativeBinomial
 from statsmodels.stats.multitest import multipletests
 from tqdm.auto import tqdm
 
@@ -97,11 +101,25 @@ def _var(x, axis=None, ddof=0, mean=None):
     return var
 
 
+@overload
 def mean_var(
     x: npt.ArrayLike,
-    axis: Optional[int] = None,
-    ddof: int = 0
-) -> Tuple[int | np.ndarray, int | np.ndarray]:
+    axis: None = None,
+    ddof: int = 0,
+) -> Tuple[float, float]:
+    ...
+
+
+@overload
+def mean_var(
+    x: npt.ArrayLike,
+    axis: int,
+    ddof: int = 0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    ...
+
+
+def mean_var(x, axis=None, ddof=0):
     """Returns both mean and variance.
 
     Parameters
@@ -131,7 +149,7 @@ def mean_var(
 def ttest(
     a: npt.ArrayLike,
     b: npt.ArrayLike,
-    axis: Optional[int] = 0
+    axis: int | None = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Performs a Welch's t-test (unequal sample sizes, unequal vars).
     Extends scipy's ttest_ind to support sparse matrices.
@@ -216,6 +234,62 @@ def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
     else:
         log2fc = np.log2((mean1 + 1) / (mean2 + 1))
     return log2fc
+
+
+def fit_nbinom(rvs) -> Tuple[float, float]:
+    """Fit a negative binomial distribution to the data. Returns (n, p).
+    """
+    s = np.ones_like(rvs.astype(float))
+    nb = NegativeBinomial(rvs, s).fit()
+
+    mu = np.exp(nb.params[0])
+    p = 1 / (1 + mu * nb.params[1])
+    n = mu * p / (1-p)
+
+    return n, p
+
+
+def stats1d(
+    rvs,
+    dist: str,
+    *,
+    params: Any | None = None,
+    alpha: float = 0.05,
+    pprint: bool = False,
+) -> dict[str, float]:
+    """Computes main statistics for a 1D distribution assumed to follow
+    `dist`. `dist` should be a string pointing to a scipy distribution.
+
+    Parameters
+    __________
+    rvs: array-like
+        Samples from the distribution.
+    dist: str
+        A continuous distribution from scipy.stats.
+    params: any
+        If None, will call sc_dist.fit.
+    alpha: float
+        The outlier threshold to use for computing inverse quantiles.
+    pprint: bool
+        If True, will print the dictionary of stats.
+    """
+    assert alpha > 0 and alpha < 1
+    sc_dist: rv_continuous = getattr(scs, dist)
+    if params is None:
+        params = sc_dist.fit(rvs)
+    mean, var = sc_dist.stats(*params)
+    stats = {'dist': dist,
+             'dist_mean': mean, 'dist_std': var ** (1/2),
+             'dist_q05': sc_dist.ppf(alpha, *params),
+             'dist_q95': sc_dist.ppf(1 - alpha, *params),
+             'min': rvs.min(), 'max': rvs.max(),
+             'data_mean': rvs.mean(), 'data_std': rvs.std(),
+             'data_q05': np.quantile(rvs, 0.05),
+             'data_q95': np.quantile(rvs, 0.95)}
+    if pprint:
+        logger.info(f"'{dist}' distribution statistics")
+        logger.info(pretty_repr(stats))
+    return stats
 
 
 @dataclass

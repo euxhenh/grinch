@@ -1,7 +1,9 @@
 from . import custom_types as typing
+from . import processors as pr
+from . import shortcuts
 from .aliases import ADK, OBS, OBSM, OBSP, UNS, VAR, VARM, VARP, AnnDataKeys
 from .cond_filter import Filter, StackedFilter
-from .conf import BaseConfig, BaseConfigurable
+from .conf import BaseConfigurable
 from .de_test_summary import (
     BimodalTestSummary,
     DETestSummary,
@@ -11,7 +13,7 @@ from .de_test_summary import (
 )
 from .filters import FilterCells, FilterGenes
 from .main import instantiate_config
-from .normalizers import Log1P, NormalizeTotal
+from .normalizers import Combat, Log1P, NormalizeTotal, Scale
 from .pipeline import GRPipeline
 from .processors import *  # noqa
 from .reporter import Report, Reporter
@@ -28,7 +30,6 @@ __all__ = [
     'VARP',
     'UNS',
     'AnnDataKeys',
-    'BaseConfig',
     'BaseConfigurable',
     'BimodalTestSummary',
     'GRPipeline',
@@ -42,7 +43,12 @@ __all__ = [
     'KSTestSummary',
     'Filter',
     'StackedFilter',
+    'Combat',
     'Log1P',
+    'Scale',
     'NormalizeTotal',
     'instantiate_config',
 ]
+
+__all__.extend(pr.__all__)
+__all__.extend(shortcuts.__all__)

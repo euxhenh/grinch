@@ -54,7 +54,7 @@ def test_pipeline_end_to_end_single_dataset(X):
         "seed": 42,
     })
     cfg = instantiate(cfg, _convert_='all')
-    pipeline = cfg.initialize()
+    pipeline = cfg.create()
     adata = AnnData(X)
 
     ds: DataSplitter = pipeline(adata)
