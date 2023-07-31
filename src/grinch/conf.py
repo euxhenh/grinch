@@ -1,30 +1,34 @@
 import inspect
-from contextlib import contextmanager
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Generic, Type, TypeVar
 
-import matplotlib.pyplot as plt
-from pydantic import BaseModel, Field, PrivateAttr, field_validator
+from pydantic import BaseModel, Field, PrivateAttr
 
 BaseConfigurableT = TypeVar("BaseConfigurableT", bound="BaseConfigurable")
 
 
 class _BaseConfigurable:
-    """A base meta class for configurable classes. Each subclass C will
+    r"""A base meta class for configurable classes. Each subclass C will
     inherit a Config inner class that knows C's type. The type is set upon
     class definition via this meta class. This allows the construction of
     an instance of C by calling C.Config().create() thus allowing
     reproducibility of the object given its Config only.
+
+    E.g., BaseConfigurable.Config(**kwargs).create() -> BaseConfigurable.
+    This is syntactic sugar for
+    BaseConfigurable(BaseConfigurable.Config(**kwargs)) -> BaseConfigurable.
     """
+
     class Config(BaseModel, Generic[BaseConfigurableT]):
-        """A base config class for initializing configurable objects.
+        """A stateless base config class for creating configurable objects.
         """
         model_config = {
             'arbitrary_types_allowed': True,
             'validate_assignment': True,
             'extra': 'forbid',
             'validate_default': True,
+            "populate_by_name": True,
         }
 
         _init_cls: Type[BaseConfigurableT] = PrivateAttr()
@@ -85,42 +89,41 @@ class _BaseConfigurable:
     def __init__(self, cfg: Config, /):
         self.cfg = cfg
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(self.cfg)})"
+
 
 class BaseConfigurable(_BaseConfigurable):
+    r"""BaseConfigurable class with some default parameters and methods.
+
+    Args:
+        seed (int, optional): Random state to use for the wrapped model. It
+            is the job of that configurable class to make sure the seed is
+            used.
+        logs_path (Path): The path to use for saving logs.
+        sanity_check (bool): If ``True`` will make a quick run to ensure
+            that everything runs without errors.
+        interactive (bool): If ``True`` will run in interactive mode. It is
+            the job of that configurable class to make use of this.
+    """
 
     class Config(_BaseConfigurable.Config):
 
         if TYPE_CHECKING:
             create: Callable[..., 'BaseConfigurable']
 
+        logs_path: Path = Path('./grinch_logs', exclude=True, repr=False)
+        interactive: bool = Field(False, exclude=True, repr=False)
+        # The following two are likely to be used by a GRPipeline
         seed: int | None = None
-        logs_path: Path = Path('./grinch_logs')  # Default
-        sanity_check: bool = Field(False, exclude=True)
-        interactive: bool = Field(False, exclude=True)
+        sanity_check: bool = Field(False, exclude=True, repr=False)
 
-        @field_validator('logs_path', mode='before')
-        def convert_to_Path(cls, val):
-            return Path(val)
+        def model_post_init(self, _) -> None:
+            # Create logs directory if it does not exist
+            self.logs_path.mkdir(parents=True, exist_ok=True)
 
     cfg: Config
 
     @property
     def logs_path(self) -> Path:
         return self.cfg.logs_path
-
-    @contextmanager
-    def interactive(self, save_path: str | Path | None = None, **kwargs):
-        plt.ion()
-        yield None
-        plt.ioff()
-
-        if save_path is not None:
-            self.logs_path.mkdir(parents=True, exist_ok=True)
-            # Set good defaults
-            kwargs.setdefault('dpi', 300)
-            kwargs.setdefault('bbox_inches', 'tight')
-            kwargs.setdefault('transparent', True)
-            plt.savefig(self.logs_path / save_path, **kwargs)
-
-        plt.clf()
-        plt.close()

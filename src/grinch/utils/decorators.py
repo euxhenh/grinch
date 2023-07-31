@@ -1,6 +1,9 @@
 import logging
 import time
 
+import matplotlib.pyplot as plt
+from pydantic import validate_call
+
 _logger = logging.getLogger(__name__)
 
 
@@ -29,5 +32,28 @@ def retry(
                     else:
                         raise e
                 break
+        return _wrapper
+    return _decorator
+
+
+@validate_call
+def plt_interactive(save_path: str | None = None, **kwargs):
+    """Returns a decorator that activates plt interactive mode inside function.
+    """
+    def _decorator(f):
+        def _wrapper(self, *args, **kwargs):
+            plt.ion()
+            f(self, *args, **kwargs)
+            plt.ioff()
+
+            if save_path is not None:
+                # Set good defaults
+                kwargs.setdefault('dpi', 300)
+                kwargs.setdefault('bbox_inches', 'tight')
+                kwargs.setdefault('transparent', True)
+                plt.savefig(save_path, **kwargs)
+
+            plt.clf()
+            plt.close()
         return _wrapper
     return _decorator
