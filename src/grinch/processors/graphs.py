@@ -3,14 +3,13 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, field_validator
+from pydantic import Field
 from scipy.sparse import csr_matrix, spmatrix
 from sklearn.neighbors import NearestNeighbors as _NearestNeighbors
 from sklearn.utils.validation import _ensure_sparse_format
 
 from ..aliases import OBSM, OBSP
 from ..custom_types import NP1D_float, NP1D_int, NP2D_float
-from ..utils.validation import pop_args
 from .base_processor import BaseProcessor
 from .wrappers import FuzzySimplicialSet as _FuzzySimplicialSet
 
@@ -82,10 +81,6 @@ class KNNGraph(BaseGraphConstructor):
         n_neighbors: int = Field(15, gt=0)
         n_jobs: int = Field(4, gt=0)
 
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['n_neighbors', 'n_jobs'], val)
-
     cfg: Config
 
     def __init__(self, cfg: Config, /):
@@ -128,11 +123,6 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
         precomputed: bool = False
         n_neighbors: int = 15
         metric: str = "euclidean"
-
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['X', 'n_neighbors', 'random_state', 'metric',
-                             'knn_indices', 'knn_dists', 'return_dists'], val)
 
     cfg: Config
 

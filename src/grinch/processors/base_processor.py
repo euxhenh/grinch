@@ -6,7 +6,7 @@ import logging
 from functools import partial
 from itertools import islice, starmap
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Annotated, Any, Callable, Dict, List, TypeVar
 
 from anndata import AnnData
 from pydantic import field_validator, validate_call
@@ -18,6 +18,10 @@ from ..utils.ops import compose, safe_format
 from ..utils.validation import all_not_None, check_has_processor
 
 logger = logging.getLogger(__name__)
+
+
+T = TypeVar('T')
+ProcessorParam = Annotated[T, 'ProcessorParam']
 
 
 def adata_modifier(f: Callable):
@@ -107,9 +111,13 @@ class BaseProcessor(BaseConfigurable):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseProcessor']
 
+        __kwargs_bad_fields__: List[str]  # TODO make inheritable
+
         inplace: bool = True
         read_key_prefix: str = ''
         save_key_prefix: str = ''
+        # Processor kwargs
+        kwargs: Dict[str, Any] = {}
 
         @staticmethod
         def _validate_single_rep_key(val: str):
@@ -181,11 +189,28 @@ class BaseProcessor(BaseConfigurable):
             for save_key prefixes.
             """
             upstream_prefix = self.save_key_prefix
-            # if len(upstream_prefix) > 0:  # happens when GroupProcess modules are stacked
-            #     upstream_prefix += splitter
             current_prefix = safe_format(current_prefix, **kwargs)
             prefix = f'{upstream_prefix}{current_prefix}'
             return prefix
+
+        @field_validator('kwargs')
+        def remove_explicit_args(cls, val):
+            processor_params = cls.processor_params()
+            for explicit_key in processor_params:
+                if val.pop(explicit_key, None) is not None:
+                    logger.warning(
+                        f"Popping '{explicit_key}' from kwargs. If you wish"
+                        " to overwrite this key, pass it directly in the config."
+                    )
+            return val
+
+        @classmethod
+        def processor_params(cls) -> List[str]:
+            params = []
+            for param, field_info in cls.model_fields.items():
+                if 'ProcessorParam' in field_info.metadata:
+                    params.append(param)
+            return params
 
     cfg: Config
 
@@ -214,6 +239,10 @@ class BaseProcessor(BaseConfigurable):
                     f"a callable '{method_name}' method."
                 )
         self._processor = value
+
+    @classmethod
+    def processor_params(cls) -> List[str]:
+        return cls.Config.processor_params()
 
     @staticmethod
     def _processor_must_implement() -> List[str]:

@@ -10,8 +10,8 @@ from sklearn.manifold import MDS as _MDS
 from umap import UMAP as _UMAP
 
 from ..aliases import OBSM
-from ..utils.validation import check_has_processor, pop_args
-from .base_processor import BaseProcessor, adata_modifier
+from ..utils.validation import check_has_processor
+from .base_processor import BaseProcessor, ProcessorParam, adata_modifier
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,9 @@ class PCA(BaseTransformer):
             create: Callable[..., 'PCA']
 
         x_emb_key: str = f"obsm.{OBSM.X_PCA}"
-        n_components: int | float | str | None = 50
-        whiten: bool = False
-        svd_solver: str = 'auto'
+        n_components: ProcessorParam[int | float | str | None] = 50
+        whiten: ProcessorParam[bool] = False
+        svd_solver: ProcessorParam[str] = 'auto'
 
     cfg: Config
 
@@ -140,10 +140,6 @@ class MDS(BaseTransformer):
         x_emb_key: str = f"obsm.{OBSM.X_MDS}"
         n_components: int = Field(2, ge=1)
 
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['n_components', 'random_state'], val)
-
     cfg: Config
 
     def __init__(self, cfg: Config, /):
@@ -172,10 +168,6 @@ class UMAP(BaseTransformer):
         spread: float = Field(0.8, gt=0)
         # Other arguments to pass to UMAP
         kwargs: Dict[str, Any] = {}
-
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['n_neighbors', 'n_components', 'spread', 'random_state'], val)
 
     cfg: Config
 

@@ -33,9 +33,6 @@ class BaseFilter(BaseConfigurable):
 
     cfg: Config
 
-    def __init__(self, cfg: Config, /):
-        super().__init__(cfg)
-
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, adata: AnnData) -> AnnData | None:
         if not self.cfg.inplace:

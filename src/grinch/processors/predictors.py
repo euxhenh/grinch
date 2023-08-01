@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import Field, field_validator, validate_call
+from pydantic import Field, validate_call
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 from sklearn.mixture import BayesianGaussianMixture as _BayesianGaussianMixture
@@ -15,7 +15,7 @@ from sklearn.utils import indexable
 from ..aliases import OBS, OBSM, OBSP, UNS
 from ..custom_types import NP1D_Any, NP1D_float
 from ..utils.ops import group_indices
-from ..utils.validation import check_has_processor, pop_args
+from ..utils.validation import check_has_processor
 from .base_processor import BaseProcessor, adata_modifier
 from .wrappers import Leiden as _Leiden
 
@@ -109,10 +109,6 @@ class KMeans(BaseUnsupervisedPredictor):
         # KMeans args
         n_clusters: int = Field(8, ge=1)
 
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['n_clusters', 'random_state'], val)
-
     cfg: Config
 
     def __init__(self, cfg: Config, /):
@@ -146,11 +142,6 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         n_components: int = Field(8, ge=1)
         covariance_type: str = 'diag'  # non-default value
         max_iter: int = Field(500, ge=1)
-
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['n_components', 'random_state', 'max_iter',
-                             'covariance_type'], val)
 
     cfg: Config
 
@@ -202,11 +193,6 @@ class Leiden(BaseUnsupervisedPredictor):
         # on community assignment too.
         compute_centroids: bool = True
         x_key_for_centroids: str = "X"
-
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['partition_type', 'graph', 'weights',
-                             'n_iterations', 'seed'], val)
 
     cfg: Config
 
@@ -287,11 +273,6 @@ class LogisticRegression(BaseSupervisedPredictor):
         C: float = Field(1.0, gt=0)  # inverse regularization trade-off
         max_iter: int = Field(500, gt=0)
         n_jobs: Optional[int] = Field(-1, ge=-1)
-
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['penalty', 'C', 'max_iter',
-                             'n_jobs', 'random_state'], val)
 
     cfg: Config
 
