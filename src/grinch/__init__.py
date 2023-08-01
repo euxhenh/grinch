@@ -11,7 +11,7 @@ from .de_test_summary import (
     PvalTestSummary,
     TestSummary,
 )
-from .filters import FilterCells, FilterGenes
+from .filters import FilterCells, FilterGenes, VarianceFilter
 from .main import instantiate_config
 from .normalizers import Combat, Log1P, NormalizeTotal, Scale
 from .pipeline import GRPipeline
@@ -35,6 +35,7 @@ __all__ = [
     'GRPipeline',
     'FilterCells',
     'FilterGenes',
+    'VarianceFilter',
     'Report',
     'Reporter',
     'DETestSummary',

@@ -132,9 +132,6 @@ class FilterGenes(BaseFilter):
         max_counts: NonNegativeFloat | None = None
         min_cells: NonNegativeInt | None = None
         max_cells: NonNegativeInt | None = None
-        min_var: NonNegativeFloat | None = None
-        max_var: NonNegativeFloat | None = None
-        ddof: NonNegativeInt = 1
 
     cfg: Config
 
@@ -173,7 +170,36 @@ class FilterGenes(BaseFilter):
                 self.cfg.max_cells,
             )
 
-        # TODO separate variance filter into a new module
+        if to_keep.sum() < 1:
+            raise ValueError(
+                "Filtering options are too stringent. "
+                "Less than 1 gene remained."
+            )
+
+        adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
+        adata.var[VAR.N_CELLS] = cells_per_gene.astype(np.float32)
+
+        adata._inplace_subset_var(to_keep)
+
+        logger.info(f"Keeping {adata.shape[1]}/{len(to_keep)} genes.")
+
+
+class VarianceFilter(BaseFilter):
+    """Filter features by variance."""
+
+    class Config(BaseFilter.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'VarianceFilter']
+
+        min_var: NonNegativeFloat | None = None
+        max_var: NonNegativeFloat | None = None
+        ddof: NonNegativeInt = 1
+
+    cfg: Config
+
+    def _filter(self, adata: AnnData) -> None:
+        to_keep = np.full(adata.shape[1], True)
         gene_var = _var(adata.X, axis=0, ddof=self.cfg.ddof)
 
         if self.cfg.interactive:
@@ -191,10 +217,7 @@ class FilterGenes(BaseFilter):
                 "Less than 1 gene remained."
             )
 
-        adata.var[VAR.N_COUNTS] = counts_per_gene.astype(np.float32)
-        adata.var[VAR.N_CELLS] = cells_per_gene.astype(np.float32)
         adata.var[VAR.VARIANCE] = gene_var.astype(np.float32)
-
         adata._inplace_subset_var(to_keep)
 
         logger.info(f"Keeping {adata.shape[1]}/{len(to_keep)} genes.")

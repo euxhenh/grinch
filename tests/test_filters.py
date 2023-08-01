@@ -275,7 +275,7 @@ def test_gene_inplace(X):
 def test_min_max_var(X):
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.FilterGenes.Config",
+            "_target_": "src.grinch.VarianceFilter.Config",
             "min_var": 0.8,
             "max_var": 7,
             "ddof": 0,
