@@ -4,7 +4,7 @@ import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING, Callable, Iterable, Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
 
 import numpy as np
 import scipy.sparse as sp
@@ -26,7 +26,7 @@ from ..utils.stats import (
     mean_var,
     ttest_from_mean_var,
 )
-from ..utils.validation import all_None, any_not_None, only_one_not_None
+from ..utils.validation import all_None, any_not_None
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
@@ -182,7 +182,6 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
                 f"under key '{self.cfg.group_key}'."
             )
             return
-
 
         self._test(x, group_labels, x_experimental=x_experimental, x_control=x_control)
 

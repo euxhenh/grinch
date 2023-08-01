@@ -18,7 +18,7 @@ from ..custom_types import NP1D_bool, NP1D_str
 from ..de_test_summary import DETestSummary, TestSummary
 from ..shortcuts import FWERpVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
-from ..utils.validation import all_not_None, pop_args
+from ..utils.validation import all_not_None
 from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
@@ -213,10 +213,6 @@ class GSEAEnrich(GSEA):
         gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH
         filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
 
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['gene_list', 'gene_sets', 'no_plot'], val)
-
     cfg: Config
 
     @staticmethod
@@ -281,10 +277,6 @@ class GSEAPrerank(GSEA):
 
         qval_scaling: bool = True
         seed: int = 123  # Prerank doesn't accept null seeds
-
-        @field_validator('kwargs')
-        def remove_explicit_args(cls, val):
-            return pop_args(['rnk', 'gene_sets', 'outdir', 'seed'], val)
 
     cfg: Config
 
