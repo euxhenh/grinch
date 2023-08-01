@@ -7,7 +7,7 @@ from pydantic import Field
 from sklearn.utils import check_X_y
 
 from ..aliases import UNS, VAR
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 
 
 class PhenotypeCover(BaseProcessor):
@@ -17,13 +17,13 @@ class PhenotypeCover(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'PhenotypeCover']
 
-        x_key: str = "X"
-        y_key: str
-        feature_mask_key: str = f"var.{VAR.PCOVER_M}"
-        feature_importance_key: str = f"var.{VAR.PCOVER_I}"
+        x_key: ReadKey = "X"
+        y_key: ReadKey
+        feature_mask_key: WriteKey = f"var.{VAR.PCOVER_M}"
+        feature_importance_key: WriteKey = f"var.{VAR.PCOVER_I}"
 
         save_stats: bool = True
-        stats_key: str = f"uns.{UNS.PCOVER_}"
+        stats_key: WriteKey = f"uns.{UNS.PCOVER_}"
 
         # GreedyPC args
         coverage: int

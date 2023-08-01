@@ -6,12 +6,20 @@ import logging
 from functools import partial
 from itertools import islice, starmap
 from operator import itemgetter
-from typing import TYPE_CHECKING, Annotated, Any, Callable, Dict, List, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    TypeAlias,
+    TypeVar,
+)
 
 from anndata import AnnData
 from pydantic import field_validator, validate_call
 
-from ..aliases import ALLOWED_KEYS
 from ..conf import BaseConfigurable
 from ..custom_types import REP, REP_KEY, NP1D_int
 from ..utils.ops import compose, safe_format
@@ -22,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 ProcessorParam = Annotated[T, 'ProcessorParam']
+
+# Storage and retrieval keys
+ReadKey: TypeAlias = str
+WriteKey: TypeAlias = str
 
 
 def adata_modifier(f: Callable):
@@ -118,66 +130,6 @@ class BaseProcessor(BaseConfigurable):
         save_key_prefix: str = ''
         # Processor kwargs
         kwargs: Dict[str, Any] = {}
-
-        @staticmethod
-        def _validate_single_rep_key(val: str):
-            """Validates the format of a single key (str)."""
-            if val is None or val in ['X', 'obs_names', 'var_names']:
-                return val
-            if '.' not in val:
-                raise ValueError(
-                    "Representation keys must equal 'X' or must contain a "
-                    "dot '.' that points to the AnnData column to use."
-                )
-            if len(parts := val.split('.')) > 2 and parts[0] != 'uns':
-                raise ValueError(
-                    "There can only be one dot "
-                    "'.' in non-uns representation keys."
-                )
-            if parts[0] not in ALLOWED_KEYS:
-                raise ValueError(
-                    f"AnnData annotation key should be one of {ALLOWED_KEYS}."
-                )
-            if len(parts[1]) >= 120:
-                raise ValueError(
-                    "Columns keys should be less than 120 characters."
-                )
-            return val
-
-        @field_validator('*')
-        def rep_format_is_correct(cls, val, info):
-            """Select the representation to use. If val is str: if 'X',
-            will use adata.X, otherwise it must contain a dot that splits
-            the annotation key that will be used and the column key. E.g.,
-            'obsm.x_emb' will use 'adata.obsm['x_emb']'. A list of str will
-            be parsed as *args, and a dict of (str, str) should map a
-            dictionary key to the desired representation. The latter is
-            useful when calling, for example, predictors which require a
-            data representation X and labels y. In this case, X and y would
-            be dictionary keys and the corresponding representations for X
-            and y would be the values.
-
-            This validator will only check fields that end with '_key'.
-            """
-            if not info.field_name.endswith('_key'):
-                return val
-
-            match val:
-                case str() as v:
-                    return cls._validate_single_rep_key(v)
-                case [*vals]:
-                    return [cls._validate_single_rep_key(v) for v in vals]
-                case {**vals}:
-                    return {k: cls._validate_single_rep_key(v)  # type: ignore
-                            for k, v in vals.items()}
-                case None:
-                    return None
-                case _:
-                    raise ValueError(
-                        f"Could not interpret format for {info.field_name}. "
-                        "Please make sure it is a str, list[str], "
-                        "or dict[str, str]."
-                    )
 
         def get_save_key_prefix(
             self,

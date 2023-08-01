@@ -11,7 +11,13 @@ from umap import UMAP as _UMAP
 
 from ..aliases import OBSM
 from ..utils.validation import check_has_processor
-from .base_processor import BaseProcessor, ProcessorParam, adata_modifier
+from .base_processor import (
+    BaseProcessor,
+    ProcessorParam,
+    ReadKey,
+    WriteKey,
+    adata_modifier,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +30,10 @@ class BaseTransformer(BaseProcessor, abc.ABC):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseTransformer']
 
-        x_key: str = "X"
-        x_emb_key: str
+        x_key: ReadKey = "X"
+        x_emb_key: WriteKey
         save_stats: bool = True
-        stats_key: str | None = None
+        stats_key: WriteKey | None = None
         kwargs: Dict[str, Any] = {}
 
         @field_validator('stats_key')
@@ -67,7 +73,7 @@ class PCA(BaseTransformer):
         if TYPE_CHECKING:
             create: Callable[..., 'PCA']
 
-        x_emb_key: str = f"obsm.{OBSM.X_PCA}"
+        x_emb_key: WriteKey = f"obsm.{OBSM.X_PCA}"
         n_components: ProcessorParam[int | float | str | None] = 50
         whiten: ProcessorParam[bool] = False
         svd_solver: ProcessorParam[str] = 'auto'
@@ -102,7 +108,7 @@ class TruncatedSVD(BaseTransformer):
         if TYPE_CHECKING:
             create: Callable[..., 'TruncatedSVD']
 
-        x_emb_key: str = f"obsm.{OBSM.X_TRUNCATED_SVD}"
+        x_emb_key: WriteKey = f"obsm.{OBSM.X_TRUNCATED_SVD}"
         # Truncated SVD args
         n_components: int = Field(2, ge=1)
         algorithm: str = 'randomized'
@@ -137,7 +143,7 @@ class MDS(BaseTransformer):
         if TYPE_CHECKING:
             create: Callable[..., 'MDS']
 
-        x_emb_key: str = f"obsm.{OBSM.X_MDS}"
+        x_emb_key: WriteKey = f"obsm.{OBSM.X_MDS}"
         n_components: int = Field(2, ge=1)
 
     cfg: Config
@@ -159,8 +165,8 @@ class UMAP(BaseTransformer):
         if TYPE_CHECKING:
             create: Callable[..., 'UMAP']
 
-        x_key: str = f"obsm.{OBSM.X_PCA}"  # Different x key from parent
-        x_emb_key: str = f"obsm.{OBSM.X_UMAP}"
+        x_key: ReadKey = f"obsm.{OBSM.X_PCA}"  # Different x key from parent
+        x_emb_key: WriteKey = f"obsm.{OBSM.X_UMAP}"
         # UMAP args
         n_neighbors: int = Field(15, ge=1)
         n_components: int = Field(2, ge=1)

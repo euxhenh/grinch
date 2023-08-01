@@ -96,9 +96,6 @@ class _BaseConfigurable:
     def __repr__(self):
         return f"{self.__class__.__name__}({repr(self.cfg)})"
 
-    def __copy__(self):
-        """Return a shallow copy of the model."""
-
 
 class BaseConfigurable(_BaseConfigurable):
     r"""BaseConfigurable class with some default parameters and methods.

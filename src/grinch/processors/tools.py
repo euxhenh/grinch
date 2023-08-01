@@ -1,6 +1,6 @@
 import logging
 from numbers import Number
-from typing import TYPE_CHECKING, Callable, Dict, Literal, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Literal
 
 import numpy as np
 from anndata import AnnData
@@ -10,7 +10,7 @@ from pyensembl import EnsemblRelease
 from ..aliases import UNS, VAR
 from ..cond_filter import Filter, StackedFilter
 from ..custom_types import NP1D_bool
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,9 @@ class GeneIdToName(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'GeneIdToName']
 
-        read_key: str = "var_names"
-        save_key: str = f"var.{VAR.FEATURE_NAME}"
-        stats_key: str = f"uns.{UNS.N_GENE_ID_TO_NAME_FAILED}"
+        read_key: ReadKey = "var_names"
+        save_key: WriteKey = f"var.{VAR.FEATURE_NAME}"
+        stats_key: WriteKey = f"uns.{UNS.N_GENE_ID_TO_NAME_FAILED}"
         ensembl_release: int = 77
 
     cfg: Config
@@ -61,7 +61,7 @@ class StoreAsMask(BaseProcessor):
             create: Callable[..., 'StoreAsMask']
 
         filter_by: Dict[str, Filter]
-        save_key: str
+        save_key: WriteKey
 
     cfg: Config
 
@@ -78,8 +78,8 @@ class ReplaceNaN(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'ReplaceNaN']
 
-        read_key: str
-        save_key: Optional[str]
+        read_key: ReadKey
+        save_key: WriteKey | None
         replace_value: Number | Literal['median'] = Field(0.0)
 
     cfg: Config
@@ -111,7 +111,7 @@ class FilterNaN(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'FilterNaN']
 
-        read_key: str
+        read_key: ReadKey
 
     cfg: Config
 
@@ -144,8 +144,8 @@ class ApplyOp(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'ApplyOp']
 
-        read_key: str
-        save_key: str | None = None
+        read_key: ReadKey
+        save_key: WriteKey | None = None
         op: str
         as_attr: bool = False
 

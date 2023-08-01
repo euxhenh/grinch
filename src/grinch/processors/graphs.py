@@ -10,7 +10,7 @@ from sklearn.utils.validation import _ensure_sparse_format
 
 from ..aliases import OBSM, OBSP
 from ..custom_types import NP1D_float, NP1D_int, NP2D_float
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 from .wrappers import FuzzySimplicialSet as _FuzzySimplicialSet
 
 
@@ -33,11 +33,11 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseGraphConstructor']
 
-        x_key: str = f"obsm.{OBSM.X_PCA}"
-        conn_key: str
-        dist_key: str
+        x_key: ReadKey = f"obsm.{OBSM.X_PCA}"
+        conn_key: WriteKey
+        dist_key: WriteKey
         save_stats: bool = True
-        stats_key: str | None = None
+        stats_key: WriteKey | None = None
         kwargs: Dict[str, Any] = {}
 
     cfg: Config
@@ -76,8 +76,8 @@ class KNNGraph(BaseGraphConstructor):
         if TYPE_CHECKING:
             create: Callable[..., 'KNNGraph']
 
-        conn_key: str = f"obsp.{OBSP.KNN_CONNECTIVITY}"
-        dist_key: str = f"obsp.{OBSP.KNN_DISTANCE}"
+        conn_key: WriteKey = f"obsp.{OBSP.KNN_CONNECTIVITY}"
+        dist_key: WriteKey = f"obsp.{OBSP.KNN_DISTANCE}"
         n_neighbors: int = Field(15, gt=0)
         n_jobs: int = Field(4, gt=0)
 
@@ -117,9 +117,9 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
         if TYPE_CHECKING:
             create: Callable[..., 'FuzzySimplicialSetGraph']
 
-        conn_key: str = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
-        dist_key: str = f"obsp.{OBSP.UMAP_DISTANCE}"
-        affinity_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"
+        conn_key: WriteKey = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
+        dist_key: WriteKey = f"obsp.{OBSP.UMAP_DISTANCE}"
+        affinity_key: WriteKey = f"obsp.{OBSP.UMAP_AFFINITY}"
         precomputed: bool = False
         n_neighbors: int = 15
         metric: str = "euclidean"
