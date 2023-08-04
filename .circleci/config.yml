@@ -1,39 +1,23 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:python:.
 version: 2.1
+
 orbs:
-  python: circleci/python@2
+  codecov: codecov/codecov@3.2.5
+
 jobs:
-  test-python:
-    # Install dependencies and run tests
+  test-api:
     docker:
-      - image: cimg/python:3.10-node
+      - image: cimg/python:3.10.2
     steps:
       - checkout
-      - python/install-packages
-      - python/install-packages:
-          args: pytest
-          pkg-manager: pip
-          pypi-cache: false
       - run:
-          name: Run tests
-          command: pytest --junitxml=junit.xml
-      - store_test_results:
-          path: junit.xml
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
-    docker:
-      - image: cimg/base:stable
-    steps:
-      # Replace this with steps to deploy to users
+          name: Install requirements
+          command: pip install -r requirements.txt
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
-workflows:
-  build-and-test:
-    jobs:
-      - test-python
-    # - deploy:
-    #     requires:
-    #       - test-python
+          name: Run tests and collect coverage
+          command: coverage run -m pytest --doctest-modules
+      - codecov/upload
 
+workflows:
+  build-test:
+    jobs:
+      - test-api
