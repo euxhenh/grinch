@@ -4,7 +4,7 @@ import abc
 import inspect
 import logging
 from functools import partial
-from itertools import islice, starmap
+from itertools import chain, islice, starmap
 from operator import itemgetter
 from typing import (
     TYPE_CHECKING,
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 T = TypeVar('T')
+# Parameter that will be passed to the underlying processor.
 ProcessorParam = Annotated[T, 'ProcessorParam']
 
 # Storage and retrieval keys
@@ -109,9 +110,6 @@ class BaseProcessor(BaseConfigurable):
     __________
     inplace: bool
         If False, will make and return a copy of adata.
-    *_key: custom_types.REP_KEY
-        Any Config member parameter that ends in '_key' will be checked by
-        pydantic validators to conform with adata column names.
     read_key_prefix, save_key_prefix: str
         Will prepend this prefix to all (last) read/save_keys. This is
         useful, for example, for GroupProcess, which prepends the
@@ -123,13 +121,17 @@ class BaseProcessor(BaseConfigurable):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseProcessor']
 
-        __kwargs_bad_fields__: List[str]  # TODO make inheritable
+        # Populate this with kwargs that will be passed to the underlying
+        # processor/processor function, but are not marked as
+        # ProcessorParams and are also not passed via kwargs.
+        __kwargs_explicit_fields__: List[str] = []
 
         inplace: bool = True
         read_key_prefix: str = ''
         save_key_prefix: str = ''
+
         # Processor kwargs
-        kwargs: Dict[str, Any] = {}
+        kwargs: Dict[str, ProcessorParam] = {}
 
         def get_save_key_prefix(
             self,
@@ -148,11 +150,11 @@ class BaseProcessor(BaseConfigurable):
         @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             processor_params = cls.processor_params()
-            for explicit_key in processor_params:
+            for explicit_key in chain(processor_params, cls.__kwargs_explicit_fields__):
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
-                        f"Popping '{explicit_key}' from kwargs. If you wish"
-                        " to overwrite this key, pass it directly in the config."
+                        f"Popping '{explicit_key}' from kwargs. This key "
+                        "has already been set."
                     )
             return val
 
