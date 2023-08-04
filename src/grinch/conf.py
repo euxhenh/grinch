@@ -19,7 +19,7 @@ class _BaseConfigurable:
     This is syntactic sugar for
     BaseConfigurable(BaseConfigurable.Config(**kwargs)) -> BaseConfigurable.
     """
-    __slots__ = ['cfg', '__stateful_fields__']
+    __slots__ = ['cfg']
     # List of field names that are part of the Configurable's state.
     # These will be dumped when saving the model.
     __stateful_fields__: List[str] = []
