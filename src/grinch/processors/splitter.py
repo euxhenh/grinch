@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, field_validator, validate_call
+from pydantic import Field, validate_call
 from sklearn.model_selection import train_test_split
 
 from ..conf import BaseConfigurable
@@ -68,11 +68,6 @@ class Splitter(BaseConfigurable):
             if all_not_None(self.val_fraction, self.test_fraction):
                 if self.val_fraction + self.test_fraction >= 1:  # type: ignore
                     raise ValueError("Val and test fraction should sum less than one.")
-
-        @field_validator('stratify_key')
-        def rep_format_is_correct(cls, val):
-            return (BaseProcessor.Config._validate_single_rep_key(val)
-                    if val is not None else val)
 
     cfg: Config
 

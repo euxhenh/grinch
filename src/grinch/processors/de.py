@@ -27,7 +27,7 @@ from ..utils.stats import (
     ttest_from_mean_var,
 )
 from ..utils.validation import all_None, any_not_None
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +80,9 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         if TYPE_CHECKING:
             create: Callable[..., 'PairwiseDETest']
 
-        x_key: str = "X"
-        save_key: str
-        group_key: str
+        x_key: ReadKey = "X"
+        group_key: ReadKey
+        save_key: WriteKey
 
         is_logged: bool = True
         # If the data is logged, this should point to the base of the
@@ -97,9 +97,9 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         # control. If both `experimental` and `control` samples are given,
         # will perform a single one_vs_one test between those two.
         experimental_label: str | None = None
-        experimental_key: str | None = None
+        experimental_key: ReadKey | None = None
         control_label: str | None = None
-        control_key: str | None = None
+        control_key: ReadKey | None = None
 
         show_progress_bar: bool = Field(True, exclude=True)
 
@@ -202,7 +202,7 @@ class TTest(PairwiseDETest):
         if TYPE_CHECKING:
             create: Callable[..., 'TTest']
 
-        save_key: str = f"uns.{UNS.TTEST}"
+        save_key: WriteKey = f"uns.{UNS.TTEST}"
 
     cfg: Config
 
@@ -262,7 +262,7 @@ class KSTest(PairwiseDETest):
         if TYPE_CHECKING:
             create: Callable[..., 'KSTest']
 
-        save_key: str = f"uns.{UNS.KSTEST}"
+        save_key: WriteKey = f"uns.{UNS.KSTEST}"
         method: str = 'auto'
         alternative: str = 'two-sided'
         max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
@@ -350,13 +350,13 @@ class BimodalTest(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'BimodalTest']
 
-        x_key: str = "X"
-        save_key: str = f"uns.{UNS.BIMODALTEST}"
+        x_key: ReadKey = "X"
+        save_key: WriteKey = f"uns.{UNS.BIMODALTEST}"
         correction: str = 'fdr_bh'
         skip_zeros: bool = False
 
-        max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
-                                           exclude=True)
+        max_workers: int | None = Field(None, ge=1, le=2 * mp.cpu_count(),
+                                        exclude=True)
 
         @field_validator('max_workers')
         def init_max_workers(cls, val):

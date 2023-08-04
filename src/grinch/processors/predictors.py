@@ -16,7 +16,7 @@ from ..aliases import OBS, OBSM, OBSP, UNS
 from ..custom_types import NP1D_Any, NP1D_float
 from ..utils.ops import group_indices
 from ..utils.validation import check_has_processor
-from .base_processor import BaseProcessor, adata_modifier
+from .base_processor import BaseProcessor, ReadKey, WriteKey, adata_modifier
 from .wrappers import Leiden as _Leiden
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,8 @@ class BasePredictor(BaseProcessor, abc.ABC):
         if TYPE_CHECKING:
             create: Callable[..., 'BasePredictor']
 
-        x_key: str = f"obsm.{OBSM.X_PCA}"
-        labels_key: str
+        x_key: ReadKey = f"obsm.{OBSM.X_PCA}"
+        labels_key: WriteKey
         categorical_labels: bool = True
         save_stats: bool = True
         kwargs: Dict[str, Any] = {}
@@ -104,8 +104,8 @@ class KMeans(BaseUnsupervisedPredictor):
         if TYPE_CHECKING:
             create: Callable[..., 'KMeans']
 
-        labels_key: str = f"obs.{OBS.KMEANS}"
-        stats_key: str = f"uns.{UNS.KMEANS_}"
+        labels_key: WriteKey = f"obs.{OBS.KMEANS}"
+        stats_key: WriteKey = f"uns.{UNS.KMEANS_}"
         # KMeans args
         n_clusters: int = Field(8, ge=1)
 
@@ -134,10 +134,10 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         if TYPE_CHECKING:
             create: Callable[..., 'GaussianMixture']
 
-        labels_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE}"
-        proba_key: str = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
-        score_key: str = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
-        stats_key: str = f"uns.{UNS.GAUSSIAN_MIXTURE_}"
+        labels_key: WriteKey = f"obs.{OBS.GAUSSIAN_MIXTURE}"
+        proba_key: WriteKey = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
+        score_key: WriteKey = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
+        stats_key: WriteKey = f"uns.{UNS.GAUSSIAN_MIXTURE_}"
         mixture_kind: Literal['GaussianMixture', 'BayesianGaussianMixture'] = 'GaussianMixture'
         n_components: int = Field(8, ge=1)
         covariance_type: str = 'diag'  # non-default value
@@ -181,9 +181,9 @@ class Leiden(BaseUnsupervisedPredictor):
         if TYPE_CHECKING:
             create: Callable[..., 'Leiden']
 
-        x_key: str = f"obsp.{OBSP.UMAP_AFFINITY}"
-        labels_key: str = f"obs.{OBS.LEIDEN}"
-        stats_key: str = f"uns.{UNS.LEIDEN_}"
+        x_key: ReadKey = f"obsp.{OBSP.UMAP_AFFINITY}"
+        labels_key: WriteKey = f"obs.{OBS.LEIDEN}"
+        stats_key: WriteKey = f"uns.{UNS.LEIDEN_}"
         resolution: float = Field(1.0, gt=0)
         n_iterations: int = -1
         partition_type: str = 'RBConfigurationVertexPartition'
@@ -192,7 +192,7 @@ class Leiden(BaseUnsupervisedPredictor):
         # Set to True if should comute cluster centers based
         # on community assignment too.
         compute_centroids: bool = True
-        x_key_for_centroids: str = "X"
+        x_key_for_centroids: ReadKey = "X"
 
     cfg: Config
 
@@ -235,7 +235,7 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseSupervisedPredictor']
 
-        y_key: str
+        y_key: ReadKey
 
     cfg: Config
 
@@ -266,8 +266,8 @@ class LogisticRegression(BaseSupervisedPredictor):
         if TYPE_CHECKING:
             create: Callable[..., 'LogisticRegression']
 
-        labels_key: str = f"obs.{OBS.LOG_REG}"
-        stats_key: str = f"uns.{UNS.LOG_REG_}"
+        labels_key: WriteKey = f"obs.{OBS.LOG_REG}"
+        stats_key: WriteKey = f"uns.{UNS.LOG_REG_}"
         # LogisticRegression kwargs
         penalty: str = "l2"
         C: float = Field(1.0, gt=0)  # inverse regularization trade-off

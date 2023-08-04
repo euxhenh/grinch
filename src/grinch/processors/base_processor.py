@@ -4,14 +4,22 @@ import abc
 import inspect
 import logging
 from functools import partial
-from itertools import islice, starmap
+from itertools import chain, islice, starmap
 from operator import itemgetter
-from typing import TYPE_CHECKING, Annotated, Any, Callable, Dict, List, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    TypeAlias,
+    TypeVar,
+)
 
 from anndata import AnnData
 from pydantic import field_validator, validate_call
 
-from ..aliases import ALLOWED_KEYS
 from ..conf import BaseConfigurable
 from ..custom_types import REP, REP_KEY, NP1D_int
 from ..utils.ops import compose, safe_format
@@ -21,7 +29,12 @@ logger = logging.getLogger(__name__)
 
 
 T = TypeVar('T')
+# Parameter that will be passed to the underlying processor.
 ProcessorParam = Annotated[T, 'ProcessorParam']
+
+# Storage and retrieval keys
+ReadKey: TypeAlias = str
+WriteKey: TypeAlias = str
 
 
 def adata_modifier(f: Callable):
@@ -97,9 +110,6 @@ class BaseProcessor(BaseConfigurable):
     __________
     inplace: bool
         If False, will make and return a copy of adata.
-    *_key: custom_types.REP_KEY
-        Any Config member parameter that ends in '_key' will be checked by
-        pydantic validators to conform with adata column names.
     read_key_prefix, save_key_prefix: str
         Will prepend this prefix to all (last) read/save_keys. This is
         useful, for example, for GroupProcess, which prepends the
@@ -111,73 +121,17 @@ class BaseProcessor(BaseConfigurable):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseProcessor']
 
-        __kwargs_bad_fields__: List[str]  # TODO make inheritable
+        # Populate this with kwargs that will be passed to the underlying
+        # processor/processor function, but are not marked as
+        # ProcessorParams and are also not passed via kwargs.
+        __kwargs_explicit_fields__: List[str] = []
 
         inplace: bool = True
         read_key_prefix: str = ''
         save_key_prefix: str = ''
+
         # Processor kwargs
-        kwargs: Dict[str, Any] = {}
-
-        @staticmethod
-        def _validate_single_rep_key(val: str):
-            """Validates the format of a single key (str)."""
-            if val is None or val in ['X', 'obs_names', 'var_names']:
-                return val
-            if '.' not in val:
-                raise ValueError(
-                    "Representation keys must equal 'X' or must contain a "
-                    "dot '.' that points to the AnnData column to use."
-                )
-            if len(parts := val.split('.')) > 2 and parts[0] != 'uns':
-                raise ValueError(
-                    "There can only be one dot "
-                    "'.' in non-uns representation keys."
-                )
-            if parts[0] not in ALLOWED_KEYS:
-                raise ValueError(
-                    f"AnnData annotation key should be one of {ALLOWED_KEYS}."
-                )
-            if len(parts[1]) >= 120:
-                raise ValueError(
-                    "Columns keys should be less than 120 characters."
-                )
-            return val
-
-        @field_validator('*')
-        def rep_format_is_correct(cls, val, info):
-            """Select the representation to use. If val is str: if 'X',
-            will use adata.X, otherwise it must contain a dot that splits
-            the annotation key that will be used and the column key. E.g.,
-            'obsm.x_emb' will use 'adata.obsm['x_emb']'. A list of str will
-            be parsed as *args, and a dict of (str, str) should map a
-            dictionary key to the desired representation. The latter is
-            useful when calling, for example, predictors which require a
-            data representation X and labels y. In this case, X and y would
-            be dictionary keys and the corresponding representations for X
-            and y would be the values.
-
-            This validator will only check fields that end with '_key'.
-            """
-            if not info.field_name.endswith('_key'):
-                return val
-
-            match val:
-                case str() as v:
-                    return cls._validate_single_rep_key(v)
-                case [*vals]:
-                    return [cls._validate_single_rep_key(v) for v in vals]
-                case {**vals}:
-                    return {k: cls._validate_single_rep_key(v)  # type: ignore
-                            for k, v in vals.items()}
-                case None:
-                    return None
-                case _:
-                    raise ValueError(
-                        f"Could not interpret format for {info.field_name}. "
-                        "Please make sure it is a str, list[str], "
-                        "or dict[str, str]."
-                    )
+        kwargs: Dict[str, ProcessorParam] = {}
 
         def get_save_key_prefix(
             self,
@@ -196,11 +150,11 @@ class BaseProcessor(BaseConfigurable):
         @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             processor_params = cls.processor_params()
-            for explicit_key in processor_params:
+            for explicit_key in chain(processor_params, cls.__kwargs_explicit_fields__):
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
-                        f"Popping '{explicit_key}' from kwargs. If you wish"
-                        " to overwrite this key, pass it directly in the config."
+                        f"Popping '{explicit_key}' from kwargs. This key "
+                        "has already been set."
                     )
             return val
 

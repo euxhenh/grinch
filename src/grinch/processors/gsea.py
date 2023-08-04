@@ -19,7 +19,7 @@ from ..de_test_summary import DETestSummary, TestSummary
 from ..shortcuts import FWERpVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
 from ..utils.validation import all_not_None
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +66,8 @@ class GSEA(BaseProcessor, abc.ABC):
         if TYPE_CHECKING:
             create: Callable[..., 'GSEA']
 
-        read_key: str = f"uns.{UNS.TTEST}"
-        save_key: str
+        read_key: ReadKey = f"uns.{UNS.TTEST}"
+        save_key: WriteKey
 
         gene_sets: str | List[str]
         # Dict of keys to use for filtering DE genes; keys are ignored
@@ -209,7 +209,7 @@ class GSEAEnrich(GSEA):
         if TYPE_CHECKING:
             create: Callable[..., 'GSEAEnrich']
 
-        save_key: str = f"uns.{UNS.GSEA_ENRICH}"
+        save_key: WriteKey = f"uns.{UNS.GSEA_ENRICH}"
         gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH
         filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
 
@@ -268,7 +268,7 @@ class GSEAPrerank(GSEA):
         if TYPE_CHECKING:
             create: Callable[..., 'GSEAPrerank']
 
-        save_key: str = f"uns.{UNS.GSEA_PRERANK}"
+        save_key: WriteKey = f"uns.{UNS.GSEA_PRERANK}"
         gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK
         # By default all genes are inputted into prerank. DE tests are
         # still needed in order to scale log2fc by the q-values before
@@ -340,11 +340,11 @@ class FindLeadGenes(BaseProcessor):
         if TYPE_CHECKING:
             create: Callable[..., 'FindLeadGenes']
 
-        read_key: str = f"uns.{UNS.GSEA_PRERANK}"
-        all_leads_save_key: str = f"var.{VAR.IS_LEAD}"
-        lead_group_save_key: str = f"var.{VAR.LEAD_GROUP}"
+        read_key: ReadKey = f"uns.{UNS.GSEA_PRERANK}"
+        all_leads_save_key: WriteKey = f"var.{VAR.IS_LEAD}"
+        lead_group_save_key: WriteKey = f"var.{VAR.LEAD_GROUP}"
         filter_by: List[Filter] = DEFAULT_FILTERS_LEAD_GENES
-        gene_names_key: str = "var_names"
+        gene_names_key: ReadKey = "var_names"
 
         @field_validator('filter_by', mode='before')
         def ensure_filter_list(cls, val):
@@ -403,10 +403,10 @@ class FindLeadGenesForProcess(BaseProcessor):
         gene_set: str = 'GO_Biological_Process_2023'
         organism: str = 'Human'
         terms: str | List[str] = '.*'  # by default take all
-        save_key: str = f'var.{VAR.CUSTOM_LEAD_GENES}'
+        save_key: WriteKey = f'var.{VAR.CUSTOM_LEAD_GENES}'
         regex: bool = False
-        all_leads_save_key: str = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
-        gene_names_key: str = "var_names"
+        all_leads_save_key: WriteKey = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
+        gene_names_key: ReadKey = "var_names"
 
         @field_validator('terms')
         def to_list(cls, val):

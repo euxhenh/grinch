@@ -8,7 +8,7 @@ from ..aliases import GROUP_SEP
 from ..custom_types import NP1D_str
 from ..utils.ops import group_indices
 from ..utils.validation import validate_axis
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +47,9 @@ class GroupProcess(BaseProcessor):
 
         processor: BaseProcessor.Config
         # Key to group by, must be recognized by np.unique.
-        group_key: str
+        group_key: ReadKey
         axis: int | Literal['obs', 'var'] = Field(0, ge=0, le=1)
-        group_prefix: str = f'g-{{group_key}}{GROUP_SEP}{{label}}.'
+        group_prefix: WriteKey = f'g-{{group_key}}{GROUP_SEP}{{label}}.'
         min_points_per_group: int = Field(default_factory=int, ge=0)
         # Whether to drop the groups which have less than
         # `min_points_per_group` points or not.
