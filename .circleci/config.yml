@@ -1,0 +1,23 @@
+version: 2.1
+
+orbs:
+  codecov: codecov/codecov@3.2.5
+
+jobs:
+  test-api:
+    docker:
+      - image: cimg/python:3.10.2
+    steps:
+      - checkout
+      - run:
+          name: Install requirements
+          command: pip install -r requirements.txt
+      - run:
+          name: Run tests and collect coverage
+          command: coverage run -m pytest --doctest-modules
+      - codecov/upload
+
+workflows:
+  build-test:
+    jobs:
+      - test-api

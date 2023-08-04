@@ -14,3 +14,4 @@ docs
 *.h5ad
 figs
 *logs
+.coverage
