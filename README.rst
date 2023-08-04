@@ -4,6 +4,8 @@
 
 .. |PythonVersion| image:: https://img.shields.io/badge/python-3.10-blue
 .. _PythonVersion: https://pypi.org/project/scikit-learn/
+.. image:: https://codecov.io/gh/euxhenh/grinch/branch/main/graph/badge.svg?token=P8KNCOKJ69
+ :target: https://codecov.io/gh/euxhenh/grinch
 
 **grinch** is a (under development) Python library for single-cell data
 analysis aimed at reducing boilerplate code through the use of workflow
