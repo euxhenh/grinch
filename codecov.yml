@@ -1,0 +1,4 @@
+ignore:
+  - "tests"
+  - "src/grinch/external"
+  - "**/__init__.py"
