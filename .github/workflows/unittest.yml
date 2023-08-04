@@ -25,9 +25,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Test with pytest
+    - name: Test with coverage and pytest
       run: |
-        pytest --doctest-modules
+        coverage run -m pytest --doctest-modules
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
