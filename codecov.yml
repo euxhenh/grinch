@@ -1,0 +1,13 @@
+ignore:
+  - "tests"
+  - "src/grinch/external"
+  - "**/__init__.py"
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
