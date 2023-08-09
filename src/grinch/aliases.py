@@ -1,6 +1,7 @@
 class auto:
     """Initialize a variable with a lowercase string representation of its
-    name."""
+    name.
+    """
 
     def __set_name__(self, owner, name):
         self.value = name.lower()
@@ -10,6 +11,8 @@ class auto:
 
 
 class AnnDataKeys:
+    """All the keys that are popualted by grinch, separated by column.
+    """
 
     class OBS:
         N_COUNTS = auto()

@@ -2,11 +2,11 @@ import logging
 from typing import Any, Literal, overload
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator, validate_call
+from pydantic import BaseModel, model_validator, validate_call
 from sklearn.utils import column_or_1d
 
 from .custom_types import NP1D_bool, NP1D_float, NP1D_int
-from .utils.validation import all_not_None
+from .utils.validation import only_one_not_None
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,8 @@ class Filter(BaseModel):
 
     If key is None, will assume the passed object to call is the array to
     filter itself.
+
+    P
     """
     model_config = {
         'validate_assignment': True,
@@ -32,17 +34,27 @@ class Filter(BaseModel):
     }
 
     key: str | None = None
-    cutoff: float | None = None
-    top_k: int | None = None
-    greater_is_True: bool = False
-    ordered: bool = False
-    dtype: str = Field('float', pattern='(float|bool)')
+    ge: float | None = None  # greater than or equal
+    le: float | None = None  # less than or equal
+    gt: float | None = None  # greater than
+    lt: float | None = None  # less than
+    top_k: int | None = None  # top k items after sorting
+    bot_k: int | None = None  # bottom k items after sorting
+    top_ratio: float | None = None  # top fraction of items
+    bot_ratio: float | None = None  # bottom fraction of items
 
-    @field_validator('top_k')
-    def _val_condition(cls, top_k, info):
-        if all_not_None(top_k, info.data['cutoff']):
-            raise ValueError("Only one or none of 'cutoff' or 'top_k' must be specified.")
-        return top_k
+    ordered: bool = False
+    dtype: Literal['float', 'bool', 'int', 'str'] = 'float'
+
+    @model_validator(mode='before')
+    def only_one_not_None(cls, data):
+        to_check = ['ge', 'le', 'gt', 'lt', 'top_k', 'bot_k', 'top_ratio', 'bot_ratio']
+        if not only_one_not_None(*(data[key] for key in to_check)):
+            raise ValueError(
+                "Only one filter key should not be None. If more than "
+                "one key is desired, then stack multiple filters together."
+            )
+        return data
 
     def __and__(self, other) -> 'StackedFilter':
         return StackedFilter(self, other)

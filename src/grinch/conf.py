@@ -22,7 +22,7 @@ class _BaseConfigurable:
     __slots__ = ['cfg']
     # List of field names that are part of the Configurable's state.
     # These will be dumped when saving the model.
-    __stateful_fields__: List[str] = []
+    __buffers__: List[str] = []
 
     class Config(BaseModel, Generic[BaseConfigurableT]):
         """A stateless base config class for creating configurable objects.
