@@ -1,9 +1,10 @@
 import inspect
 from operator import attrgetter
-from typing import Any, Dict, List, Tuple, TypeAlias
+from typing import Annotated, Any, Dict, List, Tuple, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
+from pydantic import Field
 
 REP_KEY: TypeAlias = str | List[str] | Dict[str, str] | None
 REP: TypeAlias = Dict[str, Any] | List[Any] | Any
@@ -20,6 +21,8 @@ NP1D_str = np.ndarray[Tuple[Any], np.dtype[np.str_]]
 NP_bool = npt.NDArray[np.bool_]
 NP_int = npt.NDArray[np.int_]
 NP_float = npt.NDArray[np.float_]
+
+PercentFraction = Annotated[float, Field(ge=0, le=1)]
 
 
 def optional_staticmethod(klas: str, special_args: Dict[str, str]):
