@@ -1,3 +1,14 @@
+# flake8: noqa: E402
+import warnings
+
+from numba.core.errors import (
+    NumbaDeprecationWarning,
+    NumbaPendingDeprecationWarning,
+)
+
+warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
+warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
+
 from . import custom_types as typing
 from . import processors as pr
 from . import shortcuts

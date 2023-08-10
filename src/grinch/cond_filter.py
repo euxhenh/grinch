@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Generic, Literal, TypeVar, overload
+from collections import UserList
+from functools import cached_property
+from typing import Any, Generic, List, Literal, TypeVar, overload
 
 import numpy as np
 from pydantic import BaseModel, NonNegativeInt, model_validator, validate_call
@@ -15,16 +19,6 @@ T = TypeVar("T", int, float, bool, str)
 
 class Filter(BaseModel, Generic[T]):
     """Selects and returns item indices based on criteria.
-
-    Takes any object and looks for 'key' in its members. It then selects
-    indices from 'key' based on the conditions defined in this class. If
-    cutoff is not None, will take all values greater than or less than
-    'cutoff'. If top_k is not None, will take the top k greatest (smallest)
-    elements. If both are None, will assume key is a mask and convert it to
-    a bool. The ordered key is useful if the returned indices can be in any
-    order or if they should be ordered. 'greater_is_True' will reverse the
-    selection criteria, except for the case when 'cutoff' and 'top_k' are
-    both None, where it has no effect.
 
     If key is None, will assume the passed object to call is the array to
     filter itself.
@@ -63,10 +57,13 @@ class Filter(BaseModel, Generic[T]):
     >>> f([2, 4, 3, 5, 6, 0, 1, 7], as_mask=False)
     array([4, 7])
     """
+    __conditions__ = ['ge', 'le', 'gt', 'lt', 'top_k', 'bot_k', 'top_ratio', 'bot_ratio']
+
     model_config = {
         'validate_assignment': True,
         'validate_default': True,
         'extra': 'forbid',
+        'frozen': True,
     }
 
     key: str | None = None  # Set to None if passing a container
@@ -84,24 +81,62 @@ class Filter(BaseModel, Generic[T]):
 
     @model_validator(mode='before')
     def at_most_one_not_None(cls, data):
-        to_check = ['ge', 'le', 'gt', 'lt', 'top_k', 'bot_k', 'top_ratio', 'bot_ratio']
-        if sum(data.get(key, None) is not None for key in to_check) > 1:
+        """Ensure that at most one condition is set. If no conditions are
+        set, will treat the input as a boolean.
+        """
+        if sum(data.get(key, None) is not None for key in cls.__conditions__) > 1:
             raise ValueError(
                 "At most one filter key should not be None. If more than "
                 "one key is desired, then stack multiple filters together."
             )
         return data
 
-    def __and__(self, other) -> 'StackedFilter':
+    def __and__(self, other) -> StackedFilter:
+        """If f1 & f2, return a StackedFilter that performs element-wise &.
+        """
         return StackedFilter(self, other)
+
+    def __repr_args__(self):
+        """Override method to exclude None fields.
+        """
+        for k, v in super().__repr_args__():
+            if v is None:
+                continue
+            yield k, v
+
+    @cached_property
+    def is_top(self) -> bool:
+        """Determine if we are taking top or bot elements.
+
+        Returns: True if we are selecting greatest elements.
+        """
+        return any_not_None(self.ge, self.gt, self.top_k, self.top_ratio)
 
     @staticmethod
     def _take_k_functional(arr, k: NonNegativeInt, as_mask: bool, top: bool):
+        r"""Functional variant of take top (bot) k items.
+
+        If n := len(arr), then this runs in $O(n + k\log{k})$ time.
+
+        Parameters
+        ----------
+        arr: 1D numpy array
+            Must be sortable.
+        k: int
+            The number of elements to take.
+        as_mask: bool
+            If False, will return indices, otherwise a boolean mask.
+        top: bool
+            If True, will return `k` greatest elements, else smallest.
+        """
         if k > (n := len(arr)):
             logger.warning(f"Requested {k} items but array has size {n}.")
-        argidx = np.argsort(arr)
-        # Flip so that we start with greatest
-        idx = np.flip(argidx[-k:]) if top else argidx[:k]
+
+        idx = np.argpartition(arr, -k if top else k)  # linear time
+        idx = idx[-k:] if top else idx[:k]
+        idx = idx[np.argsort(arr[idx])]  # sort selected indices
+        if top:
+            idx = np.flip(idx)
 
         if not as_mask:
             return idx
@@ -113,28 +148,24 @@ class Filter(BaseModel, Generic[T]):
     def _take_k(self, arr, as_mask: bool = True):
         """Take top or bot k items.
         """
-        top = self.top_k is not None
-        k = self.top_k if top else self.bot_k
+        k = self.top_k if self.is_top else self.bot_k
         assert k is not None
-        return self._take_k_functional(arr, k, as_mask, top)
+        return self._take_k_functional(arr, k, as_mask, self.is_top)
 
     def _take_ratio(self, arr, as_mask: bool = True):
         """Take top or bot fraction of items.
         """
-        top = self.top_ratio is not None
-        ratio = self.top_ratio if top else self.bot_ratio
+        ratio = self.top_ratio if self.is_top else self.bot_ratio
         assert ratio is not None
         k = int(np.ceil(ratio * len(arr)))  # round up
-        return self._take_k_functional(arr, k, as_mask, top)
+        return self._take_k_functional(arr, k, as_mask, self.is_top)
 
     def _take_cutoff(self, arr, as_mask: bool = True):
         """Takes the elements which are greater than or less than cutoff.
         """
-        assert any_not_None(self.gt, self.ge, self.lt, self.le)
-        top = any_not_None(self.gt, self.ge)
         strict = any_not_None(self.gt, self.lt)
 
-        match top, strict:
+        match self.is_top, strict:
             case True, True:
                 mask = arr > self.gt
             case True, False:
@@ -143,11 +174,13 @@ class Filter(BaseModel, Generic[T]):
                 mask = arr < self.lt
             case False, False:
                 mask = arr <= self.le
+            case _:
+                raise ValueError("Internal error. Found non bool values.")
 
         return mask if as_mask else np.argwhere(mask).ravel()
 
     @staticmethod
-    def _get_repr(obj: Any, key: str) -> Any:
+    def _get_member(obj: Any, key: str) -> Any:
         """Recursively get members. Check if they can be obtained as
         items or attributes.
         """
@@ -157,7 +190,9 @@ class Filter(BaseModel, Generic[T]):
             elif read_key in obj:
                 obj = obj[read_key]
             else:
-                raise KeyError(f"Could not find '{read_key}' in object of type {type(obj)}.")
+                raise KeyError(
+                    f"Could not find '{read_key}' in object of type {type(obj)}."
+                )
         return obj
 
     @overload
@@ -169,9 +204,23 @@ class Filter(BaseModel, Generic[T]):
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, obj, as_mask=True):
         """Applies filtering conditions and returns a mask or index array.
+
+        Parameters
+        ----------
+        obj: If `self.key` is set, then this can be any object which has an
+            attribute or member named `self.key`. Otherwise, needs to be
+            array-like.
+        as_mask: bool
+            If True, will return a 1D boolean array where True means the
+            item has been selected. Otherwise, will return the indices as a
+            1D integer array.
+
+        Returns
+        -------
+        mask: 1D bool or int numpy array.
         """
         if self.key is not None:
-            obj = self._get_repr(obj, self.key)
+            obj = self._get_member(obj, self.key)
 
         arr: np.ndarray[T, Any] = column_or_1d(obj)
 
@@ -186,24 +235,32 @@ class Filter(BaseModel, Generic[T]):
         return arr.astype(bool) if as_mask else np.argwhere(arr).ravel()
 
 
-class StackedFilter:
-    """A convenience class for stacking multiple Filter's together.
-    """
+class StackedFilter(UserList):
+    """A convenience class for stacking multiple Filter's together. Behaves
+    like a Pythonic list.
 
-    def __init__(self, *fcs):
-        self.fcs = []
-        for fc in fcs:
+    Will perform element-wise &. This supports different combinations of
+    filters where `key` can be specified in some, but not all.
+
+    Parameters
+    ----------
+    *filters: iterable
+        An iterable of Filter's or StackedFilter's.
+    """
+    def __init__(self, *filters: Filter | StackedFilter):
+        __filters__: List[Filter] = []
+
+        for fc in filters:
             if isinstance(fc, Filter):
-                self.fcs.append(fc)
+                __filters__.append(fc)
             elif isinstance(fc, StackedFilter):
-                self.fcs.extend(fc.fcs)
+                __filters__.extend(fc)
             else:
                 raise TypeError(f"Cannot stack object of type {type(fc)}.")
 
-    def __len__(self):
-        return len(self.fcs)
+        super().__init__(__filters__)
 
-    def __and__(self, other) -> 'StackedFilter':
+    def __and__(self, other) -> StackedFilter:
         return StackedFilter(self, other)
 
     @overload
@@ -214,9 +271,28 @@ class StackedFilter:
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(self, obj, as_mask=True):
+        """Applies all filters and returns a mask or index array.
+
+        Parameters
+        ----------
+        obj: If `filter.key` is set, then this can be any object which has an
+            attribute or member named `self.key`. Otherwise, needs to be
+            array-like.
+        as_mask: bool
+            If True, will return a 1D boolean array where True means the
+            item has been selected. Otherwise, will return the indices as a
+            1D integer array.
+
+        Returns
+        -------
+        mask: 1D bool or int numpy array.
+        """
+        if len(self) == 0:
+            raise ValueError("Called empty `StackedFilter`.")
+
         # Get first mask
-        mask = self.fcs[0](obj, as_mask=True)
-        # Get any remaining masks
-        for fc in self.fcs[1:]:
+        mask = self.data[0](obj, as_mask=True)
+        # Get remaining masks
+        for fc in self.data[1:]:
             mask &= fc(obj, as_mask=True)
         return mask if as_mask else np.argwhere(mask).ravel()
