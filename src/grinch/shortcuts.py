@@ -4,103 +4,19 @@ from functools import partial
 
 from .cond_filter import Filter
 
-
-pVal_Filter_01 = partial(
-    Filter,
-    key='pvals',
-    cutoff=0.01,
-    greater_is_True=False,
-    dtype='float',
-)
-
-pVal_Filter_05 = partial(
-    Filter,
-    key='pvals',
-    cutoff=0.05,
-    greater_is_True=False,
-    dtype='float',
-)
-
-qVal_Filter_01 = partial(
-    Filter,
-    key='qvals',
-    cutoff=0.01,
-    greater_is_True=False,
-    dtype='float',
-)
-
-qVal_Filter_05 = partial(
-    Filter,
-    key='qvals',
-    cutoff=0.05,
-    greater_is_True=False,
-    dtype='float',
-)
-
-log2fc_Filter_1 = partial(
-    Filter,
-    key='log2fc',
-    cutoff=1,
-    greater_is_True=True,
-    dtype='float',
-)
-
-log2fc_Filter_m1 = partial(
-    Filter,
-    key='log2fc',
-    cutoff=-1,
-    greater_is_True=False,
-    dtype='float',
-)
-
-log2fc_Filter_2 = partial(
-    Filter,
-    key='log2fc',
-    cutoff=2,
-    greater_is_True=True,
-    dtype='float',
-)
-
-log2fc_Filter_m2 = partial(
-    Filter,
-    key='log2fc',
-    cutoff=-2,
-    greater_is_True=False,
-    dtype='float',
-)
-
-abs_log2fc_Filter_1 = partial(
-    Filter,
-    key='abs_log2fc',
-    cutoff=1,
-    greater_is_True=True,
-    dtype='float',
-)
-
-abs_log2fc_Filter_2 = partial(
-    Filter,
-    key='abs_log2fc',
-    cutoff=2,
-    greater_is_True=True,
-    dtype='float',
-)
-
+pVal_Filter_01 = partial(Filter, key='pvals', le=0.01)
+pVal_Filter_05 = partial(Filter, key='pvals', le=0.05)
+qVal_Filter_01 = partial(Filter, key='qvals', le=0.01)
+qVal_Filter_05 = partial(Filter, key='qvals', le=0.05)
+log2fc_Filter_1 = partial(Filter, key='log2fc', ge=1)
+log2fc_Filter_m1 = partial(Filter, key='log2fc', le=-1)
+log2fc_Filter_2 = partial(Filter, key='log2fc', ge=2)
+log2fc_Filter_m2 = partial(Filter, key='log2fc', le=-2)
+abs_log2fc_Filter_1 = partial(Filter, key='abs_log2fc', ge=1)
+abs_log2fc_Filter_2 = partial(Filter, key='abs_log2fc', ge=2)
 # For lead gene discovery in a GSEA prerank test
-FDRqVal_Filter_05 = partial(
-    Filter,
-    key='FDR q-val',
-    cutoff=0.05,
-    greater_is_True=False,
-    dtype='float',
-)
-
-FWERpVal_Filter_05 = partial(
-    Filter,
-    key='FWER p-val',
-    cutoff=0.05,
-    greater_is_True=False,
-    dtype='float',
-)
+FDRqVal_Filter_05 = partial(Filter, key='FDR q-val', le=0.05)
+FWERpVal_Filter_05 = partial(Filter, key='FWER p-val', le=0.05)
 
 __all__ = [
     'pVal_Filter_01',

@@ -30,12 +30,28 @@ def all_None(*args):
 
 
 def all_not_None(*args):
-    """Returns True if all items are not None."""
+    """Returns True if all items are not None.
+
+    Examples
+    --------
+    >>> all_not_None(None, 1, 2)
+    False
+    >>> all_not_None(5, "bar")
+    True
+    """
     return sum(arg is None for arg in args) == 0
 
 
 def only_one_not_None(*args):
-    """Returns True if there is exactly one item that is not None."""
+    """Returns True if there is exactly one item that is not None.
+
+    Examples
+    --------
+    >>> only_one_not_None(None, 1, 'bar')
+    False
+    >>> only_one_not_None(None, 'foo', None)
+    True
+    """
     return sum(arg is not None for arg in args) == 1
 
 

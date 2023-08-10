@@ -91,8 +91,7 @@ def test_indexer_obs_multiple(X):
         {
             "_target_": "src.grinch.Filter",
             "key": "obs.pick3",
-            "cutoff": 0.5,
-            "greater_is_True": True,
+            "ge": 0.5,
         }
     )
     cfg = OmegaConf.create(

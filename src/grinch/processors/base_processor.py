@@ -124,7 +124,7 @@ class BaseProcessor(BaseConfigurable):
         # Populate this with kwargs that will be passed to the underlying
         # processor/processor function, but are not marked as
         # ProcessorParams and are also not passed via kwargs.
-        __kwargs_explicit_fields__: List[str] = []
+        __processor_params__: List[str] = []
 
         inplace: bool = True
         read_key_prefix: str = ''
@@ -150,7 +150,7 @@ class BaseProcessor(BaseConfigurable):
         @field_validator('kwargs')
         def remove_explicit_args(cls, val):
             processor_params = cls.processor_params()
-            for explicit_key in chain(processor_params, cls.__kwargs_explicit_fields__):
+            for explicit_key in chain(processor_params, cls.__processor_params__):
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
                         f"Popping '{explicit_key}' from kwargs. This key "
