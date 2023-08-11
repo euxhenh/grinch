@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import UNS, DETestSummary
+from grinch import UNS
 
 X = np.array([
     [1, 5, 4, 45, 62],
@@ -35,8 +35,8 @@ def test_enrich(X):
     cfg = instantiate(cfg, _convert_='all')
     gsea = cfg.create()
     adata = AnnData(X)
-    ts = DETestSummary(pvals=[0.02, 0.5, 1, 0.01, 0.8])
-    adata.uns[UNS.TTEST] = ts.df()
+    ts = pd.DataFrame(data={'pvals': [0.02, 0.5, 1, 0.01, 0.8]})
+    adata.uns[UNS.TTEST] = ts
     adata.var_names = ['IGKV4-1', 'CD55', 'IGKC', 'PPFIBP1', 'ABHD4']
     gsea(adata)
 
@@ -49,7 +49,7 @@ def test_enrich(X):
 
     adata = AnnData(X)
     adata.uns[UNS.TTEST] = {}
-    adata.uns[UNS.TTEST]['0'] = ts.df()
+    adata.uns[UNS.TTEST]['0'] = ts
     adata.var_names = ['IGKV4-1', 'CD55', 'IGKC', 'PPFIBP1', 'ABHD4']
     gsea(adata)
 

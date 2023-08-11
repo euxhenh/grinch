@@ -1,23 +1,29 @@
 import abc
 import logging
 import multiprocessing as mp
+from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Literal, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
 from diptest import diptest
-from pydantic import Field, field_validator
+from pydantic import Field, PositiveFloat, field_validator
 from scipy.stats import ks_2samp
-from sklearn.utils import check_array, column_or_1d, indexable
+from sklearn.utils import (
+    check_array,
+    check_consistent_length,
+    column_or_1d,
+    indexable,
+)
 from tqdm.auto import tqdm
 
 from ..aliases import UNS
-from ..custom_types import NP1D_Any, NP1D_float
-from ..de_test_summary import BimodalTestSummary, DETestSummary, KSTestSummary
+from ..custom_types import NP_SP, NP1D_Any, NP1D_float
 from ..utils.stats import (
     PartMeanVar,
     _compute_log2fc,
@@ -42,29 +48,26 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         Points to the data matrix that will be used to run t-tests. The
         first (0) axis should consist of observations and the second axis
         should consist of the genes.
+    group_key: str
+        The column to look for group labels. Must be 1D.
     save_key: str
         Points to a location where the test results will be saved. This
         should start with 'uns' as we are storing a dictionary of
         dataframes.
-    group_key: str
-        The column to look for group labels. Must be 1D.
     is_logged: bool
         Will only affect the computation of log2 fold-change.
     base: str or float
         Will only affect the computation of log2 fold-change. Is ignored if
         data is not logged. Should point to the base that was used to take
         the log of the data in order to convert to base 2 for fold-change.
+        Can be 'e' or a positive float.
     correction: str
-        P-value correction to use.
-    show_progress_bar: bool
-        Whether to draw a tqdm progress bar.
+        P-value correction to use. Any correction method supported by
+        statsmodels can be used. See
+        https://www.statsmodels.org/dev/generated/statsmodels.stats.multitest.multipletests.html
     replace_nan: bool
         If True, will not allow nan's in the TTest Summary dataframes.
         These will be replaced with appropriate values (1 for p-values).
-    test_type: 'one_vs_all' or 'one_vs_one'.
-        If 'one_vs_all' will run the ttest by comparing the mean of one
-        cluster vs the mean of all other clusters combined. If 'one_vs_one'
-        will compare against a single cluster specified by `control_label`.
     control_label: str
         The label to use in a 'one_vs_one' test type. Must be present in
         the array specified by `group_key`.
@@ -73,6 +76,8 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         separate key. This is useful when, e.g., you wish to cluster and
         work with only a subset of the data, but comparison for ttest
         should be done against control.
+    show_progress_bar: bool
+        Whether to draw a tqdm progress bar.
     """
 
     class Config(BaseProcessor.Config):
@@ -85,40 +90,37 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         save_key: WriteKey
 
         is_logged: bool = True
-        # If the data is logged, this should point to the base of the
-        # logarithm used. Can be 'e' or a positive float.
-        base: float | str | None = Field('e')
+        base: PositiveFloat | Literal['e'] | None = Field('e')
         correction: str = 'fdr_bh'
         replace_nan: bool = True
 
         # If any of the following is not None, will perform a one_vs_one
         # test. E.g., if control samples are given in `control_key`, then for
         # each group G determined by `group_key`, will run the test G vs
-        # control. If both `experimental` and `control` samples are given,
-        # will perform a single one_vs_one test between those two.
-        experimental_label: str | None = None
-        experimental_key: ReadKey | None = None
+        # control.
         control_label: str | None = None
         control_key: ReadKey | None = None
 
         show_progress_bar: bool = Field(True, exclude=True)
 
-        @field_validator('save_key')
-        def _starts_with_uns(cls, save_key):
-            if save_key.split('.')[0] != 'uns':
-                raise ValueError("Anndata column for DE Test should be 'uns'.")
-            return save_key
-
         @field_validator('base')
         def _remove_base_if_not_logged(cls, base, info):
+            """Set base to None if not logged.
+            """
             return None if not info.data['is_logged'] else base
 
         @property
-        def is_ovo(self) -> bool:
-            return any_not_None(self.control_key, self.control_label,
-                                self.experimental_key, self.experimental_label)
+        def is_one_vs_one(self) -> bool:
+            """Checks if test is one vs one.
+
+            Returns: bool
+                True if any of the control keys is not None.
+            """
+            return any_not_None(self.control_key, self.control_label)
 
         def get_label_key(self, label: str) -> str:
+            """Get the WriteKey to store a given test in.
+            """
             key = (
                 f"{self.save_key}"
                 f".{self.group_key.rsplit('.')[-1]}"
@@ -128,66 +130,83 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
     cfg: Config
 
-    def get_pqvals(self, pvals):
-        """Performs basic processing on p and computes qvals."""
+    def get_pqvals(self, pvals: NP1D_float) -> Tuple[NP1D_float, NP1D_float]:
+        """Performs basic processing on p and computes qvals.
+
+        Parameters
+        ----------
+        pvals: 1D array
+            The computed p-values.
+
+        Returns
+        -------
+        Tuple[1D array, 1D array]
+            The p-values and the computed adjusted p-values.
+        """
         not_nan_mask = ~np.isnan(pvals)
 
         qvals = np.full_like(pvals, 1.0 if self.cfg.replace_nan else np.nan)
         # only correct not nan's.
-        qvals[not_nan_mask] = _correct(pvals[not_nan_mask],
-                                       method=self.cfg.correction)[1]
+        qvals[not_nan_mask] = _correct(pvals[not_nan_mask], method=self.cfg.correction)[1]
         if self.cfg.replace_nan:
             pvals[~not_nan_mask] = 1.0
         return pvals, qvals
 
-    def get_log2fc(self, m1, m2):
-        log2fc = _compute_log2fc(m1, m2, self.cfg.base, self.cfg.is_logged)
-        return log2fc
+    def get_log2fc(self, m1: NP1D_float, m2: NP1D_float) -> NP1D_float:
+        """Compute the log2 fold-change between the given mean vectors.
+
+        Parameters
+        ----------
+        m1, m2: 1D arrays
+
+        Returns
+        -------
+        1D array
+            The computed log2 fold-change.
+        """
+        return _compute_log2fc(m1, m2, self.cfg.base, self.cfg.is_logged)
 
     def _process(self, adata: AnnData) -> None:
+        # Read data matrix and labels
+        x = check_array(self.get_repr(adata, self.cfg.x_key), accept_sparse='csr')
+        group_labels: NP1D_Any = column_or_1d(self.get_repr(adata, self.cfg.group_key))
+        check_consistent_length(x, group_labels)
 
-        def extract_ovo_repr(adata, key):
-            """Used if using a experimental or control data stored
-            in a different key.
-            """
-            if key is None:
-                return None
-            x = self.get_repr(adata, key)
-            x = check_array(x, accept_sparse='csr')
-            if key.startswith('var'):
-                x = x.T  # Transpose to (samples, features)
-            if x.shape[1] != adata.shape[1]:
-                raise ValueError(
-                    "Found differing number of features for `x` and "
-                    f"`adata`: {x.shape[1]} vs {adata.shape[1]}."
-                )
-            return x
-
-        group_labels: NP1D_Any = column_or_1d(
-            self.get_repr(adata, self.cfg.group_key)
-        )
-        unq_labels = np.unique(group_labels)
-        x = self.get_repr(adata, self.cfg.x_key)
-        x = check_array(x, accept_sparse='csr')
-
-        x_experimental = None
-        x_control = None
-        if self.cfg.is_ovo:
-            x_experimental = extract_ovo_repr(adata, self.cfg.experimental_key)
-            x_control = extract_ovo_repr(adata, self.cfg.control_key)
-
-        if len(unq_labels) <= 1 and all_None(x_control, x_experimental):
-            logger.warning(
-                "Found only one unique value "
-                f"under key '{self.cfg.group_key}'."
-            )
+        if np.unique(group_labels).size <= 1 and not self.cfg.is_one_vs_one:
+            logger.warning("Cannot run test with only one group.")
             return
 
-        self._test(x, group_labels, x_experimental=x_experimental, x_control=x_control)
+        def get_x_control(adata, key, label) -> NP_SP | None:
+            """Return the x representation of a condition if set.
+            """
+            nonlocal x
+            if all_None(key, label):
+                return None
+
+            if key is not None:  # Found in a separate key
+                x_cond = check_array(self.get_repr(adata, key), accept_sparse='csr')
+                if key.startswith('var'):
+                    x_cond = x_cond.T  # Transpose to (samples, features)
+                # Ensure same number of features
+                check_consistent_length(x.T, x_cond.T)
+            else:  # We search x
+                if label not in group_labels:
+                    raise ValueError(f"Could not find {label=} in group.")
+                x, = indexable(x)
+                x_cond = x[group_labels == label]
+            return x_cond
+
+        # Read x_control from either key or label
+        x_control = get_x_control(adata, self.cfg.control_key, self.cfg.control_label)
+        # Run test
+        self._test(x, group_labels, x_control)
 
     @abc.abstractmethod
-    def _test(self, x, group_labels, x_experimental, x_control) -> None:
+    def _test(self, x, group_labels, x_control=None) -> None:
         raise NotImplementedError
+
+
+_Statistics = namedtuple('_Statistics', ['n', 'mean', 'var'])
 
 
 class TTest(PairwiseDETest):
@@ -206,49 +225,49 @@ class TTest(PairwiseDETest):
 
     cfg: Config
 
-    def _test(self, x, group_labels: NP1D_Any, x_experimental=None, x_control=None) -> None:
-        # efficient mean and variance computation
+    def _test(self, x: NP_SP, group_labels: NP1D_Any, x_control: NP_SP | None = None):
+        """Runs t-Test.
+        """
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
         unq_labels = np.unique(group_labels)
 
-        if self.cfg.is_ovo:
-            if x_control is not None:
-                mean, var = mean_var(x_control, axis=0, ddof=1)
-                # TODO switch to namedtuple
-                control_stats = {'n': len(x_control), 'm': mean, 'v': var}
-            elif self.cfg.control_label not in unq_labels:
-                raise ValueError("'control_label' not found in `group_key`.")
-            else:
-                n, m, v = pmv.compute([self.cfg.control_label], ddof=1)
-                control_stats = {'n': n, 'm': m, 'v': v}
-        else:
-            control_stats = None
+        def get_x_stats(x_cond) -> _Statistics | None:
+            if x_cond is None:
+                return None
+            mean, var = mean_var(x_cond, axis=0, ddof=1)
+            return _Statistics(n=len(x_cond), mean=mean, var=var)
+
+        control_stats = get_x_stats(x_control)
 
         to_iter = (
             tqdm(unq_labels, desc=f"Running {self.__class__.__name__}")
             if self.cfg.show_progress_bar
             else unq_labels
         )
-        for label in to_iter:  # type: ignore
-            if self.cfg.is_ovo and label == self.cfg.control_label:
-                continue
-            ts: DETestSummary = self._single_test(pmv, label, control_stats)
-            key: str = self.cfg.get_label_key(label)
-            self.store_item(key, ts.df())
+        # Skip if label is the same as control label
+        for label in filter(lambda x: x != self.cfg.control_label, to_iter):
+            test = self._single_test(pmv, label, control_stats)
+            self.store_item(self.cfg.get_label_key(label), test)
 
-    def _single_test(self, pmv: PartMeanVar, label, control_stats=None) -> DETestSummary:
-        """Perform a single ttest."""
-        n1, m1, v1 = pmv.compute([label], ddof=1)  # take label
-        if control_stats is not None:
-            n2, m2, v2 = control_stats['n'], control_stats['m'], control_stats['v']
-        else:
-            n2, m2, v2 = pmv.compute([label], ddof=1, exclude=True)  # all but label
+    def _single_test(
+        self,
+        pmv: PartMeanVar,
+        label,
+        control_stats: _Statistics | None = None,
+    ) -> pd.DataFrame:
+        """Perform a single t-Test.
+        """
+        n1, m1, v1 = pmv.compute([label], ddof=1)  # Stats for label
+        # If no control group, will compute from all but label (one-vs-all)
+        n2, m2, v2 = control_stats or pmv.compute([label], ddof=1, exclude=True)
 
         pvals = ttest_from_mean_var(n1, m1, v1, n2, m2, v2)[1]
         pvals, qvals = self.get_pqvals(pvals)
         log2fc = self.get_log2fc(m1, m2)
-        return DETestSummary(pvals=pvals, qvals=qvals,
-                             mean1=m1, mean2=m2, log2fc=log2fc)
+
+        return pd.DataFrame(
+            data=dict(pvals=pvals, qvals=qvals, mean1=m1, mean2=m2, log2fc=log2fc)
+        )
 
 
 class KSTest(PairwiseDETest):
@@ -270,15 +289,23 @@ class KSTest(PairwiseDETest):
 
     cfg: Config
 
-    def _test(self, x, group_labels: NP1D_Any, x_experimental=None, x_control=None) -> None:
+    def _test(self, x: NP_SP, group_labels: NP1D_Any, x_control: NP_SP | None = None):
+        """Runs KS test.
+        """
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
-        spmat_warning = "KS Test cannot work with sparse matrices. Densifying..."
-        if sp.issparse(x):
-            logger.warning(spmat_warning)
-            x = x.toarray()
-        if x_control is not None and sp.issparse(x_control):
-            logger.warning(spmat_warning)
-            x_control = x_control.toarray()
+
+        def densify(x_cond):
+            if x_cond is None:
+                return x_cond
+            if sp.issparse(x_cond):
+                logger.warning("KS Test cannot work with sparse matrices. Densifying...")
+                x_cond = x_cond.toarray()
+            return x_cond
+
+        x, = indexable(densify(x))  # This will be split into groups
+        x_control = densify(x_control)
+        # Cache mean
+        m2 = None if x_control is None else x_control.mean(axis=0).ravel()
 
         unq_labels, groups = group_indices(group_labels, as_mask=True)
         to_iter = (
@@ -287,38 +314,14 @@ class KSTest(PairwiseDETest):
             else unq_labels
         )
 
-        x, = indexable(x)
+        for label, group in zip(to_iter, groups):
+            if label == self.cfg.control_label:
+                continue
+            y = x_control if x_control is not None else x[~group]
+            test = self._single_test(pmv, label, x=x[group], y=y, m2=m2)
+            self.store_item(self.cfg.get_label_key(label), test)
 
-        y, m2 = None, None
-        if self.cfg.is_ovo:
-            if x_control is not None:
-                y = x_control
-                m2 = np.ravel(y.mean(axis=0))
-            else:
-                _control_idx = unq_labels.tolist().index(self.cfg.control_label)
-                _control_group = groups[_control_idx]
-                _, m2, _ = pmv.compute([self.cfg.control_label], ddof=1)
-                y = x[_control_group]
-
-        for label, group in zip(to_iter, groups):  # type: ignore
-            if self.cfg.is_ovo and self.cfg.control_label is not None:
-                if self.cfg.control_label == label:
-                    continue
-            ts: KSTestSummary = self._single_test(
-                pmv, label, x=x[group],
-                y=y if y is not None else x[~group], m2=m2,
-            )
-            key: str = self.cfg.get_label_key(label)
-            self.store_item(key, ts.df())
-
-    def _single_test(
-        self,
-        pmv: PartMeanVar,
-        label,
-        *,
-        x, y,
-        m2: NP1D_float | None = None,
-    ) -> KSTestSummary:
+    def _single_test(self, pmv: PartMeanVar, label, *, x, y, m2) -> pd.DataFrame:
         """Perform a single ks test"""
         part_ks_2samp = partial(
             ks_2samp,
@@ -334,13 +337,14 @@ class KSTest(PairwiseDETest):
         pvals, stats, statistic_sign = stats.T
 
         pvals, qvals = self.get_pqvals(pvals)
-        _, m1, _ = pmv.compute([label], ddof=1)  # take label
-        if m2 is None:
-            _, m2, _ = pmv.compute([label], ddof=1, exclude=True)  # all but label
+        m1 = pmv.compute([label], ddof=1)[1]  # take label
+        m2 = m2 or pmv.compute([label], ddof=1, exclude=True)[1]  # all but label
         log2fc = self.get_log2fc(m1, m2)
-        return KSTestSummary(pvals=pvals, qvals=qvals, mean1=m1, mean2=m2,
-                             statistic=stats, statistic_sign=statistic_sign,
-                             log2fc=log2fc)
+
+        return pd.DataFrame(data=dict(
+            pvals=pvals, qvals=qvals, mean1=m1, mean2=m2,
+            statistic=stats, statistic_sign=statistic_sign, log2fc=log2fc
+        ))
 
 
 class BimodalTest(BaseProcessor):
@@ -400,5 +404,5 @@ class BimodalTest(BaseProcessor):
         stats, pvals = test_results[:, 0], test_results[:, 1]
         qvals: NP1D_float = _correct(pvals, method=self.cfg.correction)[1]
 
-        bts = BimodalTestSummary(pvals=pvals, qvals=qvals, statistic=stats)
-        self.store_item(self.cfg.save_key, bts.df())
+        bts = pd.DataFrame(data=dict(pvals=pvals, qvals=qvals, statistic=stats))
+        self.store_item(self.cfg.save_key, bts)

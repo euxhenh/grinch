@@ -2,32 +2,27 @@ import abc
 import logging
 import re
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Type
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import gseapy as gp
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import field_validator
-from sklearn.utils.validation import column_or_1d
+from pydantic import field_validator, validate_call
+from sklearn.utils.validation import check_consistent_length, column_or_1d
 
-from .. import de_test_summary as de_ts
 from ..aliases import UNS, VAR
 from ..cond_filter import Filter, StackedFilter
-from ..custom_types import NP1D_bool, NP1D_str
-from ..de_test_summary import DETestSummary, TestSummary
+from ..custom_types import NP1D_str
 from ..shortcuts import FWERpVal_Filter_05, log2fc_Filter_1, qVal_Filter_05
 from ..utils.decorators import retry
-from ..utils.validation import all_not_None
 from .base_processor import BaseProcessor, ReadKey, WriteKey
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_GENE_SET_ENRICH: str | List[str] = "HuBMAP_ASCTplusB_augmented_2022"
 DEFAULT_ENRICH_FILTERS: List[Filter] = [qVal_Filter_05(), log2fc_Filter_1()]
-
 DEFAULT_GENE_SET_PRERANK: str | List[str] = "GO_Biological_Process_2023"
-
 DEFAULT_FILTERS_LEAD_GENES: List[Filter] = [FWERpVal_Filter_05()]
 
 
@@ -74,7 +69,6 @@ class GSEA(BaseProcessor, abc.ABC):
         filter_by: List[Filter]
         gene_names_key: str = "var_names"
         # not to be used in a config
-        test_type: str | Type[TestSummary] = "DETestSummary"
         kwargs: Dict[str, Any] = {}
 
         @field_validator('filter_by', mode='before')
@@ -85,7 +79,7 @@ class GSEA(BaseProcessor, abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _gsea(test: DETestSummary, gene_sets: str | List[str], **kwargs):
+    def _gsea(test: pd.DataFrame, gene_sets: str | List[str], **kwargs):
         raise NotImplementedError
 
     def get_gene_list_all(self, adata):
@@ -104,18 +98,12 @@ class GSEA(BaseProcessor, abc.ABC):
                 "you intended to use."
             )
 
-        if isinstance(self.cfg.test_type, str):
-            test_type = getattr(de_ts, self.cfg.test_type)
-        else:
-            test_type = self.cfg.test_type
-
         _gsea_f = partial(
             self._process_de_test,
             gene_list_all=gene_list_all,
             gene_sets=self.cfg.gene_sets,
             filter_by=self.cfg.filter_by,
             gsea_func=type(self)._gsea,
-            test_type=test_type,
             seed=self.cfg.seed,
             **self.cfg.kwargs,
         )
@@ -123,12 +111,11 @@ class GSEA(BaseProcessor, abc.ABC):
         if isinstance(tests, dict):  # Dict of tests
             self._process_dict(tests, prefix='', func=_gsea_f)
         else:  # Single test
-            gsea_test_summary = _gsea_f(tests)
-            self.store_item(self.cfg.save_key, gsea_test_summary)
+            self.store_item(self.cfg.save_key, _gsea_f(tests))
 
     def _process_dict(
         self,
-        test_dict: Dict[str, Dict | pd.DataFrame | TestSummary],
+        test_dict: Dict[str, Dict | pd.DataFrame],
         prefix: str,
         func: Callable,
     ) -> None:
@@ -143,21 +130,21 @@ class GSEA(BaseProcessor, abc.ABC):
                 self.store_item(save_key, gsea_test_summary)
 
     @staticmethod
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def _process_de_test(
-        test: pd.DataFrame | TestSummary,
+        test: pd.DataFrame,
         gene_list_all: NP1D_str,
         *,
         filter_by: List[Filter],
         gsea_func: Callable,
         gene_sets: str | List[str],
-        test_type: Type[TestSummary] = DETestSummary,
         **kwargs,
     ) -> pd.DataFrame:
         """Process a single DataFrame or TestSummary object.
 
         Parameters
         __________
-        test: pd.DataFrame or TestSummary
+        test: pd.DataFrame
             Must contain keys specified in all Filter's passed.
         gene_list_all: ndarray of str
             List of all genes to select from. Must have the same length as
@@ -165,37 +152,22 @@ class GSEA(BaseProcessor, abc.ABC):
         filter_by: List of Filter
             Determine which genes to pick from gene_list_all based on
             results of test.
-        test_type: type
-            Should point to the type of test to convert test to.
 
         Returns
         _______
         A pandas DataFrame with test results.
         """
-        if isinstance(test, pd.DataFrame):
-            test = test_type.from_df(test)
-        elif not isinstance(test, test_type):
-            raise TypeError(
-                f"Expected DataFrame or {test_type.__name__}"
-                f" but found {type(test)}."
-            )
-        if len(gene_list_all) != len(test):
-            raise ValueError(
-                "Expected gene_list to be of same length "
-                f"as {test_type.__name__}, but "
-                f"found gene_list of length {len(gene_list_all)} "
-                f"and {test_type.__name__} of length {len(test)}."
-            )
-        test.name = gene_list_all
+        check_consistent_length(gene_list_all, test)
+        test.index = gene_list_all
         # Apply all filters
         if len(filter_by) > 0:
-            gene_mask: NP1D_bool = test.where(*filter_by, as_mask=True)
-            test = test[gene_mask]
+            sf = StackedFilter(*filter_by)
+            gene_mask = sf(test, as_mask=True)
+            test = test.iloc[gene_mask]
 
         if len(test) == 0:  # empty list
             logger.warning('Encountered empty gene list.')
-            # Empty dataframe
-            return pd.DataFrame()
+            return pd.DataFrame()  # Empty dataframe
 
         return gsea_func(test, gene_sets=gene_sets, **kwargs)
 
@@ -218,13 +190,13 @@ class GSEAEnrich(GSEA):
     @staticmethod
     @retry(5, msg="Error sending gene list", logger=logger, sleep=1)
     def _gsea(
-        test: DETestSummary,
+        test: pd.DataFrame,
         *,
         gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH,
         **kwargs,
     ) -> pd.DataFrame:
         """Wrapper around gp.enrichr."""
-        gene_list = test.name.tolist()  # type: ignore
+        gene_list = test.index.tolist()  # type: ignore
         logger.info(f"Using {len(gene_list)} genes.")
         _ = kwargs.pop("seed", None)
 
@@ -283,16 +255,13 @@ class GSEAPrerank(GSEA):
     @staticmethod
     @retry(5, msg="Error sending gene list", logger=logger, sleep=1)
     def _gsea(
-        test: DETestSummary,
+        test: pd.DataFrame,
         *,
         gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK,
         qval_scaling: bool = True,  # pass inside cfg.kwargs
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
-        if not all_not_None(test.log2fc, test.qvals):
-            raise ValueError("Log2fc and qvals should not be None.")
-
         data = test.log2fc
         if qval_scaling:
             if test.qvals.min() < 1e-50:
@@ -301,7 +270,7 @@ class GSEAPrerank(GSEA):
             else:
                 qvals = test.qvals
             data = data * (-np.log10(qvals))
-        rnk = pd.DataFrame(data=data, index=test.name)
+        rnk = pd.DataFrame(data=data, index=test.index)
 
         logger.info(f"Using {len(rnk)} genes.")
         try:

@@ -391,9 +391,7 @@ class PartMeanVar:
         accumul = _MeanVarVector(
             n=0,
             sums=np.zeros_like(self.sum_vectors[labels[0]].sums, dtype=float),
-            sum_of_squares=np.zeros_like(
-                self.sum_vectors[labels[0]].sum_of_squares, dtype=float
-            )
+            sum_of_squares=np.zeros_like(self.sum_vectors[labels[0]].sum_of_squares, dtype=float)
         )
 
         for label in labels:
@@ -403,9 +401,8 @@ class PartMeanVar:
             raise ValueError(f"Degrees of freedom are greater than n={accumul.n}.")
         if accumul.n == 1:
             logger.warning(
-                "Found group with only 1 datapoint. "
-                "Test results may not be reliable. "
-                "Setting ddof=0."
+                "Found group with only 1 datapoint. Test results may not "
+                "be reliable. Setting ddof=0."
             )
             ddof = 0
 
