@@ -87,6 +87,4 @@ OBSP = AnnDataKeys.OBSP
 VARP = AnnDataKeys.VARP
 UNS = AnnDataKeys.UNS
 
-ALLOWED_KEYS = ['obs', 'obsm', 'uns', 'var', 'varm', 'layers', 'obsp', 'varp']
-
 GROUP_SEP = '.'
