@@ -98,21 +98,30 @@ class _BaseConfigurable:
 
 
 class BaseConfigurable(_BaseConfigurable):
-    r"""BaseConfigurable class with some default parameters and methods.
+    """BaseConfigurable class with an inner Config.
 
-    Args:
-        seed (int, optional): Random state to use for the wrapped model. It
-            is the job of that configurable class to make sure the seed is
-            used.
-        logs_path (Path): The path to use for saving logs.
-        sanity_check (bool): If ``True`` will make a quick run to ensure
-            that everything runs without errors.
-        interactive (bool): If ``True`` will run in interactive mode. It is
-            the job of that configurable class to make use of this.
+    To be inherited by all configurable classes.
     """
-
     class Config(_BaseConfigurable.Config):
+        r"""BaseConfigurable.Config
 
+        Parameters
+        ----------
+        logs_path : Path, default=Path('./grinch_logs')
+            The path to use for saving logs.
+
+        interactive : bool, default=False
+            If ``True`` will run in interactive mode. It is the job of that
+            configurable class to make use of this.
+
+        seed : int, default=None
+            Random state to use for the wrapped model. It is the job of
+            that configurable class to make sure the seed is used.
+
+        sanity_check : bool, default=False
+            If ``True`` will make a quick run to ensure that everything
+            runs without errors.
+        """
         if TYPE_CHECKING:
             create: Callable[..., 'BaseConfigurable']
 
@@ -130,4 +139,5 @@ class BaseConfigurable(_BaseConfigurable):
 
     @property
     def logs_path(self) -> Path:
+        """The path to logs."""
         return self.cfg.logs_path

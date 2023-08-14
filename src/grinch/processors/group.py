@@ -59,19 +59,19 @@ class GroupProcess(BaseProcessor):
         def ensure_correct_axis(cls, axis):
             return validate_axis(axis)
 
-        def update_processor_save_key_prefix(self, label):
-            self.processor.save_key_prefix = self.get_save_key_prefix(
-                self.group_prefix,
-                label=label,
-                group_key=self.group_key.rsplit('.', maxsplit=1)[-1],
-            )
-
     cfg: Config
 
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
         self.cfg.processor.inplace = False
+
+    def update_processor_prefix(self, label):
+        return self.insert_prefix(
+            self.group_prefix,
+            label=label,
+            group_key=self.group_key.rsplit('.', maxsplit=1)[-1],
+        )
 
     def _get_names_along_axis(self, adata: AnnData) -> NP1D_str:
         """Gets obs_names or var_names depending on self.cfg.axis."""
@@ -103,8 +103,8 @@ class GroupProcess(BaseProcessor):
                 f"for group '{self.cfg.group_key}={label}'."
             )
 
-            self.cfg.update_processor_save_key_prefix(label)
             processor: BaseProcessor = self.cfg.processor.create()
+            processor.prefix = self.update_processor_prefix(label)
             arg = 'obs_indices' if self.cfg.axis == 0 else 'var_indices'
             storage = processor(adata, return_storage=True, **{arg: group})
             # Prefix should be handled by the processor

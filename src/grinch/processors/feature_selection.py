@@ -46,8 +46,8 @@ class PhenotypeCover(BaseProcessor):
         )
 
     def _process(self, adata: AnnData) -> None:
-        X = self.get_repr(adata, self.cfg.x_key)
-        y = self.get_repr(adata, self.cfg.y_key)
+        X = self.read(adata, self.cfg.x_key)
+        y = self.read(adata, self.cfg.y_key)
         X, y = check_X_y(X, y, accept_sparse='csr')
 
         if not X.ndim == 2:

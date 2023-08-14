@@ -94,7 +94,7 @@ class Combat(BaseNormalizer):
     cfg: Config
 
     def _normalize(self, adata: AnnData) -> None:
-        batch: pd.Series = BaseProcessor._get_repr(adata, self.cfg.batch_key)
+        batch: pd.Series = BaseProcessor.read(adata, self.cfg.batch_key)
         if not isinstance(batch, pd.Series):
             raise ValueError("Batch should be a pandas series")
 

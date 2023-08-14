@@ -35,15 +35,6 @@ class RepeatProcessor(BaseProcessor):
                 )
             return val
 
-        def update_processor_save_key_prefix(self, repeat_val):
-            prefix = self.get_save_key_prefix(
-                self.repeat_prefix,
-                splitter=self.upstream_splitter,
-                repeat_var=self.repeat_var,
-                repeat_val=repeat_val,
-            )
-            self.processor.save_key_prefix = prefix
-
     cfg: Config
 
     def __init__(self, cfg: Config, /):
@@ -51,11 +42,19 @@ class RepeatProcessor(BaseProcessor):
 
         self.cfg.processor.inplace = True
 
+    def update_processor_prefix(self, repeat_val) -> str:
+        return self.insert_prefix(
+            self.repeat_prefix,
+            splitter=self.upstream_splitter,
+            repeat_var=self.repeat_var,
+            repeat_val=repeat_val,
+        )
+
     def _process(self, adata: AnnData) -> None:
 
         for val in self.cfg.repeat_vals:
             logger.info(f"Repeating '{self.cfg.processor._init_cls.__name__}' with value {val}.")
             setattr(self.cfg.processor, self.cfg.repeat_var, val)
-            self.cfg.update_processor_save_key_prefix(val)
             processor = self.cfg.processor.create()
+            processor.prefix = self.update_processor_prefix(val)
             processor(adata)

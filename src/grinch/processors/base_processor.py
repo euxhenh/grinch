@@ -3,9 +3,7 @@
 import abc
 import inspect
 import logging
-from functools import partial
-from itertools import chain, islice, starmap
-from operator import itemgetter
+from itertools import chain, islice
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -20,9 +18,9 @@ from typing import (
 from anndata import AnnData
 from pydantic import field_validator, validate_call
 
+from ..base import StorageMixin
 from ..conf import BaseConfigurable
-from ..custom_types import REP, REP_KEY, NP1D_int
-from ..utils.ops import compose, safe_format
+from ..custom_types import NP1D_int
 from ..utils.validation import all_not_None, check_has_processor
 
 logger = logging.getLogger(__name__)
@@ -45,122 +43,116 @@ def adata_modifier(f: Callable):
     params = inspect.signature(f).parameters
     # require 'self' and 'adata'
     if len(params) < 2:
-        raise ValueError(
-            "A 'setter_method' should take at least 2 arguments."
-        )
+        raise ValueError("A 'setter_method' should take at least 2 arguments.")
 
     _, adata_parameter = next(islice(params.items(), 1, 2))
     if not issubclass(AnnData, adata_parameter.annotation):
         raise ValueError(
-            "First argument to a 'setter_method' "
-            "should be of explicit type AnnData."
+            "First argument to a 'setter_method' should be explicitly typed 'AnnData'."
         )
 
-    def _wrapper(
-        self: 'BaseProcessor', adata: AnnData, *args, **kwargs
-    ) -> Dict[str, REP] | None:
+    def _wrapper(self: 'BaseProcessor', adata: AnnData, *args, **kwargs) -> Dict[str, Any] | None:
         # init empty storage dict
-        self.storage = {}
+        self._storage: Dict[str, Any] = {}
         outp = f(self, adata, *args, **kwargs)
         if outp is not None:
             logger.warning(
-                f"Function '{f.__name__}' returned a value."
-                " This will be discarded."
+                f"Function '{f.__name__}' returned a value. This will be discarded."
             )
-        if hasattr(self.cfg, 'save_stats') and self.cfg.save_stats:
-            self.save_processor_stats()
+
+        self.save_stats()
 
         return_storage: bool = kwargs.get('return_storage', False)
-        if not return_storage and len(self.storage) > 0:
+        if not return_storage and len(self._storage) > 0:
             self.set_repr(
                 adata,
-                list(self.storage),
-                list(self.storage.values())
+                list(self._storage),
+                list(self._storage.values())
             )
         else:
-            return self.storage
+            return self._storage
         return None
 
     return _wrapper
 
 
-class BaseProcessor(BaseConfigurable):
-    """A base class for dimensionality reduction, clustering and other
-    processors. A processor cannot update the data matrix X, but can use it
-    to perform any kind of fitting. The processor is in charge of resolving
-    all reads and writes in the AnnData object. It does so by taking as
-    input string key(s) that point to the adata column/key that will be
-    used for reading or writing. These keys are defined inside the Config
-    of the derived class and are evaluated at initialization to conform
-    with accepted adata columns.
+class BaseProcessor(BaseConfigurable, StorageMixin):
+    """A base class for all processors. A processor cannot update the
+    data matrix X, but can use it to perform any kind of fitting. The
+    processor is in charge of resolving all reads and writes in the AnnData
+    object. It does so by taking as input string key(s) that point to the
+    adata column/key that will be used for reading or writing. These keys
+    are defined inside the Config of the derived class and are evaluated at
+    initialization to conform with accepted adata columns.
 
     This class also implements a 'processor' property which should point to
     a wrapped processor object (if any). E.g., the processor can point to
     sklearn's implementations of estimators.
 
-    'get_repr' and 'set_repr' are like smarter versions of getattr and
-    setattr in Python which also handle adata columns. They use getattr and
-    setattr internally. These repr functions support keys that are single
-    strings, list of strings, or dictionaries of strings to strings. In the
-    latter case, the keys are used to index the value being set (must be a
-    dict), and the values should point to the adata column/key to use for
-    storing.
+    Attributes
+    ----------
+    __stats__: List[str]
+        A list of processor attributes to save along with results after
+        fitting.
 
-    Parameters
-    __________
-    inplace: bool
-        If False, will make and return a copy of adata.
-    read_key_prefix, save_key_prefix: str
-        Will prepend this prefix to all (last) read/save_keys. This is
-        useful, for example, for GroupProcess, which prepends the
-        'group{label}' prefix to all read/saved reps.
+    _storage : Dict[str, Any]
+        A dict mapping a key to a representation. Is used internally.
     """
+    __stats__: List[str] = []  # processor attributes to store along results
 
     class Config(BaseConfigurable.Config):
+        r"""BaseProcessor.Config
 
+        Parameters
+        ----------
+        inplace : bool, default=True
+            If False, will make and return a copy of adata.
+
+        kwargs : dict, default={}
+            Any Processor parameters that should be passed to the inner
+            processor object (or related methods).
+
+        Class attributes
+        ----------------
+        __other_processor_params__ : List[str]
+            Holds kwargs that will be passed to the underlying
+            processor/processor function, but are not marked as
+            ProcessorParams and are also not passed via kwargs.
+        """
         if TYPE_CHECKING:
             create: Callable[..., 'BaseProcessor']
 
-        # Populate this with kwargs that will be passed to the underlying
-        # processor/processor function, but are not marked as
-        # ProcessorParams and are also not passed via kwargs.
-        __processor_params__: List[str] = []
-
         inplace: bool = True
-        read_key_prefix: str = ''
-        save_key_prefix: str = ''
-
         # Processor kwargs
         kwargs: Dict[str, ProcessorParam] = {}
 
-        def get_save_key_prefix(
-            self,
-            current_prefix: str,
-            splitter: str = '.',
-            **kwargs
-        ) -> str:
-            """Returns a save_key_prefix. Can be used to search recursively
-            for save_key prefixes.
-            """
-            upstream_prefix = self.save_key_prefix
-            current_prefix = safe_format(current_prefix, **kwargs)
-            prefix = f'{upstream_prefix}{current_prefix}'
-            return prefix
+        # Kwargs used by the processor, but are not ProcessorParam's
+        __other_processor_params__: List[str] = []
 
         @field_validator('kwargs')
         def remove_explicit_args(cls, val):
+            """Remove ProcessorParam's if present in kwargs to avoid
+            duplication.
+            """
             processor_params = cls.processor_params()
-            for explicit_key in chain(processor_params, cls.__processor_params__):
+            for explicit_key in chain(processor_params, cls.__other_processor_params__):
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
-                        f"Popping '{explicit_key}' from kwargs. This key "
-                        "has already been set."
+                        f"Popping '{explicit_key}' from kwargs. "
+                        "This key has been set explicitly."
                     )
             return val
 
         @classmethod
         def processor_params(cls) -> List[str]:
-            params = []
+            """Get all ProcessorParam's defined in this Config.
+
+            Returns
+            -------
+            params : List[str]
+                A list of parameter names.
+            """
+            params: List[str] = []
             for param, field_info in cls.model_fields.items():
                 if 'ProcessorParam' in field_info.metadata:
                     params.append(param)
@@ -171,7 +163,7 @@ class BaseProcessor(BaseConfigurable):
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        self.storage: Dict[str, REP] = {}
+        self._storage: Dict[str, Any] = {}
 
     @property
     def processor(self):
@@ -211,7 +203,10 @@ class BaseProcessor(BaseConfigurable):
         """
         return []
 
-    def save_processor_stats(self) -> None:
+    def save_stats(self) -> None:
+        if len(self.__stats__) == 0:
+            return
+
         check_has_processor(self)
         if not hasattr(self.cfg, 'stats_key'):
             raise KeyError(
@@ -254,146 +249,3 @@ class BaseProcessor(BaseConfigurable):
     def _process(self, adata: AnnData) -> None:
         """To be implemented by a derived class."""
         raise NotImplementedError
-
-    def store_item(self, key: str, val: REP, /, add_prefix: bool = True) -> None:
-        """Will store the value to a key for lazy saving into adata."""
-        if add_prefix:
-            key = BaseProcessor.__insert_prefix(key, self.cfg.save_key_prefix)
-        self.storage[key] = val
-
-    def store_items(self, items: Dict[str, REP], add_prefix: bool = True):
-        """Stores multiple items in dict fashion."""
-        if add_prefix:
-            items = {
-                BaseProcessor.__insert_prefix(
-                    key, self.cfg.save_key_prefix): val
-                for key, val in items.items()
-            }
-        self.storage.update(items)
-
-    @staticmethod
-    def __insert_prefix(key: str, prefix: str):
-        first_key, store_keys = key.split('.', maxsplit=1)
-        return f'{first_key}.{prefix}{store_keys}'
-
-    @staticmethod
-    def _get_repr(
-        adata: AnnData,
-        key: str,
-        read_key_prefix: str = '',
-        to_numpy: bool = False,
-    ) -> Any:
-        """Get the data representation that key points to."""
-        if key is None:
-            raise ValueError("Cannot get representation if 'key' is None.")
-
-        if key == 'X':
-            return adata.X
-        if key in ['obs_names', 'var_names']:
-            return getattr(adata, key).to_numpy().astype(str)
-
-        key = BaseProcessor.__insert_prefix(key, read_key_prefix)
-
-        read_class, *read_keys = key.split('.')
-        # We only support dictionary style access for read_keys
-        rec_itemgetter = compose(*(itemgetter(rk) for rk in read_keys))
-        klas = getattr(adata, read_class)
-        item = rec_itemgetter(klas)
-        if to_numpy:
-            item = item.to_numpy()
-        return item
-
-    def get_repr(self, adata: AnnData, key: REP_KEY, **kwargs) -> REP:
-        """Get the representation(s) that read_key points to."""
-        single_get_func = partial(BaseProcessor._get_repr, adata, **kwargs)
-        vals: List | Dict
-        match key:
-            case str() as v:
-                return single_get_func(v)
-            case [*vals]:
-                return [single_get_func(v) for v in vals]
-            case {**vals}:
-                return {k: single_get_func(v) for k, v in vals.items()}
-            case _:
-                raise ValueError(f"'{key}' format not understood.")
-
-    @staticmethod
-    def _set_repr(adata: AnnData, key: str, value: Any):
-        """Save value under the key pointed to by key.
-        """
-        if key is None:
-            raise ValueError("Cannot save representation if 'key' is None.")
-
-        # TODO dont allow X obs_names and var_names
-        save_class, *save_keys = key.split('.')
-        if save_class != 'uns':
-            if len(save_keys) > 1:
-                logger.warning(
-                    "Found non-'uns' save_class, but more than one save key."
-                    "Replacing 'save_keys' dots with dashes."
-                )
-                save_keys = [''.join(save_keys).replace('.', '-')]
-
-        klas = getattr(adata, save_class)
-        # Iterate over all save keys and initialize empty dictionaries if
-        # the keys are not found.
-        zl = ValueError("Found zero-length save key.")
-        while len(save_keys) > 1:
-            save_key = save_keys.pop(0)
-            if len(save_key) < 1:
-                raise zl
-            if save_key not in klas:
-                klas[save_key] = {}
-            klas = klas[save_key]
-        # Final key
-        save_key = save_keys.pop(0)
-        if len(save_key) < 1:
-            raise zl
-        assert len(save_keys) == 0
-        # This is in case save_key points to a dictionary already
-        if (save_key in klas
-            and isinstance(klas[save_key], dict)
-            and isinstance(value, dict)
-                and len(klas[save_key])):
-            klas[save_key] |= value
-        else:
-            klas[save_key] = value
-
-    def set_repr(self, adata: AnnData, key: REP_KEY, value: REP) -> None:
-        """Saves values under the key that save_key points to. Not to be
-        called by any derived classes."""
-        single_set_func = partial(BaseProcessor._set_repr, adata)
-        keys: List | Dict
-        vals: List | Dict
-
-        match key, value:
-            # Match a string key and Any value
-            case str() as key, val:
-                single_set_func(key, val)
-            # Match a list of keys and a list of vals
-            case [*keys], [*vals]:
-                if len(keys) != len(vals):
-                    raise ValueError(
-                        "Inconsistent length between save_key and value."
-                    )
-                _ = list(starmap(single_set_func, zip(keys, vals)))
-            # Match a dict of keys and a dict of vals
-            case {**keys}, {**vals}:
-                # Make sure all keys exist
-                keys_not_found = set(keys).difference(vals)
-                if len(keys_not_found) > 0:
-                    raise ValueError(
-                        f"Keys {keys_not_found} were not found "
-                        "in the output dictionary."
-                    )
-                _ = list(starmap(
-                    single_set_func,
-                        ((v, vals[k]) for k, v in keys.items())
-                ))
-            # No match
-            case _:
-                raise ValueError(
-                    "Inconsistent format between value and key. "
-                    f"Key has type {type(key)} but value "
-                    f"has type {type(value)}."
-                )

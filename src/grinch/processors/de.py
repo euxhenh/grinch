@@ -168,8 +168,8 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
     def _process(self, adata: AnnData) -> None:
         # Read data matrix and labels
-        x = check_array(self.get_repr(adata, self.cfg.x_key), accept_sparse='csr')
-        group_labels: NP1D_Any = column_or_1d(self.get_repr(adata, self.cfg.group_key))
+        x = check_array(self.read(adata, self.cfg.x_key), accept_sparse='csr')
+        group_labels: NP1D_Any = column_or_1d(self.read(adata, self.cfg.group_key))
         check_consistent_length(x, group_labels)
 
         if np.unique(group_labels).size <= 1 and not self.cfg.is_one_vs_one:
@@ -184,7 +184,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
                 return None
 
             if key is not None:  # Found in a separate key
-                x_cond = check_array(self.get_repr(adata, key), accept_sparse='csr')
+                x_cond = check_array(self.read(adata, key), accept_sparse='csr')
                 if key.startswith('var'):
                     x_cond = x_cond.T  # Transpose to (samples, features)
                 # Ensure same number of features
@@ -377,7 +377,7 @@ class BimodalTest(BaseProcessor):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         x = check_array(
             x,
             accept_sparse='csr',
