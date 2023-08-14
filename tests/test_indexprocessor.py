@@ -38,7 +38,7 @@ def test_indexer_obs(X):
         {
             "_target_": "src.grinch.IndexProcessor.Config",
             "filter_by": [fcfg],
-            "processor": kmeanscfg,
+            "processor_cfg": kmeanscfg,
             "axis": "var",
         }
     )

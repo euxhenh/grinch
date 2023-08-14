@@ -50,7 +50,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         should consist of the genes.
     group_key: str
         The column to look for group labels. Must be 1D.
-    save_key: str
+    write_key: str
         Points to a location where the test results will be saved. This
         should start with 'uns' as we are storing a dictionary of
         dataframes.
@@ -87,7 +87,6 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
         x_key: ReadKey = "X"
         group_key: ReadKey
-        save_key: WriteKey
 
         is_logged: bool = True
         base: PositiveFloat | Literal['e'] | None = Field('e')
@@ -122,7 +121,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
             """Get the WriteKey to store a given test in.
             """
             key = (
-                f"{self.save_key}"
+                f"{self.write_key}"
                 f".{self.group_key.rsplit('.')[-1]}"
                 f"-{label}"
             )
@@ -221,7 +220,7 @@ class TTest(PairwiseDETest):
         if TYPE_CHECKING:
             create: Callable[..., 'TTest']
 
-        save_key: WriteKey = f"uns.{UNS.TTEST}"
+        write_key: WriteKey = f"uns.{UNS.TTEST}"
 
     cfg: Config
 
@@ -281,7 +280,7 @@ class KSTest(PairwiseDETest):
         if TYPE_CHECKING:
             create: Callable[..., 'KSTest']
 
-        save_key: WriteKey = f"uns.{UNS.KSTEST}"
+        write_key: WriteKey = f"uns.{UNS.KSTEST}"
         method: str = 'auto'
         alternative: str = 'two-sided'
         max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
@@ -355,7 +354,7 @@ class BimodalTest(BaseProcessor):
             create: Callable[..., 'BimodalTest']
 
         x_key: ReadKey = "X"
-        save_key: WriteKey = f"uns.{UNS.BIMODALTEST}"
+        write_key: WriteKey = f"uns.{UNS.BIMODALTEST}"
         correction: str = 'fdr_bh'
         skip_zeros: bool = False
 
@@ -366,13 +365,13 @@ class BimodalTest(BaseProcessor):
         def init_max_workers(cls, val):
             return 2 * mp.cpu_count() if val is None else val
 
-        @field_validator('save_key')
-        def _starts_with_uns(cls, save_key):
-            if save_key.split('.')[0] != 'uns':
+        @field_validator('write_key')
+        def _starts_with_uns(cls, write_key):
+            if write_key.split('.')[0] != 'uns':
                 raise ValueError(
                     "Anndata column for bimodaltest should be 'uns'."
                 )
-            return save_key
+            return write_key
 
     cfg: Config
 
@@ -405,4 +404,4 @@ class BimodalTest(BaseProcessor):
         qvals: NP1D_float = _correct(pvals, method=self.cfg.correction)[1]
 
         bts = pd.DataFrame(data=dict(pvals=pvals, qvals=qvals, statistic=stats))
-        self.store_item(self.cfg.save_key, bts)
+        self.store_item(self.cfg.write_key, bts)

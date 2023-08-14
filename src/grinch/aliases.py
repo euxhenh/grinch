@@ -27,7 +27,7 @@ class AnnDataKeys:
     class VAR:
         N_COUNTS = auto()
         N_CELLS = auto()
-        PCOVER_M = auto()
+        PCOVER = auto()
         PCOVER_I = auto()
         VARIANCE = auto()
         ENSEMBL_ID = auto()
@@ -49,18 +49,11 @@ class AnnDataKeys:
         LOG_REG_COEF = auto()
 
     class UNS:
-        X_PCA_ = auto()
-        X_TRUNCATED_SVD_ = auto()
-        KMEANS_ = auto()
-        GAUSSIAN_MIXTURE_ = auto()
-        LEIDEN_ = auto()
-        LOG_REG_ = auto()
         TTEST = auto()
         KSTEST = auto()
         GSEA_ENRICH = auto()
         GSEA_PRERANK = auto()
         BIMODALTEST = auto()
-        PCOVER_ = auto()
         KNN_ = auto()
         N_GENE_ID_TO_NAME_FAILED = auto()
         ALL_CUSTOM_LEAD_GENES = auto()

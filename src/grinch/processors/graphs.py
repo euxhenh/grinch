@@ -1,5 +1,5 @@
 import abc
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import numpy as np
 from anndata import AnnData
@@ -10,7 +10,7 @@ from sklearn.utils.validation import _ensure_sparse_format
 
 from ..aliases import OBSM, OBSP
 from ..custom_types import NP1D_float, NP1D_int, NP2D_float
-from .base_processor import BaseProcessor, ReadKey, WriteKey
+from .base_processor import BaseProcessor, ProcessorParam, ReadKey, WriteKey
 from .wrappers import FuzzySimplicialSet as _FuzzySimplicialSet
 
 
@@ -36,14 +36,11 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
         x_key: ReadKey = f"obsm.{OBSM.X_PCA}"
         conn_key: WriteKey
         dist_key: WriteKey
-        save_stats: bool = True
-        stats_key: WriteKey | None = None
-        kwargs: Dict[str, Any] = {}
 
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         adj: spmatrix = self._connect(x)  # type: ignore
         adj = _ensure_sparse_format(
             adj, accept_sparse='csr', dtype=None, copy=False,
@@ -78,8 +75,9 @@ class KNNGraph(BaseGraphConstructor):
 
         conn_key: WriteKey = f"obsp.{OBSP.KNN_CONNECTIVITY}"
         dist_key: WriteKey = f"obsp.{OBSP.KNN_DISTANCE}"
-        n_neighbors: int = Field(15, gt=0)
-        n_jobs: int = Field(4, gt=0)
+
+        n_neighbors: ProcessorParam[int] = Field(15, gt=0)
+        n_jobs: ProcessorParam[int] = Field(4, gt=0)
 
     cfg: Config
 
@@ -120,9 +118,10 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
         conn_key: WriteKey = f"obsp.{OBSP.UMAP_CONNECTIVITY}"
         dist_key: WriteKey = f"obsp.{OBSP.UMAP_DISTANCE}"
         affinity_key: WriteKey = f"obsp.{OBSP.UMAP_AFFINITY}"
-        precomputed: bool = False
-        n_neighbors: int = 15
-        metric: str = "euclidean"
+
+        precomputed: ProcessorParam[bool] = False
+        n_neighbors: ProcessorParam[int] = 15
+        metric: ProcessorParam[str] = "euclidean"
 
     cfg: Config
 

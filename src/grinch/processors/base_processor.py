@@ -3,11 +3,10 @@
 import abc
 import inspect
 import logging
-from itertools import chain, islice
+from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Annotated,
-    Any,
     Callable,
     Dict,
     List,
@@ -21,7 +20,8 @@ from pydantic import field_validator, validate_call
 from ..base import StorageMixin
 from ..conf import BaseConfigurable
 from ..custom_types import NP1D_int
-from ..utils.validation import all_not_None, check_has_processor
+from ..utils.ops import safe_format
+from ..utils.validation import all_not_None
 
 logger = logging.getLogger(__name__)
 
@@ -33,47 +33,6 @@ ProcessorParam = Annotated[T, 'ProcessorParam']
 # Storage and retrieval keys
 ReadKey: TypeAlias = str
 WriteKey: TypeAlias = str
-
-
-def adata_modifier(f: Callable):
-    """A decorator for lazy adata setattr. This exists so that all
-    BaseProcessors don't set any adata keys themselves and everything is
-    handled by the BaseProcessor class. This is useful for GroupProcessing.
-    """
-    params = inspect.signature(f).parameters
-    # require 'self' and 'adata'
-    if len(params) < 2:
-        raise ValueError("A 'setter_method' should take at least 2 arguments.")
-
-    _, adata_parameter = next(islice(params.items(), 1, 2))
-    if not issubclass(AnnData, adata_parameter.annotation):
-        raise ValueError(
-            "First argument to a 'setter_method' should be explicitly typed 'AnnData'."
-        )
-
-    def _wrapper(self: 'BaseProcessor', adata: AnnData, *args, **kwargs) -> Dict[str, Any] | None:
-        # init empty storage dict
-        self._storage: Dict[str, Any] = {}
-        outp = f(self, adata, *args, **kwargs)
-        if outp is not None:
-            logger.warning(
-                f"Function '{f.__name__}' returned a value. This will be discarded."
-            )
-
-        self.save_stats()
-
-        return_storage: bool = kwargs.get('return_storage', False)
-        if not return_storage and len(self._storage) > 0:
-            self.set_repr(
-                adata,
-                list(self._storage),
-                list(self._storage.values())
-            )
-        else:
-            return self._storage
-        return None
-
-    return _wrapper
 
 
 class BaseProcessor(BaseConfigurable, StorageMixin):
@@ -91,22 +50,32 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
 
     Attributes
     ----------
-    __stats__: List[str]
+    __processor_attrs__ : List[str]
         A list of processor attributes to save along with results after
         fitting.
 
-    _storage : Dict[str, Any]
-        A dict mapping a key to a representation. Is used internally.
+    __processor_reqs__ : List[str]
+        A list of methods that the processor should implement. Raises an
+        error if any not found.
+
+    processor : Any
+        The underlying processor used for data fitting, transformation etc.
     """
-    __stats__: List[str] = []  # processor attributes to store along results
+    __slots__ = ['_processor']
+
+    __buffers__ = ['_processor']
+    __processor_attrs__: List[str] = []
+    __processor_reqs__: List[str] = []
 
     class Config(BaseConfigurable.Config):
         r"""BaseProcessor.Config
 
         Parameters
         ----------
-        inplace : bool, default=True
-            If False, will make and return a copy of adata.
+        attrs_key : str, default=None
+            The key to store processors attributes in (post fit). Curly
+            brackets will be formatted. By default use `self.write_key`
+            followed by an underscore.
 
         kwargs : dict, default={}
             Any Processor parameters that should be passed to the inner
@@ -122,12 +91,24 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         if TYPE_CHECKING:
             create: Callable[..., 'BaseProcessor']
 
-        inplace: bool = True
-        # Processor kwargs
-        kwargs: Dict[str, ProcessorParam] = {}
+        attrs_key: WriteKey | None = None
+        kwargs: Dict[str, ProcessorParam] = {}  # Processor kwargs
 
         # Kwargs used by the processor, but are not ProcessorParam's
         __other_processor_params__: List[str] = []
+
+        def model_post_init(self, __context):
+            """Safely formats attrs key."""
+            super().model_post_init(__context)
+
+            if self.attrs_key is None:
+                return
+
+            field_dict = {
+                k: v.rsplit('.', 1)[-1] for k, v in self.model_dump().items()
+                if isinstance(v, str)
+            }
+            self.attrs_key = safe_format(self.attrs_key, **field_dict)
 
         @field_validator('kwargs')
         def remove_explicit_args(cls, val):
@@ -160,11 +141,6 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
 
     cfg: Config
 
-    def __init__(self, cfg: Config, /):
-        super().__init__(cfg)
-
-        self._storage: Dict[str, Any] = {}
-
     @property
     def processor(self):
         """Points to the object that is being wrapped by the derived class.
@@ -175,54 +151,38 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
 
     @processor.setter
     def processor(self, value):
-        """Sets the processor and checks if it implements any required methods.
+        """Sets the processor and checks if it implements any methods
+        required by each parent.
         """
-        for method_name in self._processor_must_implement():
-            method = getattr(value, method_name, None)
-            if not callable(method):
-                raise ValueError(
-                    f"Object of type '{type(value)}' does not implement "
-                    f"a callable '{method_name}' method."
-                )
+        for cls in inspect.getmro(self.__class__):
+            if not hasattr(cls, '__processor_reqs__'):
+                continue
+            for method_name in chain(cls.__processor_reqs__):
+                method = getattr(value, method_name, None)
+                if not callable(method):
+                    raise ValueError(
+                        f"Object of type '{type(value)}' does not implement "
+                        f"a callable method named '{method_name}'."
+                    )
         self._processor = value
 
     @classmethod
     def processor_params(cls) -> List[str]:
         return cls.Config.processor_params()
 
-    @staticmethod
-    def _processor_must_implement() -> List[str]:
-        """Upon assignment, will check if the processor contains the fields
-        contained in this list.
-        """
-        return []
-
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        """Processor attributes to extract into a stats dictionary for writing.
-        """
-        return []
-
-    def save_stats(self) -> None:
-        if len(self.__stats__) == 0:
+    def store_attrs(self) -> None:
+        """Save processor attributes if any."""
+        if self.processor is None:
             return
 
-        check_has_processor(self)
-        if not hasattr(self.cfg, 'stats_key'):
-            raise KeyError(
-                "No 'stats_key' was found "
-                f"in {self.cfg.__class__.__qualname__}."
-            )
-        # Assume it has been explicitly set to None
-        if self.cfg.stats_key is None:  # type: ignore
+        if len(self.__processor_attrs__) == 0 or self.cfg.attrs_key is None:
             return
 
-        stats = {stat: getattr(self.processor, stat)
-                 for stat in self._processor_stats()}
-        if stats:
-            self.store_item(self.cfg.stats_key, stats)  # type: ignore
+        attrs = {at: getattr(self.processor, at) for at in self.__processor_attrs__}
+        if len(attrs):
+            self.store_item(self.cfg.attrs_key, attrs)
 
-    @adata_modifier
+    @StorageMixin.lazy_writer
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __call__(
         self,
@@ -232,8 +192,7 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         var_indices: NP1D_int | None = None,
         **kwargs,
     ):
-        """Calls the processor with adata. Will copy adata if inplace was
-        set to False.
+        """Calls the processor with adata.
         """
         if all_not_None(obs_indices, var_indices):
             adata = adata[obs_indices, var_indices]
@@ -244,6 +203,7 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
             adata = adata[:, var_indices]
 
         self._process(adata)
+        self.store_attrs()
 
     @abc.abstractmethod
     def _process(self, adata: AnnData) -> None:

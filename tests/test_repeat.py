@@ -31,7 +31,7 @@ def test_repeat(X):
     cfg = OmegaConf.create(
         {
             "_target_": "src.grinch.RepeatProcessor.Config",
-            "processor": processor,
+            "processor_cfg": processor,
             "repeat_var": "n_clusters",
             "repeat_vals": (reps := [2, 3, 4]),
         }

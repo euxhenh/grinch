@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from anndata import AnnData
@@ -6,11 +6,20 @@ from phenotype_cover import GreedyPC as _GreedyPC
 from pydantic import Field
 from sklearn.utils import check_X_y
 
-from ..aliases import UNS, VAR
-from .base_processor import BaseProcessor, ReadKey, WriteKey
+from ..aliases import VAR
+from .base_processor import BaseProcessor, ProcessorParam, ReadKey, WriteKey
 
 
 class PhenotypeCover(BaseProcessor):
+    """Marker selection based on multiset multicover.
+
+    See https://www.sciencedirect.com/science/article/pii/S2667237522002296?via%3Dihub
+    """
+    __processor_attrs__ = [
+        'n_elements_remaining_per_iter_',
+        'coverage_per_iter_',
+        'pairs_with_incomplete_cover_',
+    ]
 
     class Config(BaseProcessor.Config):
 
@@ -19,20 +28,16 @@ class PhenotypeCover(BaseProcessor):
 
         x_key: ReadKey = "X"
         y_key: ReadKey
-        feature_mask_key: WriteKey = f"var.{VAR.PCOVER_M}"
+        feature_mask_key: WriteKey = f"var.{VAR.PCOVER}"
         feature_importance_key: WriteKey = f"var.{VAR.PCOVER_I}"
+        attrs_key: WriteKey | None = 'uns.{feature_mask_key}_'
 
-        save_stats: bool = True
-        stats_key: WriteKey = f"uns.{UNS.PCOVER_}"
-
-        # GreedyPC args
-        coverage: int
-        multiplier: Optional[int] = None
-        ordered: bool = True
+        coverage: ProcessorParam[int]
+        multiplier: ProcessorParam[int | None] = None
+        ordered: ProcessorParam[bool] = True
         # If 0, run until coverage complete
-        max_iters: int = Field(default_factory=int, ge=0)
-
-        verbose: bool = Field(True, exclude=True)
+        max_iters: ProcessorParam[int] = Field(default_factory=int, ge=0)
+        verbose: ProcessorParam[bool] = Field(True, exclude=True)
 
     cfg: Config
 
@@ -43,15 +48,13 @@ class PhenotypeCover(BaseProcessor):
             ordered=self.cfg.ordered,
             verbose=self.cfg.verbose,
             multiplier=self.cfg.multiplier,
+            **self.cfg.kwargs,
         )
 
     def _process(self, adata: AnnData) -> None:
         X = self.read(adata, self.cfg.x_key)
         y = self.read(adata, self.cfg.y_key)
         X, y = check_X_y(X, y, accept_sparse='csr')
-
-        if not X.ndim == 2:
-            raise ValueError("Data matrix has to be 2 dimensional.")
 
         self.processor.fit(X, y)
         features = self.processor.select(self.cfg.coverage, max_iters=self.cfg.max_iters)
@@ -62,11 +65,3 @@ class PhenotypeCover(BaseProcessor):
         order = np.zeros(X.shape[1], dtype=int)
         order[features] = np.arange(len(features), 0, -1)
         self.store_item(self.cfg.feature_importance_key, order)
-
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseProcessor._processor_stats() + [
-            'n_elements_remaining_per_iter_',
-            'coverage_per_iter_',
-            'pairs_with_incomplete_cover_',
-        ]

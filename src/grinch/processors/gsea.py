@@ -84,7 +84,7 @@ class GSEA(BaseProcessor, abc.ABC):
 
     def get_gene_list_all(self, adata):
         # Get list of all gene names
-        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
+        gene_list_all = self.read(adata, self.cfg.gene_names_key)
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
         return gene_list_all
 
@@ -107,7 +107,7 @@ class GSEA(BaseProcessor, abc.ABC):
             seed=self.cfg.seed,
             **self.cfg.kwargs,
         )
-        tests = self.get_repr(adata, self.cfg.read_key)
+        tests = self.read(adata, self.cfg.read_key)
         if isinstance(tests, dict):  # Dict of tests
             self._process_dict(tests, prefix='', func=_gsea_f)
         else:  # Single test
@@ -322,10 +322,10 @@ class FindLeadGenes(BaseProcessor):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
+        gene_list_all = self.read(adata, self.cfg.gene_names_key)
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
 
-        gsea_prerank_dict = self.get_repr(adata, self.cfg.read_key)
+        gsea_prerank_dict = self.read(adata, self.cfg.read_key)
         if not isinstance(gsea_prerank_dict, dict):
             raise ValueError("Expected a dictionary of GSEA Prerank tests.")
         filter_by = StackedFilter(*self.cfg.filter_by)
@@ -407,7 +407,7 @@ class FindLeadGenesForProcess(BaseProcessor):
                 genes.extend(lib[term])
 
         lead_genes = np.unique(genes)
-        gene_list_all = self.get_repr(adata, self.cfg.gene_names_key)
+        gene_list_all = self.read(adata, self.cfg.gene_names_key)
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
         is_lead = np.in1d(gene_list_all, lead_genes)
         logger.info(f"Found {is_lead.sum()}/{len(lead_genes)} custom lead genes.")
