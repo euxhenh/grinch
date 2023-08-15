@@ -13,5 +13,3 @@ phenotype_cover
 leidenalg
 pyensembl
 seaborn
-coverage
-pytest
