@@ -4,7 +4,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import UNS, VAR
+from grinch import VAR
 
 from ._utils import assert_allclose, to_view
 
@@ -32,6 +32,6 @@ def test_phenotype_cover(X):
     adata = AnnData(X)
     adata.obs['anns'] = [0, 1, 0, 1]
     gpc(adata)
-    assert_allclose([False, False, True, False], adata.var[f"{VAR.PCOVER_M}"])
+    assert_allclose([False, False, True, False], adata.var[f"{VAR.PCOVER}"])
     assert_allclose([0, 0, 1, 0], adata.var[f"{VAR.PCOVER_I}"])
-    assert_allclose(adata.uns[f"{UNS.PCOVER_}"]['n_elements_remaining_per_iter_'], [0])
+    assert_allclose(adata.uns["pcover_"]['n_elements_remaining_per_iter_'], [0])

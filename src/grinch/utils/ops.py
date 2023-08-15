@@ -39,7 +39,7 @@ def safe_format(prefix, **kwargs):
     the key in the string.
 
     Examples
-    ________
+    --------
     >>> safe_format("hello", somevar="someval")
     'hello'
     >>> safe_format("hello_{somevar}", somevar="someval")

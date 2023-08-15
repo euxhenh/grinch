@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -12,11 +12,12 @@ from sklearn.mixture import BayesianGaussianMixture as _BayesianGaussianMixture
 from sklearn.mixture import GaussianMixture as _GaussianMixture
 from sklearn.utils import indexable
 
-from ..aliases import OBS, OBSM, OBSP, UNS
+from ..aliases import OBS, OBSM, OBSP
+from ..base import StorageMixin
 from ..custom_types import NP1D_Any, NP1D_float
 from ..utils.ops import group_indices
 from ..utils.validation import check_has_processor
-from .base_processor import BaseProcessor, ReadKey, WriteKey, adata_modifier
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 from .wrappers import Leiden as _Leiden
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class BasePredictor(BaseProcessor, abc.ABC):
     """A base class for estimators, clustering algorithms, etc."""
+    __processor_reqs__ = ['predict']
 
     class Config(BaseProcessor.Config):
 
@@ -32,23 +34,18 @@ class BasePredictor(BaseProcessor, abc.ABC):
 
         x_key: ReadKey = f"obsm.{OBSM.X_PCA}"
         labels_key: WriteKey
+        attrs_key: WriteKey | None = 'uns.{labels_key}_'
         categorical_labels: bool = True
-        save_stats: bool = True
-        kwargs: Dict[str, Any] = {}
 
     cfg: Config
 
-    @staticmethod
-    def _processor_must_implement() -> List[str]:
-        return BaseProcessor._processor_must_implement() + ['predict']
-
-    @adata_modifier
+    @StorageMixin.lazy_writer
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def predict(self, adata: AnnData) -> None:
         """Calls predict on the underlying predictor."""
         check_has_processor(self)
 
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         labels = self.processor.predict(x)
         if self.cfg.categorical_labels:
             labels = pd.Categorical(labels)
@@ -57,6 +54,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
 
 class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
     """A base class for unsupervised predictors, e.g., clustering."""
+    __processor_reqs__ = ['fit_predict']
 
     class Config(BasePredictor.Config):
 
@@ -65,14 +63,10 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
 
     cfg: Config
 
-    @staticmethod
-    def _processor_must_implement() -> List[str]:
-        return BasePredictor._processor_must_implement() + ['fit_predict']
-
     def _process(self, adata: AnnData) -> None:
         check_has_processor(self)
         # Fits the data and stores predictions.
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         labels = self.processor.fit_predict(x)
         if self.cfg.categorical_labels:
             labels = pd.Categorical(labels)
@@ -98,6 +92,8 @@ def centroids_from_Xy(X, y: NP1D_Any) -> Dict[str, NP1D_float]:
 
 
 class KMeans(BaseUnsupervisedPredictor):
+    """KMeans"""
+    __processor_attrs__ = ['cluster_centers_']
 
     class Config(BaseUnsupervisedPredictor.Config):
 
@@ -105,8 +101,6 @@ class KMeans(BaseUnsupervisedPredictor):
             create: Callable[..., 'KMeans']
 
         labels_key: WriteKey = f"obs.{OBS.KMEANS}"
-        stats_key: WriteKey = f"uns.{UNS.KMEANS_}"
-        # KMeans args
         n_clusters: int = Field(8, ge=1)
 
     cfg: Config
@@ -121,13 +115,12 @@ class KMeans(BaseUnsupervisedPredictor):
             **self.cfg.kwargs,
         )
 
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseUnsupervisedPredictor._processor_stats() + \
-            ['cluster_centers_']
-
 
 class GaussianMixture(BaseUnsupervisedPredictor):
+    """Gaussian Mixture model and its Bayesian variant.
+    """
+    __processor_attrs__ = ['means_', 'weights_', 'covariances_',
+                           'precisions_', 'converged_']
 
     class Config(BaseUnsupervisedPredictor.Config):
 
@@ -137,7 +130,6 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         labels_key: WriteKey = f"obs.{OBS.GAUSSIAN_MIXTURE}"
         proba_key: WriteKey = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
         score_key: WriteKey = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
-        stats_key: WriteKey = f"uns.{UNS.GAUSSIAN_MIXTURE_}"
         mixture_kind: Literal['GaussianMixture', 'BayesianGaussianMixture'] = 'GaussianMixture'
         n_components: int = Field(8, ge=1)
         covariance_type: str = 'diag'  # non-default value
@@ -162,19 +154,17 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         )
 
     def _post_process(self, adata: AnnData) -> None:
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         proba = self.processor.predict_proba(x)
         score = self.processor.score_samples(x)
         self.store_item(self.cfg.proba_key, proba)
         self.store_item(self.cfg.score_key, score)
 
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseUnsupervisedPredictor._processor_stats() + \
-            ['means_', 'weights_', 'covariances_', 'precisions_', 'converged_']
-
 
 class Leiden(BaseUnsupervisedPredictor):
+    """Leiden community detection.
+    """
+    __processor_attrs__ = ['modularity_']
 
     class Config(BaseUnsupervisedPredictor.Config):
 
@@ -183,7 +173,6 @@ class Leiden(BaseUnsupervisedPredictor):
 
         x_key: ReadKey = f"obsp.{OBSP.UMAP_AFFINITY}"
         labels_key: WriteKey = f"obs.{OBS.LEIDEN}"
-        stats_key: WriteKey = f"uns.{UNS.LEIDEN_}"
         resolution: float = Field(1.0, gt=0)
         n_iterations: int = -1
         partition_type: str = 'RBConfigurationVertexPartition'
@@ -215,16 +204,10 @@ class Leiden(BaseUnsupervisedPredictor):
         if not self.cfg.compute_centroids:
             return
 
-        x = self.get_repr(adata, self.cfg.x_key_for_centroids)
+        x = self.read(adata, self.cfg.x_key_for_centroids)
         labels = np.asarray(self.processor.membership_)
         label_to_centroid = centroids_from_Xy(x, labels)
-        self.store_item(f"{self.cfg.stats_key}.cluster_centers_",
-                        label_to_centroid)
-
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseUnsupervisedPredictor._processor_stats() + \
-            ['modularity_']
+        self.store_item(f"{self.cfg.attrs_key}.cluster_centers_", label_to_centroid)
 
 
 class BaseSupervisedPredictor(BasePredictor, abc.ABC):
@@ -239,16 +222,12 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
 
     cfg: Config
 
-    @staticmethod
-    def _processor_must_implement() -> List[str]:
-        return BasePredictor._processor_must_implement() + ['fit']
-
     def _process(self, adata: AnnData) -> None:
         check_has_processor(self)
         # Override process method since LogisticRegression does not have a
         # fit_predict method and also requires labels to fit.
-        x = self.get_repr(adata, self.cfg.x_key)
-        y = self.get_repr(adata, self.cfg.y_key)
+        x = self.read(adata, self.cfg.x_key)
+        y = self.read(adata, self.cfg.y_key)
         if hasattr(self.processor, 'fit_predict'):
             labels = self.processor.fit_predict(x, y)
         else:
@@ -260,6 +239,8 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
 
 
 class LogisticRegression(BaseSupervisedPredictor):
+    """Logistic Regression"""
+    __processor_attrs__ = ['classes_', 'coef_', 'intercept_']
 
     class Config(BaseSupervisedPredictor.Config):
 
@@ -267,7 +248,6 @@ class LogisticRegression(BaseSupervisedPredictor):
             create: Callable[..., 'LogisticRegression']
 
         labels_key: WriteKey = f"obs.{OBS.LOG_REG}"
-        stats_key: WriteKey = f"uns.{UNS.LOG_REG_}"
         # LogisticRegression kwargs
         penalty: str = "l2"
         C: float = Field(1.0, gt=0)  # inverse regularization trade-off
@@ -287,8 +267,3 @@ class LogisticRegression(BaseSupervisedPredictor):
             random_state=self.cfg.seed,
             **self.cfg.kwargs,
         )
-
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseSupervisedPredictor._processor_stats() + \
-            ['classes_', 'coef_', 'intercept_']

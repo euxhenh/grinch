@@ -3,7 +3,6 @@ from .base_processor import (
     ProcessorParam,
     ReadKey,
     WriteKey,
-    adata_modifier,
 )
 from .de import BimodalTest, KSTest, TTest
 from .feature_selection import PhenotypeCover
@@ -31,7 +30,6 @@ from .tools import FilterNaN, GeneIdToName, ReplaceNaN, StoreAsMask
 from .transformers import MDS, PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
-    'adata_modifier',
     'BaseProcessor',
     'ReadKey',
     'WriteKey',

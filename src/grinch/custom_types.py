@@ -1,12 +1,11 @@
-from typing import Annotated, Any, Dict, List, Tuple, TypeAlias
+from typing import Annotated, Any, List, Tuple, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
 from pydantic import Field
 
-REP_KEY: TypeAlias = str | List[str] | Dict[str, str] | None
-REP: TypeAlias = Dict[str, Any] | List[Any] | Any
+REP_KEY: TypeAlias = str | List[str] | None
 
 NP1D_Any = np.ndarray[Tuple[Any], np.dtype[Any]]
 NP2D_Any = np.ndarray[Tuple[Any, Any], np.dtype[Any]]

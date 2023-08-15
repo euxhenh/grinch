@@ -39,7 +39,7 @@ class GeneIdToName(BaseProcessor):
         gene_names = []
         not_found = 0
 
-        gene_ids = self.get_repr(adata, self.cfg.read_key, to_numpy=True)
+        gene_ids = self.read(adata, self.cfg.read_key, to_numpy=True)
         for gene_id in gene_ids:
             try:
                 gene_names.append(self.data.gene_by_id(gene_id).gene_name)
@@ -48,7 +48,7 @@ class GeneIdToName(BaseProcessor):
                 not_found += 1
 
         logger.info(f"Could not convert {not_found} gene IDs.")
-        self.set_repr(adata, self.cfg.save_key, np.asarray(gene_names))
+        self.store_item(self.cfg.save_key, np.asarray(gene_names))
         self.store_item(self.cfg.stats_key, not_found)
 
 
@@ -85,7 +85,7 @@ class ReplaceNaN(BaseProcessor):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = np.asarray(self.get_repr(adata, self.cfg.read_key), dtype=float)
+        x = np.asarray(self.read(adata, self.cfg.read_key), dtype=float)
         mask = np.isnan(x)
         logger.info(f"Replacing {mask.sum()} nan values.")
 
@@ -116,7 +116,7 @@ class FilterNaN(BaseProcessor):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = np.asarray(self.get_repr(adata, self.cfg.read_key), dtype=float)
+        x = np.asarray(self.read(adata, self.cfg.read_key), dtype=float)
         mask = np.isnan(x)
         if mask.sum() > 0:
             logger.info(f"Removing {mask.sum()} rows with NaNs.")
@@ -152,7 +152,7 @@ class ApplyOp(BaseProcessor):
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = self.get_repr(adata, self.cfg.read_key)
+        x = self.read(adata, self.cfg.read_key)
         x = (
             getattr(np, self.cfg.op)(x) if not self.cfg.as_attr
             else getattr(x, self.cfg.op)()

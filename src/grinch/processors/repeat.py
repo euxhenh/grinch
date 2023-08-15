@@ -19,7 +19,7 @@ class RepeatProcessor(BaseProcessor):
         # NOTE: If the field that is to be repeated is mandatory in the
         # processor config, it needs to be initialized to any value
         # otherwise hydra will complain.
-        processor: BaseProcessor.Config
+        processor_cfg: BaseProcessor.Config
         repeat_var: str
         repeat_vals: List[Any]
 
@@ -28,34 +28,27 @@ class RepeatProcessor(BaseProcessor):
 
         @field_validator('repeat_var')
         def has_field(cls, val, info):
-            if not hasattr(info.data['processor'], val):
+            if not hasattr(info.data['processor_cfg'], val):
                 raise KeyError(
                     f"Processor Config {info.data['processor'].__qualname__} "
                     f"has no key '{val}'."
                 )
             return val
 
-        def update_processor_save_key_prefix(self, repeat_val):
-            prefix = self.get_save_key_prefix(
-                self.repeat_prefix,
-                splitter=self.upstream_splitter,
-                repeat_var=self.repeat_var,
-                repeat_val=repeat_val,
-            )
-            self.processor.save_key_prefix = prefix
-
     cfg: Config
 
-    def __init__(self, cfg: Config, /):
-        super().__init__(cfg)
-
-        self.cfg.processor.inplace = True
-
     def _process(self, adata: AnnData) -> None:
-
-        for val in self.cfg.repeat_vals:
-            logger.info(f"Repeating '{self.cfg.processor._init_cls.__name__}' with value {val}.")
-            setattr(self.cfg.processor, self.cfg.repeat_var, val)
-            self.cfg.update_processor_save_key_prefix(val)
-            processor = self.cfg.processor.create()
+        for repeat_val in self.cfg.repeat_vals:
+            logger.info(
+                f"Repeating '{self.cfg.processor_cfg._init_cls.__name__}' "
+                f"with value {repeat_val}."
+            )
+            setattr(self.cfg.processor_cfg, self.cfg.repeat_var, repeat_val)
+            processor = self.cfg.processor_cfg.create()
+            processor.update_prefix(
+                self.cfg.repeat_prefix,
+                splitter=self.cfg.upstream_splitter,
+                repeat_var=self.cfg.repeat_var,
+                repeat_val=repeat_val,
+            )
             processor(adata)

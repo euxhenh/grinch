@@ -77,15 +77,14 @@ class IndexProcessor(BaseIndexer):
         if TYPE_CHECKING:
             create: Callable[..., 'IndexProcessor']
 
-        processor: BaseProcessor.Config
+        processor_cfg: BaseProcessor.Config
 
     cfg: Config
 
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        self.cfg.processor.inplace = True
-        self.processor = self.cfg.processor.create()
+        self.processor = self.cfg.processor_cfg.create()
 
     def _process_mask(self, adata: AnnData, mask: NP1D_bool) -> None:
         # TODO improve naming and add indexing stats

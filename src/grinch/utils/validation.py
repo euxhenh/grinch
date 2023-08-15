@@ -60,7 +60,8 @@ def check_has_processor(obj):
     """
     if obj.processor is None:
         raise ProcessorNotDefined(
-            f"Object of type {obj.__class__} does not contain a processor object."
+            f"Object of type {obj.__class__.__name__} does not "
+            "contain a processor object."
         )
 
 

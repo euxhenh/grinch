@@ -8,10 +8,10 @@ from anndata import AnnData
 from pydantic import Field, validate_call
 from sklearn.model_selection import train_test_split
 
+from ..base import StorageMixin
 from ..conf import BaseConfigurable
 from ..utils.adata import as_empty
 from ..utils.validation import all_not_None, any_not_None
-from .base_processor import BaseProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class DataSplitter:
                 to_write.write_h5ad(path_to_write)
 
 
-class Splitter(BaseConfigurable):
+class Splitter(BaseConfigurable, StorageMixin):
     """A class for train/validation/test splitting the data."""
 
     class Config(BaseConfigurable.Config):
@@ -88,7 +88,7 @@ class Splitter(BaseConfigurable):
         train_idx = np.arange(adata.shape[0])
         stratify = (
             None if self.cfg.stratify_key is None
-            else BaseProcessor._get_repr(adata, self.cfg.stratify_key)
+            else self.read(adata, self.cfg.stratify_key)
         )
         val_frac, test_frac = self.cfg.val_fraction, self.cfg.test_fraction
 

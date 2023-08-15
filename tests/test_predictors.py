@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from grinch import OBS, OBSM, OBSP, UNS
+from grinch import OBS, OBSM, OBSP
 
 from ._utils import assert_allclose, to_view
 
@@ -56,7 +56,7 @@ def test_kmeans_x_pca(X):
             "_target_": "src.grinch.PCA.Config",
             "n_components": 2,
             "seed": 42,
-            "x_emb_key": f"obsm.{OBSM.X_PCA}",
+            "write_key": f"obsm.{OBSM.X_PCA}",
         }
     )
     cfg_pca = instantiate(cfg_pca)
@@ -118,7 +118,7 @@ def test_log_reg_x(X):
             "_target_": "src.grinch.PCA.Config",
             "n_components": 2,
             "seed": 42,
-            "x_emb_key": f"obsm.{OBSM.X_PCA}",
+            "write_key": f"obsm.{OBSM.X_PCA}",
         }
     )
     cfg_pca = instantiate(cfg_pca)
@@ -197,6 +197,6 @@ def test_leiden(X):
         pred[0]: np.ravel(X[:2].mean(axis=0)),
         1 - pred[0]: np.ravel(X[2:].mean(axis=0)),
     }
-    pred_centroid = adata.uns[UNS.LEIDEN_]["cluster_centers_"]
+    pred_centroid = adata.uns['leiden_']["cluster_centers_"]
     assert_allclose(centroids[0], pred_centroid['0'])
     assert_allclose(centroids[1], pred_centroid['1'])

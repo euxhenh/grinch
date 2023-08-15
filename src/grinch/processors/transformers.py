@@ -1,79 +1,84 @@
 import abc
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Callable
 
 from anndata import AnnData
-from pydantic import Field, field_validator, validate_call
+from pydantic import Field, validate_call
 from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
 from sklearn.manifold import MDS as _MDS
 from umap import UMAP as _UMAP
 
 from ..aliases import OBSM
+from ..base import StorageMixin
 from ..utils.validation import check_has_processor
-from .base_processor import (
-    BaseProcessor,
-    ProcessorParam,
-    ReadKey,
-    WriteKey,
-    adata_modifier,
-)
+from .base_processor import BaseProcessor, ProcessorParam, ReadKey, WriteKey
 
 logger = logging.getLogger(__name__)
 
 
 class BaseTransformer(BaseProcessor, abc.ABC):
     """A base estimator class for objects that implement `fit_transform`."""
+    __processor_reqs__ = ['transform', 'fit_transform']
 
     class Config(BaseProcessor.Config):
+        """
+        Parameters
+        ----------
+        x_key : str
+            Key holding the data matrix X to be transformed.
+
+        write_key : str
+            The key to store the transformed data.
+
+        attrs_key : str, default='{write_key}_'
+            The key to store processors attributes in (post fit). Curly
+            brackets will be formatted. By default use `self.write_key`
+            followed by an underscore.
+        """
 
         if TYPE_CHECKING:
             create: Callable[..., 'BaseTransformer']
 
         x_key: ReadKey = "X"
-        x_emb_key: WriteKey
-        save_stats: bool = True
-        stats_key: WriteKey | None = None
-        kwargs: Dict[str, Any] = {}
-
-        @field_validator('stats_key')
-        def init_stats_key_with_x_emb(cls, val, info):
-            return val or f"uns.{info.data['x_emb_key'].split('.', 1)[1]}_"
+        write_key: WriteKey = Field(alias='x_emb_key')
+        attrs_key: WriteKey | None = 'uns.{write_key}_'
 
     cfg: Config
 
-    @staticmethod
-    def _processor_must_implement() -> List[str]:
-        return BaseProcessor._processor_must_implement() + ['transform', 'fit_transform']
-
     def _process(self, adata: AnnData) -> None:
-        """Gets the data representation to use and applies the transformer.
-        """
         check_has_processor(self)
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         x_emb = self.processor.fit_transform(x)
-        self.store_item(self.cfg.x_emb_key, x_emb)
+        self.store_item(self.cfg.write_key, x_emb)
 
-    @adata_modifier
+    @StorageMixin.lazy_writer
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def transform(self, adata: AnnData) -> None:
-        """Applies a transform only. Uses the same key as x_key.
-        """
         check_has_processor(self)
-
-        x = self.get_repr(adata, self.cfg.x_key)
+        x = self.read(adata, self.cfg.x_key)
         x_emb = self.processor.transform(x)
-        self.store_item(self.cfg.x_emb_key, x_emb)
+        self.store_item(self.cfg.write_key, x_emb)
 
 
 class PCA(BaseTransformer):
+    """Principal Component Analysis.
+
+    See https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html
+    """
+    __processor_attrs__ = [
+        'singular_values_',
+        'explained_variance_',
+        'explained_variance_ratio_',
+        'components_',
+    ]
 
     class Config(BaseTransformer.Config):
 
         if TYPE_CHECKING:
             create: Callable[..., 'PCA']
 
-        x_emb_key: WriteKey = f"obsm.{OBSM.X_PCA}"
+        write_key: WriteKey = f"obsm.{OBSM.X_PCA}"
         n_components: ProcessorParam[int | float | str | None] = 50
         whiten: ProcessorParam[bool] = False
         svd_solver: ProcessorParam[str] = 'auto'
@@ -83,36 +88,36 @@ class PCA(BaseTransformer):
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
 
-        # Typing here is useful for editor autocompletion
         self.processor: _PCA = _PCA(
             n_components=self.cfg.n_components,
             whiten=self.cfg.whiten,
             svd_solver=self.cfg.svd_solver,
             random_state=self.cfg.seed,
+            **self.cfg.kwargs,
         )
-
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseTransformer._processor_stats() + [
-            'singular_values_',
-            'explained_variance_',
-            'explained_variance_ratio_',
-            'components_',
-        ]
 
 
 class TruncatedSVD(BaseTransformer):
+    """Truncated Singular Value Decomposition.
+
+    See https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.TruncatedSVD.html
+    """
+    __processor_attrs__ = [
+        'singular_values_',
+        'explained_variance_',
+        'explained_variance_ratio_',
+        'components_',
+    ]
 
     class Config(BaseTransformer.Config):
 
         if TYPE_CHECKING:
             create: Callable[..., 'TruncatedSVD']
 
-        x_emb_key: WriteKey = f"obsm.{OBSM.X_TRUNCATED_SVD}"
-        # Truncated SVD args
-        n_components: int = Field(2, ge=1)
-        algorithm: str = 'randomized'
-        n_iter: int = Field(5, ge=1)
+        write_key: WriteKey = f"obsm.{OBSM.X_TRUNCATED_SVD}"
+        n_components: ProcessorParam[int] = Field(2, ge=1)
+        algorithm: ProcessorParam[str] = 'randomized'
+        n_iter: ProcessorParam[int] = Field(5, ge=1)
 
     cfg: Config
 
@@ -124,27 +129,23 @@ class TruncatedSVD(BaseTransformer):
             algorithm=self.cfg.algorithm,
             n_iter=self.cfg.n_iter,
             random_state=self.cfg.seed,
+            **self.cfg.kwargs,
         )
-
-    @staticmethod
-    def _processor_stats() -> List[str]:
-        return BaseTransformer._processor_stats() + [
-            'singular_values_',
-            'explained_variance_',
-            'explained_variance_ratio_',
-            'components_',
-        ]
 
 
 class MDS(BaseTransformer):
+    """Multidimensional scaling.
+
+    See https://scikit-learn.org/stable/modules/generated/sklearn.manifold.MDS.html
+    """
 
     class Config(BaseTransformer.Config):
 
         if TYPE_CHECKING:
             create: Callable[..., 'MDS']
 
-        x_emb_key: WriteKey = f"obsm.{OBSM.X_MDS}"
-        n_components: int = Field(2, ge=1)
+        write_key: WriteKey = f"obsm.{OBSM.X_MDS}"
+        n_components: ProcessorParam[int] = Field(2, ge=1)
 
     cfg: Config
 
@@ -159,6 +160,10 @@ class MDS(BaseTransformer):
 
 
 class UMAP(BaseTransformer):
+    """Uniform Manifold Approximation and Projection
+
+    See https://umap-learn.readthedocs.io/en/latest/
+    """
 
     class Config(BaseTransformer.Config):
 
@@ -166,22 +171,16 @@ class UMAP(BaseTransformer):
             create: Callable[..., 'UMAP']
 
         x_key: ReadKey = f"obsm.{OBSM.X_PCA}"  # Different x key from parent
-        x_emb_key: WriteKey = f"obsm.{OBSM.X_UMAP}"
-        # UMAP args
-        n_neighbors: int = Field(15, ge=1)
-        n_components: int = Field(2, ge=1)
+        write_key: WriteKey = f"obsm.{OBSM.X_UMAP}"
+        n_neighbors: ProcessorParam[int] = Field(15, ge=1)
+        n_components: ProcessorParam[int] = Field(2, ge=1)
         # Use a smaller spread by default, for tighter scatterplots
-        spread: float = Field(0.8, gt=0)
-        # Other arguments to pass to UMAP
-        kwargs: Dict[str, Any] = {}
+        spread: ProcessorParam[float] = Field(0.8, gt=0)
 
     cfg: Config
 
     def __init__(self, cfg: Config, /):
         super().__init__(cfg)
-
-        if self.cfg.seed is not None and 'transform_seed' not in self.cfg.kwargs:
-            self.cfg.kwargs['transform_seed'] = self.cfg.seed
 
         self.processor: _UMAP = _UMAP(
             n_components=self.cfg.n_components,

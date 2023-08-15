@@ -27,7 +27,7 @@ def test_groupby(X):
     # cfg = instantiate(cfg)
     gcfg = OmegaConf.create({
         "_target_": "src.grinch.GroupProcess.Config",
-        "processor": cfg,
+        "processor_cfg": cfg,
         "group_key": "obs.mem",
     })
     adata = AnnData(X)
@@ -54,7 +54,7 @@ def test_groupby_ttest(X):
     # cfg = instantiate(cfg)
     gcfg = OmegaConf.create({
         "_target_": "src.grinch.GroupProcess.Config",
-        "processor": cfg,
+        "processor_cfg": cfg,
         "group_key": "obs.mem",
     })
     adata = AnnData(X)
@@ -82,13 +82,13 @@ def test_nested_groupby(X):
     })
     ginnercfg = OmegaConf.create({
         "_target_": "src.grinch.GroupProcess.Config",
-        "processor": cfg,
+        "processor_cfg": cfg,
         "group_key": "obs.ct",
     })
     # cfg = instantiate(cfg)
     gcfg = OmegaConf.create({
         "_target_": "src.grinch.GroupProcess.Config",
-        "processor": ginnercfg,
+        "processor_cfg": ginnercfg,
         "group_key": "obs.mem",
     })
     adata = AnnData(X)
@@ -98,6 +98,7 @@ def test_nested_groupby(X):
     gcfg = instantiate(gcfg)
     groupprocess = gcfg.create()
     groupprocess(adata)
+    print(adata)
     gr0 = adata.uns['g-mem']['0']
     gr1 = adata.uns['g-mem']['1']
     assert len(gr0['g-ct']['p1'][OBS.KMEANS]) == 1

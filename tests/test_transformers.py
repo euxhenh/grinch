@@ -12,7 +12,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", message="NumbaDeprecationWarning")
     from umap import UMAP
 
-from grinch import OBSM, UNS
+from grinch import OBSM
 
 from ._utils import assert_allclose, to_view
 
@@ -48,7 +48,7 @@ def test_pca(X):
     pca(adata)
     x_emb_sk = pca_sk.fit_transform(X)
 
-    assert adata.uns[UNS.X_PCA_]['components_'].shape[0] == 3
+    assert adata.uns['x_pca_']['components_'].shape[0] == 3
     assert_allclose(adata.obsm[OBSM.X_PCA], x_emb_sk, rtol=1e-4, atol=1e-4)
 
 
@@ -68,7 +68,7 @@ def test_truncated(X):
     tsvd(adata)
     x_emb_sk = tsvd_sk.fit_transform(X)
 
-    assert adata.uns[UNS.X_TRUNCATED_SVD_]['components_'].shape[0] == 3
+    assert adata.uns['x_truncated_svd_']['components_'].shape[0] == 3
     assert_allclose(adata.obsm[OBSM.X_TRUNCATED_SVD], x_emb_sk, rtol=1e-4, atol=1e-4)
 
 
