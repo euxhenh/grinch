@@ -1,15 +1,16 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from anndata import AnnData
-from pydantic import Field, validate_call
+from pydantic import validate_call
 from sklearn.model_selection import train_test_split
 
 from ..base import StorageMixin
 from ..conf import BaseConfigurable
+from ..custom_types import PercentFractionExclusive
 from ..utils.adata import as_empty
 from ..utils.validation import all_not_None, any_not_None
 
@@ -19,8 +20,8 @@ logger = logging.getLogger(__name__)
 @dataclass(eq=False)
 class DataSplitter:
     TRAIN_SPLIT: AnnData = None
-    VAL_SPLIT: Optional[AnnData] = None
-    TEST_SPLIT: Optional[AnnData] = None
+    VAL_SPLIT: AnnData | None = None
+    TEST_SPLIT: AnnData | None = None
 
     @property
     def is_split(self) -> bool:
@@ -57,10 +58,10 @@ class Splitter(BaseConfigurable, StorageMixin):
         if TYPE_CHECKING:
             create: Callable[..., 'Splitter']
 
-        val_fraction: Optional[float] = Field(None, gt=0, lt=1)
-        test_fraction: Optional[float] = Field(None, gt=0, lt=1)
+        val_fraction: PercentFractionExclusive | None = None
+        test_fraction: PercentFractionExclusive | None = None
         shuffle: bool = True
-        stratify_key: Optional[str] = None
+        stratify_key: str | None = None
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)

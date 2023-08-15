@@ -5,7 +5,7 @@ from anndata import AnnData
 from pydantic import Field, field_validator
 
 from ..aliases import GROUP_SEP
-from ..custom_types import NP1D_str
+from ..custom_types import Binary, NP1D_str
 from ..utils.ops import group_indices
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor, ReadKey, WriteKey
@@ -21,22 +21,27 @@ class GroupProcess(BaseProcessor):
         """
         Parameters
         ----------
-        processor: BaseProcessor
+        processor_cfg : BaseProcessor.Config
             A processor to apply separately to each of the groups. Currently,
             different processors for different groups are not supported.
-        group_key: str
+
+        group_key : str
             Must point to a 1D vector that will determine the groups.
-        axis: int or str
+
+        axis : int or str
             The axis along which to group.
-        group_prefix: str
+
+        group_prefix : str
             If the stats that are stored in anndata for each group should not
             be merged, this key can be used to specify different prefixes for
             the save keys, based on the group label. The substring '{label}'
             will be replaced by the group name.
-        min_points_per_group: int
+
+        min_points_per_group : int
             If a group contains less than this many points, it will not be
             processed.
-        drop_small_groups: bool
+
+        drop_small_groups : bool
             If a group contains less than 'min_points_per_group' and this is
             set to True, these groups will not be included in the merged
             anndata.
@@ -48,11 +53,9 @@ class GroupProcess(BaseProcessor):
         processor_cfg: BaseProcessor.Config
         # Key to group by, must be recognized by np.unique.
         group_key: ReadKey
-        axis: int | Literal['obs', 'var'] = Field(0, ge=0, le=1)
+        axis: Binary | Literal['obs', 'var'] = 0
         group_prefix: WriteKey = f'g-{{group_key}}{GROUP_SEP}{{label}}.'
         min_points_per_group: int = Field(default_factory=int, ge=0)
-        # Whether to drop the groups which have less than
-        # `min_points_per_group` points or not.
         drop_small_groups: bool = False
 
         @field_validator('axis')
@@ -63,19 +66,13 @@ class GroupProcess(BaseProcessor):
 
     def _get_names_along_axis(self, adata: AnnData) -> NP1D_str:
         """Gets obs_names or var_names depending on self.cfg.axis."""
-        return (
-            adata.obs_names.to_numpy().astype(str) if self.cfg.axis == 0
-            else adata.var_names.to_numpy().astype(str)
-        )
+        return (self.read(adata, 'obs_names') if self.cfg.axis == 0
+                else self.read(adata, 'var_names'))
 
     def _process(self, adata: AnnData) -> None:
-        # Determine groups to process separately
-        group_labels = self.read(adata, self.cfg.group_key, to_numpy=True)
+        group_labels = self.read(adata, self.cfg.group_key)
         if len(group_labels) != adata.shape[self.cfg.axis]:
-            raise ValueError(
-                "Length of 'group_labels' should "
-                "match the dimension of adata."
-            )
+            raise ValueError("len of 'group_labels' should match the dimension of adata")
         unq_labels, groups = group_indices(group_labels)
 
         # TODO multithread

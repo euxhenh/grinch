@@ -1,11 +1,11 @@
 import abc
 import logging
-from typing import TYPE_CHECKING, Callable, Dict, Literal, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Literal
 
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import Field, validate_call
+from pydantic import Field, PositiveFloat, PositiveInt, validate_call
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 from sklearn.mixture import BayesianGaussianMixture as _BayesianGaussianMixture
@@ -17,7 +17,7 @@ from ..base import StorageMixin
 from ..custom_types import NP1D_Any, NP1D_float
 from ..utils.ops import group_indices
 from ..utils.validation import check_has_processor
-from .base_processor import BaseProcessor, ReadKey, WriteKey
+from .base_processor import BaseProcessor, ProcessorParam, ReadKey, WriteKey
 from .wrappers import Leiden as _Leiden
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ class BasePredictor(BaseProcessor, abc.ABC):
     __processor_reqs__ = ['predict']
 
     class Config(BaseProcessor.Config):
+        __extra_processor_params__ = ['random_state']
 
         if TYPE_CHECKING:
             create: Callable[..., 'BasePredictor']
@@ -71,10 +72,6 @@ class BaseUnsupervisedPredictor(BasePredictor, abc.ABC):
         if self.cfg.categorical_labels:
             labels = pd.Categorical(labels)
         self.store_item(self.cfg.labels_key, labels)
-        self._post_process(adata)
-
-    def _post_process(self, adata: AnnData) -> None:
-        pass
 
 
 def centroids_from_Xy(X, y: NP1D_Any) -> Dict[str, NP1D_float]:
@@ -101,7 +98,7 @@ class KMeans(BaseUnsupervisedPredictor):
             create: Callable[..., 'KMeans']
 
         labels_key: WriteKey = f"obs.{OBS.KMEANS}"
-        n_clusters: int = Field(8, ge=1)
+        n_clusters: ProcessorParam[PositiveInt] = 8
 
     cfg: Config
 
@@ -130,10 +127,12 @@ class GaussianMixture(BaseUnsupervisedPredictor):
         labels_key: WriteKey = f"obs.{OBS.GAUSSIAN_MIXTURE}"
         proba_key: WriteKey = f"obsm.{OBSM.GAUSSIAN_MIXTURE_PROBA}"
         score_key: WriteKey = f"obs.{OBS.GAUSSIAN_MIXTURE_SCORE}"
+
         mixture_kind: Literal['GaussianMixture', 'BayesianGaussianMixture'] = 'GaussianMixture'
-        n_components: int = Field(8, ge=1)
-        covariance_type: str = 'diag'  # non-default value
-        max_iter: int = Field(500, ge=1)
+
+        n_components: ProcessorParam[PositiveInt] = 8
+        covariance_type: ProcessorParam[str] = 'diag'  # non-default value
+        max_iter: ProcessorParam[PositiveInt] = 500
 
     cfg: Config
 
@@ -167,19 +166,20 @@ class Leiden(BaseUnsupervisedPredictor):
     __processor_attrs__ = ['modularity_']
 
     class Config(BaseUnsupervisedPredictor.Config):
+        __extra_processor_params__ = ['seed']
 
         if TYPE_CHECKING:
             create: Callable[..., 'Leiden']
 
         x_key: ReadKey = f"obsp.{OBSP.UMAP_AFFINITY}"
         labels_key: WriteKey = f"obs.{OBS.LEIDEN}"
-        resolution: float = Field(1.0, gt=0)
-        n_iterations: int = -1
-        partition_type: str = 'RBConfigurationVertexPartition'
-        directed: bool = True
-        weighted: bool = True
-        # Set to True if should comute cluster centers based
-        # on community assignment too.
+
+        resolution: ProcessorParam[PositiveFloat] = 1.0
+        n_iterations: ProcessorParam[int] = -1
+        partition_type: ProcessorParam[str] = 'RBConfigurationVertexPartition'
+        directed: ProcessorParam[bool] = True
+        weighted: ProcessorParam[bool] = True
+
         compute_centroids: bool = True
         x_key_for_centroids: ReadKey = "X"
 
@@ -198,12 +198,9 @@ class Leiden(BaseUnsupervisedPredictor):
             **self.cfg.kwargs,
         )
 
-    def _process(self, adata: AnnData) -> None:
-        super()._process(adata)
-
+    def _post_process(self, adata: AnnData) -> None:
         if not self.cfg.compute_centroids:
             return
-
         x = self.read(adata, self.cfg.x_key_for_centroids)
         labels = np.asarray(self.processor.membership_)
         label_to_centroid = centroids_from_Xy(x, labels)
@@ -212,6 +209,7 @@ class Leiden(BaseUnsupervisedPredictor):
 
 class BaseSupervisedPredictor(BasePredictor, abc.ABC):
     """A base class for unsupervised predictors, e.g., clustering."""
+    __processor_reqs__ = ['fit']
 
     class Config(BasePredictor.Config):
 
@@ -224,8 +222,6 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
 
     def _process(self, adata: AnnData) -> None:
         check_has_processor(self)
-        # Override process method since LogisticRegression does not have a
-        # fit_predict method and also requires labels to fit.
         x = self.read(adata, self.cfg.x_key)
         y = self.read(adata, self.cfg.y_key)
         if hasattr(self.processor, 'fit_predict'):
@@ -249,10 +245,10 @@ class LogisticRegression(BaseSupervisedPredictor):
 
         labels_key: WriteKey = f"obs.{OBS.LOG_REG}"
         # LogisticRegression kwargs
-        penalty: str = "l2"
-        C: float = Field(1.0, gt=0)  # inverse regularization trade-off
-        max_iter: int = Field(500, gt=0)
-        n_jobs: Optional[int] = Field(-1, ge=-1)
+        penalty: ProcessorParam[str] = "l2"
+        C: ProcessorParam[PositiveFloat] = 1.0  # inverse regularization trade-off
+        max_iter: ProcessorParam[PositiveInt] = 500
+        n_jobs: ProcessorParam[int] | None = Field(-1, ge=-1)
 
     cfg: Config
 

@@ -1,10 +1,5 @@
-from .base_processor import (
-    BaseProcessor,
-    ProcessorParam,
-    ReadKey,
-    WriteKey,
-)
-from .de import BimodalTest, KSTest, TTest
+from .base_processor import BaseProcessor, ProcessorParam, ReadKey, WriteKey
+from .de import KSTest, TTest, UnimodalityTest
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
 from .group import GroupProcess
@@ -36,7 +31,7 @@ __all__ = [
     'ProcessorParam',
     'TTest',
     'KSTest',
-    'BimodalTest',
+    'UnimodalityTest',
     'GSEAEnrich',
     'GSEAPrerank',
     'FindLeadGenes',

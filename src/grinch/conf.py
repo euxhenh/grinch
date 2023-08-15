@@ -17,15 +17,29 @@ class _BaseConfigurable:
 
     E.g., BaseConfigurable.Config(**kwargs).create() -> BaseConfigurable.
     This is syntactic sugar for
-    BaseConfigurable(BaseConfigurable.Config(**kwargs)) -> BaseConfigurable.
+    BaseConfigurable(BaseConfigurable.Config(**kwargs)) ->
+    BaseConfigurable.
+
+    Attributes
+    ----------
+    __buffers__ : List[str]
+        List of field names that are part of the Configurable's state.
+        These will be dumped when saving the model.
+
+    cfg : Config
+        The Base Config for the Configurable.
     """
     __slots__ = ['cfg']
-    # List of field names that are part of the Configurable's state.
-    # These will be dumped when saving the model.
+
     __buffers__: List[str] = []
 
     class Config(BaseModel, Generic[BaseConfigurableT]):
         """A stateless base config class for creating configurable objects.
+
+        Attributes
+        ----------
+        _init_cls : Type
+            The type of the outer configurable class.
         """
         model_config = {
             'arbitrary_types_allowed': True,

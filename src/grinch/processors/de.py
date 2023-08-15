@@ -5,11 +5,10 @@ from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
-from typing import TYPE_CHECKING, Callable, Iterable, Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Literal, Tuple
 
 import numpy as np
 import pandas as pd
-import scipy.sparse as sp
 from anndata import AnnData
 from diptest import diptest
 from pydantic import Field, PositiveFloat, field_validator
@@ -24,6 +23,7 @@ from tqdm.auto import tqdm
 
 from ..aliases import UNS
 from ..custom_types import NP_SP, NP1D_Any, NP1D_float
+from ..utils.ops import densify
 from ..utils.stats import (
     PartMeanVar,
     _compute_log2fc,
@@ -41,46 +41,58 @@ logger = logging.getLogger(__name__)
 class PairwiseDETest(BaseProcessor, abc.ABC):
     """A base class for differential expression testing that
     compares two distributions.
-
-    Parameters
-    __________
-    x_key: str
-        Points to the data matrix that will be used to run t-tests. The
-        first (0) axis should consist of observations and the second axis
-        should consist of the genes.
-    group_key: str
-        The column to look for group labels. Must be 1D.
-    write_key: str
-        Points to a location where the test results will be saved. This
-        should start with 'uns' as we are storing a dictionary of
-        dataframes.
-    is_logged: bool
-        Will only affect the computation of log2 fold-change.
-    base: str or float
-        Will only affect the computation of log2 fold-change. Is ignored if
-        data is not logged. Should point to the base that was used to take
-        the log of the data in order to convert to base 2 for fold-change.
-        Can be 'e' or a positive float.
-    correction: str
-        P-value correction to use. Any correction method supported by
-        statsmodels can be used. See
-        https://www.statsmodels.org/dev/generated/statsmodels.stats.multitest.multipletests.html
-    replace_nan: bool
-        If True, will not allow nan's in the TTest Summary dataframes.
-        These will be replaced with appropriate values (1 for p-values).
-    control_label: str
-        The label to use in a 'one_vs_one' test type. Must be present in
-        the array specified by `group_key`.
-    control_key: str
-        Alternatively, the control data matrix can be obtained from a
-        separate key. This is useful when, e.g., you wish to cluster and
-        work with only a subset of the data, but comparison for ttest
-        should be done against control.
-    show_progress_bar: bool
-        Whether to draw a tqdm progress bar.
     """
 
     class Config(BaseProcessor.Config):
+        r"""PairwiseDETest.Config
+
+        Parameters
+        __________
+        x_key : str, default='X'
+            Points to the data matrix that will be used to run t-tests. The
+            first (0) axis should consist of observations and the second
+            axis should consist of the genes.
+
+        group_key : str
+            The column to look for group labels. Must be 1D.
+
+        write_key : str
+            Points to a location where the test results will be saved. This
+            should start with 'uns' as we are storing a dictionary of
+            dataframes.
+
+        is_logged : bool, default=True
+            Will only affect the computation of log2 fold-change.
+
+        base : str or float, default='e'
+            Will only affect the computation of log2 fold-change. Is
+            ignored if data is not logged. Should point to the base that
+            was used to take the log of the data in order to convert to
+            base 2 for fold-change. Can be 'e' or a positive float.
+
+        correction : str, default='fdr_bh'
+            P-value correction to use. Any correction method supported by
+            statsmodels can be used. See
+            https://www.statsmodels.org/dev/generated/statsmodels.stats.multitest.multipletests.html
+
+        replace_nan : bool, default=True
+            If True, will not allow nan's in the TTest Summary dataframes.
+            These will be replaced with appropriate values (1 for
+            p-values).
+
+        control_label : str, default=None
+            The label to use in a 'one_vs_one' test type. Must be present
+            in the array specified by `group_key`.
+
+        control_key : str, default=None
+            Alternatively, the control data matrix can be obtained from a
+            separate key. This is useful when, e.g., you wish to cluster
+            and work with only a subset of the data, but comparison for
+            ttest should be done against control.
+
+        show_progress_bar : bool, default=True
+            Whether to draw a tqdm progress bar.
+        """
 
         if TYPE_CHECKING:
             create: Callable[..., 'PairwiseDETest']
@@ -105,22 +117,22 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
         @field_validator('base')
         def _remove_base_if_not_logged(cls, base, info):
-            """Set base to None if not logged.
-            """
+            """Set base to None if not logged."""
             return None if not info.data['is_logged'] else base
 
         @property
         def is_one_vs_one(self) -> bool:
             """Checks if test is one vs one.
 
-            Returns: bool
+            Returns
+            -------
+            is_ovo : bool
                 True if any of the control keys is not None.
             """
             return any_not_None(self.control_key, self.control_label)
 
         def get_label_key(self, label: str) -> str:
-            """Get the WriteKey to store a given test in.
-            """
+            """Get the WriteKey to store a given test in."""
             key = (
                 f"{self.write_key}"
                 f".{self.group_key.rsplit('.')[-1]}"
@@ -135,7 +147,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
         Parameters
         ----------
-        pvals: 1D array
+        pvals : 1D array
             The computed p-values.
 
         Returns
@@ -157,7 +169,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
         Parameters
         ----------
-        m1, m2: 1D arrays
+        m1, m2 : 1D arrays
 
         Returns
         -------
@@ -166,9 +178,35 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         """
         return _compute_log2fc(m1, m2, self.cfg.base, self.cfg.is_logged)
 
+    def _to_iter(self, labels) -> Iterable:
+        """Determine if should use tqdm"""
+        if self.cfg.show_progress_bar:
+            return tqdm(labels, desc=f"Running {self.__class__.__name__}")
+        return labels
+
+    def _get_x_control(self, adata, x, group_labels) -> NP_SP | None:
+        """Return the x representation of a condition if set.
+        """
+        if all_None(self.cfg.control_key, self.cfg.control_label):
+            return None
+
+        if self.cfg.control_key is not None:  # Found in a separate key
+            x_cond = self.read(adata, self.cfg.control_key)
+            x_cond = check_array(x_cond, accept_sparse='csr')
+            if self.cfg.control_key.startswith('var'):
+                x_cond = x_cond.T  # Transpose to (samples, features)
+            # Ensure same number of features
+            check_consistent_length(x.T, x_cond.T)
+        else:  # Index x by label
+            if self.cfg.control_label not in group_labels:
+                raise ValueError(f"Could not find label='{self.cfg.control_label}'.")
+            x_cond = x[group_labels == self.cfg.control_label]
+        return x_cond
+
     def _process(self, adata: AnnData) -> None:
         # Read data matrix and labels
         x = check_array(self.read(adata, self.cfg.x_key), accept_sparse='csr')
+        x, = indexable(x)
         group_labels: NP1D_Any = column_or_1d(self.read(adata, self.cfg.group_key))
         check_consistent_length(x, group_labels)
 
@@ -176,30 +214,8 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
             logger.warning("Cannot run test with only one group.")
             return
 
-        def get_x_control(adata, key, label) -> NP_SP | None:
-            """Return the x representation of a condition if set.
-            """
-            nonlocal x
-            if all_None(key, label):
-                return None
-
-            if key is not None:  # Found in a separate key
-                x_cond = check_array(self.read(adata, key), accept_sparse='csr')
-                if key.startswith('var'):
-                    x_cond = x_cond.T  # Transpose to (samples, features)
-                # Ensure same number of features
-                check_consistent_length(x.T, x_cond.T)
-            else:  # We search x
-                if label not in group_labels:
-                    raise ValueError(f"Could not find {label=} in group.")
-                x, = indexable(x)
-                x_cond = x[group_labels == label]
-            return x_cond
-
-        # Read x_control from either key or label
-        x_control = get_x_control(adata, self.cfg.control_key, self.cfg.control_label)
-        # Run test
-        self._test(x, group_labels, x_control)
+        # Read x_control and run test
+        self._test(x, group_labels, self._get_x_control(adata, x, group_labels))
 
     @abc.abstractmethod
     def _test(self, x, group_labels, x_control=None) -> None:
@@ -237,16 +253,9 @@ class TTest(PairwiseDETest):
             mean, var = mean_var(x_cond, axis=0, ddof=1)
             return _Statistics(n=len(x_cond), mean=mean, var=var)
 
-        control_stats = get_x_stats(x_control)
-
-        to_iter = (
-            tqdm(unq_labels, desc=f"Running {self.__class__.__name__}")
-            if self.cfg.show_progress_bar
-            else unq_labels
-        )
         # Skip if label is the same as control label
-        for label in filter(lambda x: x != self.cfg.control_label, to_iter):
-            test = self._single_test(pmv, label, control_stats)
+        for label in filter(lambda x: x != self.cfg.control_label, self._to_iter(unq_labels)):
+            test = self._single_test(pmv, label, get_x_stats(x_control))
             self.store_item(self.cfg.get_label_key(label), test)
 
     def _single_test(
@@ -284,8 +293,7 @@ class KSTest(PairwiseDETest):
         write_key: WriteKey = f"uns.{UNS.KSTEST}"
         method: str = 'auto'
         alternative: str = 'two-sided'
-        max_workers: Optional[int] = Field(None, ge=1, le=2 * mp.cpu_count(),
-                                           exclude=True)
+        max_workers: int | None = Field(None, ge=1, le=2 * mp.cpu_count(), exclude=True)
 
     cfg: Config
 
@@ -293,28 +301,17 @@ class KSTest(PairwiseDETest):
         """Runs KS test.
         """
         pmv = PartMeanVar(x, group_labels, self.cfg.show_progress_bar)
+        x, = indexable(densify(x, ensure_2d=True, warn=True))
 
-        def densify(x_cond):
-            if x_cond is None:
-                return x_cond
-            if sp.issparse(x_cond):
-                logger.warning("KS Test cannot work with sparse matrices. Densifying...")
-                x_cond = x_cond.toarray()
-            return x_cond
-
-        x, = indexable(densify(x))  # This will be split into groups
-        x_control = densify(x_control)
-        # Cache mean
-        m2 = None if x_control is None else x_control.mean(axis=0).ravel()
+        if x_control is not None:
+            # Obtain the control samples and cache their mean
+            x_control = densify(x_control, ensure_2d=True, warn=True)
+            m2 = x_control.mean(axis=0).ravel()
+        else:
+            m2 = None
 
         unq_labels, groups = group_indices(group_labels, as_mask=True)
-        to_iter = (
-            tqdm(unq_labels, desc="Running Kolmogorov-Smirnov tests.")
-            if self.cfg.show_progress_bar
-            else unq_labels
-        )
-
-        for label, group in zip(to_iter, groups):
+        for label, group in zip(self._to_iter(unq_labels), groups):
             if label == self.cfg.control_label:
                 continue
             y = x_control if x_control is not None else x[~group]
@@ -347,62 +344,45 @@ class KSTest(PairwiseDETest):
         ))
 
 
-class BimodalTest(BaseProcessor):
+class UnimodalityTest(BaseProcessor):
+    """A class for determining whether a distribution is unimodal.
+    """
 
     class Config(BaseProcessor.Config):
 
         if TYPE_CHECKING:
-            create: Callable[..., 'BimodalTest']
+            create: Callable[..., 'UnimodalityTest']
 
         x_key: ReadKey = "X"
         write_key: WriteKey = f"uns.{UNS.BIMODALTEST}"
         correction: str = 'fdr_bh'
         skip_zeros: bool = False
 
-        max_workers: int | None = Field(None, ge=1, le=2 * mp.cpu_count(),
-                                        exclude=True)
+        max_workers: int | None = Field(None, ge=1, le=2 * mp.cpu_count(), exclude=True)
 
         @field_validator('max_workers')
         def init_max_workers(cls, val):
             return 2 * mp.cpu_count() if val is None else val
 
-        @field_validator('write_key')
-        def _starts_with_uns(cls, write_key):
-            if write_key.split('.')[0] != 'uns':
-                raise ValueError(
-                    "Anndata column for bimodaltest should be 'uns'."
-                )
-            return write_key
-
     cfg: Config
 
     def _process(self, adata: AnnData) -> None:
-        x = self.read(adata, self.cfg.x_key)
-        x = check_array(
-            x,
-            accept_sparse='csr',
-            ensure_2d=True,
-            ensure_min_features=2,
-            ensure_min_samples=2,
-        )
+        x = check_array(self.read(adata, self.cfg.x_key), accept_sparse='csr')
 
-        def _diptest_sp_wrapper(_x):
-            # slow to densify each column separately, but is memory efficient
-            arr = np.ravel(_x.toarray()) if sp.issparse(_x) else _x
+        def diptest_sp_wrapper(_x):
+            arr = densify(_x).ravel()  # slow, but memory efficient
             if self.cfg.skip_zeros:
                 arr = arr[arr != 0]
-            if len(arr) <= 3:  # diptest is not defined for n <= 3
-                return (np.nan, 1)
-            return diptest(arr)
+            # diptest is not defined for n <= 3
+            return diptest(arr) if len(arr) > 3 else (np.nan, 1)
 
         with ThreadPoolExecutor(max_workers=self.cfg.max_workers) as executor:
-            test_results: Iterable[Tuple[float, float]] = executor.map(
-                _diptest_sp_wrapper, x.T)
+            test_results: Iterable[Tuple[float, float]] = executor.map(diptest_sp_wrapper, x.T)
         test_results = np.asarray(list(test_results))
 
         # first dimension is the dip statistic, the second is the pvalue
         stats, pvals = test_results[:, 0], test_results[:, 1]
         qvals: NP1D_float = _correct(pvals, method=self.cfg.correction)[1]
 
-        bts = pd.DataFrame(data=dict(pvals=pvals, qvals=qvals, statistic=stats))
-        self.store_item(self.cfg.write_key, bts)
+        uts = pd.DataFrame(data=dict(pvals=pvals, qvals=qvals, statistic=stats))
+        self.store_item(self.cfg.write_key, uts)

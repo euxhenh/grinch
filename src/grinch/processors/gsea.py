@@ -2,7 +2,7 @@ import abc
 import logging
 import re
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Callable, Dict, List
 
 import gseapy as gp
 import numpy as np
@@ -37,23 +37,24 @@ class GSEA(BaseProcessor, abc.ABC):
     ```
 
     Parameters
-    __________
-    read_key: str
+    ----------
+    read_key : str, default=uns.ttest
         Must point to a dict of dataframes in anndata, or to a single
-        dataframe. Each of these dataframes will be converted to a
-        DETestSummary.
-    save_key: str
+        dataframe.
+
+    write_key : str
         Will point to a dict of dataframes if read_key also points to a
         dict, or to a single dataframe otherwise.
-    gene_sets: str or list of str
+
+    gene_sets : str, list[str]
         Names of gene sets to use for GSEA.
-    filter_by: list of Filter
+
+    filter_by : list[Filter]
         These will be used to filter genes for GSEA. Dict keys are ignored.
-    gene_names_key: str
+
+    gene_names_key : str, default='var_names'
         Key to use for parsing gene symbols (names). Can be 'var_names' or
         any other key 'var.*'.
-    kwargs: dict
-        These will be passed to GSEA.
     """
 
     class Config(BaseProcessor.Config):
@@ -62,14 +63,12 @@ class GSEA(BaseProcessor, abc.ABC):
             create: Callable[..., 'GSEA']
 
         read_key: ReadKey = f"uns.{UNS.TTEST}"
-        save_key: WriteKey
+        write_key: WriteKey
 
         gene_sets: str | List[str]
         # Dict of keys to use for filtering DE genes; keys are ignored
         filter_by: List[Filter]
-        gene_names_key: str = "var_names"
-        # not to be used in a config
-        kwargs: Dict[str, Any] = {}
+        gene_names_key: ReadKey = "var_names"
 
         @field_validator('filter_by', mode='before')
         def ensure_filter_list(cls, val):
@@ -111,7 +110,7 @@ class GSEA(BaseProcessor, abc.ABC):
         if isinstance(tests, dict):  # Dict of tests
             self._process_dict(tests, prefix='', func=_gsea_f)
         else:  # Single test
-            self.store_item(self.cfg.save_key, _gsea_f(tests))
+            self.store_item(self.cfg.write_key, _gsea_f(tests))
 
     def _process_dict(
         self,
@@ -126,8 +125,8 @@ class GSEA(BaseProcessor, abc.ABC):
             else:
                 logger.info(f"Running GSEA for '{k}'.")
                 gsea_test_summary: pd.DataFrame = func(v)
-                save_key = f'{self.cfg.save_key}.{prefix}{k}'
-                self.store_item(save_key, gsea_test_summary)
+                write_key = f'{self.cfg.write_key}.{prefix}{k}'
+                self.store_item(write_key, gsea_test_summary)
 
     @staticmethod
     @validate_call(config=dict(arbitrary_types_allowed=True))
@@ -143,29 +142,31 @@ class GSEA(BaseProcessor, abc.ABC):
         """Process a single DataFrame or TestSummary object.
 
         Parameters
-        __________
-        test: pd.DataFrame
+        ----------
+        test : pd.DataFrame
             Must contain keys specified in all Filter's passed.
-        gene_list_all: ndarray of str
+
+        gene_list_all : ndarray of str
             List of all genes to select from. Must have the same length as
             test.
-        filter_by: List of Filter
+
+        filter_by : List of Filter
             Determine which genes to pick from gene_list_all based on
             results of test.
 
         Returns
-        _______
+        -------
         A pandas DataFrame with test results.
         """
         check_consistent_length(gene_list_all, test)
         test.index = gene_list_all
         # Apply all filters
-        if len(filter_by) > 0:
+        if len(filter_by):
             sf = StackedFilter(*filter_by)
             gene_mask = sf(test, as_mask=True)
             test = test.iloc[gene_mask]
 
-        if len(test) == 0:  # empty list
+        if not len(test):  # empty list
             logger.warning('Encountered empty gene list.')
             return pd.DataFrame()  # Empty dataframe
 
@@ -175,13 +176,13 @@ class GSEA(BaseProcessor, abc.ABC):
 class GSEAEnrich(GSEA):
     """Performs gene set enrichment analysis enrichment.
     """
-
     class Config(GSEA.Config):
+        __extra_processor_params__ = ['gene_list', 'gene_sets', 'no_plot']
 
         if TYPE_CHECKING:
             create: Callable[..., 'GSEAEnrich']
 
-        save_key: WriteKey = f"uns.{UNS.GSEA_ENRICH}"
+        write_key: WriteKey = f"uns.{UNS.GSEA_ENRICH}"
         gene_sets: str | List[str] = DEFAULT_GENE_SET_ENRICH
         filter_by: List[Filter] = DEFAULT_ENRICH_FILTERS
 
@@ -196,7 +197,7 @@ class GSEAEnrich(GSEA):
         **kwargs,
     ) -> pd.DataFrame:
         """Wrapper around gp.enrichr."""
-        gene_list = test.index.tolist()  # type: ignore
+        gene_list = test.index.tolist()
         logger.info(f"Using {len(gene_list)} genes.")
         _ = kwargs.pop("seed", None)
 
@@ -236,11 +237,12 @@ class GSEAPrerank(GSEA):
     """
 
     class Config(GSEA.Config):
+        __extra_processor_params__ = ['rnk', 'gene_sets', 'outdir']
 
         if TYPE_CHECKING:
             create: Callable[..., 'GSEAPrerank']
 
-        save_key: WriteKey = f"uns.{UNS.GSEA_PRERANK}"
+        write_key: WriteKey = f"uns.{UNS.GSEA_PRERANK}"
         gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK
         # By default all genes are inputted into prerank. DE tests are
         # still needed in order to scale log2fc by the q-values before
@@ -372,7 +374,7 @@ class FindLeadGenesForProcess(BaseProcessor):
         gene_set: str = 'GO_Biological_Process_2023'
         organism: str = 'Human'
         terms: str | List[str] = '.*'  # by default take all
-        save_key: WriteKey = f'var.{VAR.CUSTOM_LEAD_GENES}'
+        write_key: WriteKey = f'var.{VAR.CUSTOM_LEAD_GENES}'
         regex: bool = False
         all_leads_save_key: WriteKey = f'uns.{UNS.ALL_CUSTOM_LEAD_GENES}'
         gene_names_key: ReadKey = "var_names"
@@ -411,5 +413,5 @@ class FindLeadGenesForProcess(BaseProcessor):
         gene_list_all = np.char.upper(column_or_1d(gene_list_all).astype(str))
         is_lead = np.in1d(gene_list_all, lead_genes)
         logger.info(f"Found {is_lead.sum()}/{len(lead_genes)} custom lead genes.")
-        self.store_item(self.cfg.save_key, is_lead)
+        self.store_item(self.cfg.write_key, is_lead)
         self.store_item(self.cfg.all_leads_save_key, lead_genes)

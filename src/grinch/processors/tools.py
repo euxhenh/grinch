@@ -129,13 +129,16 @@ class ApplyOp(BaseProcessor):
 
     Parameters
     __________
-    read_key: str
-    save_key: str
+    read_key : str
+
+    save_key : str
         If save_key is None, will store at read_key.
-    op: str
+
+    op : str
         Numpy operation to apply. Can also be an attribute,
         but in that case as_attr must be set to True.
-    as_attr: bool
+
+    as_attr : bool
         If False, will call np.op(x), otherwise call x.op().
     """
 
