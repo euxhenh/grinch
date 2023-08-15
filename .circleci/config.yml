@@ -11,10 +11,12 @@ jobs:
       - checkout
       - run:
           name: Install requirements
-          command: pip install -r requirements.txt
+          command: pip install -r requirements.txt coverage pytest
       - run:
           name: Run tests and collect coverage
-          command: coverage run -m pytest --doctest-modules
+          command: coverage run -m pytest --doctest-modules --junitxml=test-results/junit.xml
+      - store_test_results:
+          path: test-results
       - codecov/upload
 
 workflows:
