@@ -27,13 +27,16 @@ class Filter(BaseModel, Generic[T]):
 
     Parameters
     ----------
-    key: str
+    key : str
         If not None, will search in obj for a member named as `key`.
-    ge, le, gt, lt: T
+
+    ge, le, gt, lt : T
         Greater than or less than in either strict or non-strict mode.
-    top_k, bot_k: int
+
+    top_k, bot_k : int
         Top or bottom k items to pick.
-    top_ratio, bot_ratio: float
+
+    top_ratio, bot_ratio : float
         A percent fraction betwen 0 and 1. Will round up to the nearest
         item.
 

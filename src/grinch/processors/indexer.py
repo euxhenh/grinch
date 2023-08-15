@@ -7,7 +7,7 @@ from anndata import AnnData
 from pydantic import Field, field_validator
 
 from ..cond_filter import Filter, StackedFilter
-from ..custom_types import NP1D_bool
+from ..custom_types import Binary, NP1D_bool
 from ..utils.validation import validate_axis
 from .base_processor import BaseProcessor
 
@@ -23,8 +23,7 @@ class BaseIndexer(BaseProcessor, abc.ABC):
             create: Callable[..., 'BaseIndexer']
 
         filter_by: List[Filter] = Field(min_length=1)
-        # Can be 0, 1 or 'obs', 'var'
-        axis: int | Literal['obs', 'var'] = 0
+        axis: Binary | Literal['obs', 'var'] = 0
 
         @field_validator('axis')
         def ensure_correct_axis(cls, axis):

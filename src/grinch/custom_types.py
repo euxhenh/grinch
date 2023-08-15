@@ -1,4 +1,4 @@
-from typing import Annotated, Any, List, Tuple, TypeAlias
+from typing import Annotated, Any, List, Literal, Tuple, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
@@ -23,3 +23,5 @@ NP_float = npt.NDArray[np.float_]
 NP_SP = np.ndarray | sp.spmatrix
 
 PercentFraction = Annotated[float, Field(ge=0, le=1)]
+PercentFractionExclusive = Annotated[float, Field(gt=0, lt=1)]
+Binary = Annotated[int, Literal[0, 1]]

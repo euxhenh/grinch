@@ -1,5 +1,5 @@
 import abc
-from typing import TYPE_CHECKING, Callable, Tuple
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from anndata import AnnData
@@ -9,7 +9,7 @@ from sklearn.neighbors import NearestNeighbors as _NearestNeighbors
 from sklearn.utils.validation import _ensure_sparse_format
 
 from ..aliases import OBSM, OBSP
-from ..custom_types import NP1D_float, NP1D_int, NP2D_float
+from ..custom_types import NP2D_float
 from .base_processor import BaseProcessor, ProcessorParam, ReadKey, WriteKey
 from .wrappers import FuzzySimplicialSet as _FuzzySimplicialSet
 
@@ -18,13 +18,15 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
     """A base class for connectivity graph constructors.
 
     Parameters
-    __________
-    x_key: str
+    ----------
+    x_key : str, default=obsm.x_pca
         What key to use for the data representation. I.e., distances
         between points will be computed using these values.
-    conn_key: str
+
+    conn_key : str
         Key to store the connectivity sparse matrix.
-    dist_key: str
+
+    dist_key : str
         Key to store the adjacency sparse matrix with edge weights.
     """
 
@@ -52,17 +54,6 @@ class BaseGraphConstructor(BaseProcessor, abc.ABC):
     @abc.abstractmethod
     def _connect(self, x: NP2D_float) -> spmatrix:
         raise NotImplementedError
-
-    def assemble(
-        self,
-        sources: NP1D_int,
-        targets: NP1D_int,
-        weights: NP1D_float,
-        shape: Tuple[int, int] | None = None,
-    ) -> csr_matrix:
-        """Assembles edges and weights into a csr matrix."""
-        adj = csr_matrix((weights, (sources, targets)), shape=shape)
-        return adj
 
 
 class KNNGraph(BaseGraphConstructor):
@@ -102,11 +93,12 @@ class FuzzySimplicialSetGraph(BaseGraphConstructor):
 
     Parameters
     __________
-    x_key: str
+    x_key : str
         Can be f"obsp.{OBSP.KNN_DISTANCE}" in which case will use
         precomputed knn distances as a warm start for umap. In this case
         must also set `precomputed=True`.
-    precomputed: bool
+
+    precomputed : bool
         If True, will consider x as pre-computed neighbors.
     """
 

@@ -3,6 +3,7 @@
 import abc
 import inspect
 import logging
+from functools import wraps
 from itertools import chain
 from typing import (
     TYPE_CHECKING,
@@ -36,7 +37,7 @@ WriteKey: TypeAlias = str
 
 
 class BaseProcessor(BaseConfigurable, StorageMixin):
-    """A base class for all processors. A processor cannot update the
+    r"""A base class for all processors. A processor cannot update the
     data matrix X, but can use it to perform any kind of fitting. The
     processor is in charge of resolving all reads and writes in the AnnData
     object. It does so by taking as input string key(s) that point to the
@@ -48,8 +49,8 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
     a wrapped processor object (if any). E.g., the processor can point to
     sklearn's implementations of estimators.
 
-    Attributes
-    ----------
+    Class Attributes
+    ----------------
     __processor_attrs__ : List[str]
         A list of processor attributes to save along with results after
         fitting.
@@ -58,6 +59,8 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         A list of methods that the processor should implement. Raises an
         error if any not found.
 
+    Attributes
+    ----------
     processor : Any
         The underlying processor used for data fitting, transformation etc.
     """
@@ -83,7 +86,7 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
 
         Class attributes
         ----------------
-        __other_processor_params__ : List[str]
+        __extra_processor_params__ : List[str]
             Holds kwargs that will be passed to the underlying
             processor/processor function, but are not marked as
             ProcessorParams and are also not passed via kwargs.
@@ -95,10 +98,10 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         kwargs: Dict[str, ProcessorParam] = {}  # Processor kwargs
 
         # Kwargs used by the processor, but are not ProcessorParam's
-        __other_processor_params__: List[str] = []
+        __extra_processor_params__: List[str] = []
 
         def model_post_init(self, __context):
-            """Safely formats attrs key."""
+            """Safely formats attrs key using any field that is a str."""
             super().model_post_init(__context)
 
             if self.attrs_key is None:
@@ -115,8 +118,8 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
             """Remove ProcessorParam's if present in kwargs to avoid
             duplication.
             """
-            processor_params = cls.processor_params()
-            for explicit_key in chain(processor_params, cls.__other_processor_params__):
+            for explicit_key in chain(cls.processor_params(),
+                                      cls.__extra_processor_params__):
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
                         f"Popping '{explicit_key}' from kwargs. "
@@ -143,21 +146,18 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
 
     @property
     def processor(self):
-        """Points to the object that is being wrapped by the derived class.
-        Present for consistency among derived classes. Returns None if a
-        processor has not been assigned.
-        """
+        """Returns the object that is being wrapped by the class."""
         return getattr(self, '_processor', None)
 
     @processor.setter
     def processor(self, value):
         """Sets the processor and checks if it implements any methods
-        required by each parent.
+        required by each parent class.
         """
         for cls in inspect.getmro(self.__class__):
             if not hasattr(cls, '__processor_reqs__'):
                 continue
-            for method_name in chain(cls.__processor_reqs__):
+            for method_name in cls.__processor_reqs__:
                 method = getattr(value, method_name, None)
                 if not callable(method):
                     raise ValueError(
@@ -167,20 +167,10 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         self._processor = value
 
     @classmethod
+    @wraps(Config.processor_params)
     def processor_params(cls) -> List[str]:
+        """Same as self.cfg.processor_params"""
         return cls.Config.processor_params()
-
-    def store_attrs(self) -> None:
-        """Save processor attributes if any."""
-        if self.processor is None:
-            return
-
-        if len(self.__processor_attrs__) == 0 or self.cfg.attrs_key is None:
-            return
-
-        attrs = {at: getattr(self.processor, at) for at in self.__processor_attrs__}
-        if len(attrs):
-            self.store_item(self.cfg.attrs_key, attrs)
 
     @StorageMixin.lazy_writer
     @validate_call(config=dict(arbitrary_types_allowed=True))
@@ -202,10 +192,37 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         elif var_indices is not None:
             adata = adata[:, var_indices]
 
+        self._pre_process(adata)
         self._process(adata)
+        self._post_process(adata)
+
         self.store_attrs()
+
+    def _pre_process(self, adata: AnnData) -> None:
+        """Will run before `self._process`.
+
+        Useful for classes that perform additional pre-processing, but do
+        not wish to modify the `_process` step of the parent.
+        """
+        return
 
     @abc.abstractmethod
     def _process(self, adata: AnnData) -> None:
         """To be implemented by a derived class."""
         raise NotImplementedError
+
+    def _post_process(self, adata: AnnData) -> None:
+        """Will run after `self._process`.
+
+        Useful for classes that perform additional post-processing, but do
+        not wish to modify the `_process` step of the parent.
+        """
+        return
+
+    def store_attrs(self) -> None:
+        """Save processor attributes under `cfg.attrs_key` if any."""
+        if None in (self.processor, self.cfg.attrs_key) or not self.__processor_attrs__:
+            return
+        attrs = {at: getattr(self.processor, at) for at in self.__processor_attrs__}
+        assert self.cfg.attrs_key is not None  # for mypy
+        self.store_item(self.cfg.attrs_key, attrs)

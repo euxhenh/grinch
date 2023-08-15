@@ -32,7 +32,7 @@ class GRPipeline(BaseConfigurable):
         data_writepath: Path | None = None
         processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
-        save_key: str = "pipeline"
+        write_key: str = "pipeline"
         # It may be desirable to write only the columns of adata without
         # the data matrix so save memory. In that case, set no_data_write
         # to True. This will replace the data matrix with a sparse matrix
@@ -90,7 +90,7 @@ class GRPipeline(BaseConfigurable):
                     logger.warning("Returning incomplete adata.")
                 return ds
 
-        ds.TRAIN_SPLIT.uns[self.cfg.save_key] = self.cfg.model_dump_json()
+        ds.TRAIN_SPLIT.uns[self.cfg.write_key] = self.cfg.model_dump_json()
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(str(self.cfg.data_writepath),

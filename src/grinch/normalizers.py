@@ -22,9 +22,10 @@ class BaseNormalizer(BaseConfigurable):
 
     Parameters
     __________
-    save_input: bool
+    save_input : bool
         If True, will save the raw input into adata.layers.
-    input_layer_name: str
+
+    input_layer_name : str
         Ignored if save_input is False. Will store the raw input into
         adata.layers[input_layer_name]. If None, the name will be
         automatically set to 'pre_{self.__class__.__name__}'.

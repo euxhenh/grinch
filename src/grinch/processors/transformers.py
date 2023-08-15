@@ -3,7 +3,7 @@ import logging
 from typing import TYPE_CHECKING, Callable
 
 from anndata import AnnData
-from pydantic import Field, validate_call
+from pydantic import Field, PositiveFloat, PositiveInt, validate_call
 from sklearn.decomposition import PCA as _PCA
 from sklearn.decomposition import TruncatedSVD as _TruncatedSVD
 from sklearn.manifold import MDS as _MDS
@@ -79,7 +79,7 @@ class PCA(BaseTransformer):
             create: Callable[..., 'PCA']
 
         write_key: WriteKey = f"obsm.{OBSM.X_PCA}"
-        n_components: ProcessorParam[int | float | str | None] = 50
+        n_components: ProcessorParam[PositiveInt | PositiveFloat | str | None] = 50
         whiten: ProcessorParam[bool] = False
         svd_solver: ProcessorParam[str] = 'auto'
 
@@ -115,9 +115,9 @@ class TruncatedSVD(BaseTransformer):
             create: Callable[..., 'TruncatedSVD']
 
         write_key: WriteKey = f"obsm.{OBSM.X_TRUNCATED_SVD}"
-        n_components: ProcessorParam[int] = Field(2, ge=1)
+        n_components: ProcessorParam[PositiveInt] = 2
         algorithm: ProcessorParam[str] = 'randomized'
-        n_iter: ProcessorParam[int] = Field(5, ge=1)
+        n_iter: ProcessorParam[PositiveInt] = 5
 
     cfg: Config
 
@@ -145,7 +145,7 @@ class MDS(BaseTransformer):
             create: Callable[..., 'MDS']
 
         write_key: WriteKey = f"obsm.{OBSM.X_MDS}"
-        n_components: ProcessorParam[int] = Field(2, ge=1)
+        n_components: ProcessorParam[PositiveInt] = 2
 
     cfg: Config
 
@@ -172,10 +172,10 @@ class UMAP(BaseTransformer):
 
         x_key: ReadKey = f"obsm.{OBSM.X_PCA}"  # Different x key from parent
         write_key: WriteKey = f"obsm.{OBSM.X_UMAP}"
-        n_neighbors: ProcessorParam[int] = Field(15, ge=1)
-        n_components: ProcessorParam[int] = Field(2, ge=1)
+        n_neighbors: ProcessorParam[PositiveInt] = 15
+        n_components: ProcessorParam[PositiveInt] = 2
         # Use a smaller spread by default, for tighter scatterplots
-        spread: ProcessorParam[float] = Field(0.8, gt=0)
+        spread: ProcessorParam[PositiveFloat] = 0.8
 
     cfg: Config
 

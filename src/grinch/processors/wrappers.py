@@ -13,29 +13,35 @@ class Leiden:
     returns node communities.
 
     Parameters
-    __________
-    resolution: float
+    ----------
+    resolution : float
         Higher resolution results in more clusters. Default: 1.0.
-    partition_type: str
+
+    partition_type : str
         What partitioning algorithm to use. See
         https://leidenalg.readthedocs.io/en/stable/reference.html
         for a full list.
-    directed: bool
+
+    directed : bool
         Whether to consider direction of edges in a graph.
-    weighted: bool
+
+    weighted : bool
         If True, will also use the weights from the graph.
         Note, higher weights mean greater 'similarity' between
         the nodes.
-    seed: int
+
+    seed : int
         Random seed.
-    kwargs:
+
+    kwargs: Dict
         Will be passed to la.find_partition()
 
     Attributes
-    __________
-    membership_: array
+    ----------
+    membership_ : array
         The community assignments for each node.
-    modularity_: float
+
+    modularity_ : float
         The value of modularity for the resulting communities.
     """
     def __init__(

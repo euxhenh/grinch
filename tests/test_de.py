@@ -76,3 +76,32 @@ def test_tests(X, test, key):
     assert log2fc[2] < 2
     assert log2fc[3] < 2
     assert log2fc[4] < 2
+
+
+X = np.array([
+    [1, 5, 4, 45, 62],
+    [5, 2, 4, 44, 75],
+    [5, 2, 4, 44, 75],
+    [75, 62, 4, 4, 2],
+    [65, 64, 4, 6, 4],
+    [65, 64, 4.5, 6, 4],
+], dtype=np.float32)
+
+X_mods = [X, sp.csr_matrix(X), to_view(X)]
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_unimodality(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.UnimodalityTest.Config",
+        }
+    )
+    cfg = instantiate(cfg)
+    unimodal = cfg.create()
+    adata = AnnData(X)
+
+    unimodal(adata)
+    is_sig = adata.uns[UNS.BIMODALTEST].qvals <= 0.05
+
+    assert_allclose([True, True, False, True, True], is_sig)

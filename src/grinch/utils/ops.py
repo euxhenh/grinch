@@ -1,3 +1,4 @@
+import logging
 from functools import reduce
 from typing import List, Literal, Tuple, overload
 
@@ -6,6 +7,7 @@ from scipy.sparse import issparse, spmatrix
 from sklearn.utils import column_or_1d
 
 from ..custom_types import (
+    NP_SP,
     NP1D_Any,
     NP1D_bool,
     NP1D_int,
@@ -13,6 +15,8 @@ from ..custom_types import (
     NP2D_int,
     NP_bool,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def IDENTITY(x):
@@ -86,6 +90,44 @@ def true_inside(x, v1: float | None = None, v2: float | None = None) -> NP_bool:
         v2 = np.inf
 
     return (v1 <= x) & (x <= v2)
+
+
+def densify(
+    x: NP_SP,
+    ensure_1d: bool = False,
+    ensure_2d: bool = False,
+    warn: bool = False,
+) -> np.ndarray:
+    """Converts a sparse matrix to a dense numpy array or return x.
+
+    Parameters
+    ----------
+    x : array-like
+
+    ensure_1d, ensure_2d : bool, default=False
+        If True, will ravel in the 1d case, and ensure 2d in the latter.
+
+    warn : bool, default=False
+        If True, will raise a warning about densifying matrices.
+
+    Examples
+    --------
+    >>> from scipy.sparse import csr_array
+    >>> assert(isinstance(densify(csr_array((3, 4))), np.ndarray))
+    >>> assert(densify(csr_array((3, 1)), ensure_1d=True).ndim == 1)
+    """
+    if issparse(x):
+        if warn:
+            logger.warning('Densifying matrix. Check memory consumption.')
+        x = x.toarray()
+
+    if not isinstance(x, np.ndarray):
+        raise ValueError(f"Expected an array, but found '{x.__class__.__name__}'")
+    if ensure_1d:
+        x = column_or_1d(x)
+    if ensure_2d and x.ndim != 2:
+        raise ValueError(f"Expected a 2D array, but got array of shape {x.shape}.")
+    return x
 
 
 @overload
