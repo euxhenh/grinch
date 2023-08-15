@@ -224,4 +224,5 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         if None in (self.processor, self.cfg.attrs_key) or not self.__processor_attrs__:
             return
         attrs = {at: getattr(self.processor, at) for at in self.__processor_attrs__}
+        assert self.cfg.attrs_key is not None  # for mypy
         self.store_item(self.cfg.attrs_key, attrs)
