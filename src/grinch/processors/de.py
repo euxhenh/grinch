@@ -87,6 +87,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
 
         x_key: ReadKey = "X"
         group_key: ReadKey
+        write_key: WriteKey
 
         is_logged: bool = True
         base: PositiveFloat | Literal['e'] | None = Field('e')

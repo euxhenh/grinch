@@ -56,7 +56,7 @@ def test_kmeans_x_pca(X):
             "_target_": "src.grinch.PCA.Config",
             "n_components": 2,
             "seed": 42,
-            "x_emb_key": f"obsm.{OBSM.X_PCA}",
+            "write_key": f"obsm.{OBSM.X_PCA}",
         }
     )
     cfg_pca = instantiate(cfg_pca)
@@ -118,7 +118,7 @@ def test_log_reg_x(X):
             "_target_": "src.grinch.PCA.Config",
             "n_components": 2,
             "seed": 42,
-            "x_emb_key": f"obsm.{OBSM.X_PCA}",
+            "write_key": f"obsm.{OBSM.X_PCA}",
         }
     )
     cfg_pca = instantiate(cfg_pca)

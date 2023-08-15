@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -207,7 +207,6 @@ class Leiden(BaseUnsupervisedPredictor):
         x = self.read(adata, self.cfg.x_key_for_centroids)
         labels = np.asarray(self.processor.membership_)
         label_to_centroid = centroids_from_Xy(x, labels)
-        print(self.cfg.attrs_key, '=========')
         self.store_item(f"{self.cfg.attrs_key}.cluster_centers_", label_to_centroid)
 
 
@@ -222,10 +221,6 @@ class BaseSupervisedPredictor(BasePredictor, abc.ABC):
         y_key: ReadKey
 
     cfg: Config
-
-    @staticmethod
-    def _processor_must_implement() -> List[str]:
-        return BasePredictor._processor_must_implement() + ['fit']
 
     def _process(self, adata: AnnData) -> None:
         check_has_processor(self)
