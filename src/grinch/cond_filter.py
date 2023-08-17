@@ -45,8 +45,8 @@ class Filter(BaseModel, Generic[T]):
     >>> f1 = Filter(gt=3)
     >>> f1([1, 2, 3, 4, 5, 6], as_mask=True)
     array([False, False, False,  True,  True,  True])
-    >>> f1([5, 4, 6, 3, 2], as_mask=False)
-    array([0, 1, 2])
+    >>> f1([1, 2, 3, 4, 5, 6], as_mask=False)
+    array([3, 4, 5])
 
     >>> f2 = Filter(top_k=2)
     >>> f2([7, 1, 2, 5, 6, 8], as_mask=False)
@@ -59,6 +59,10 @@ class Filter(BaseModel, Generic[T]):
     >>> f = f1 & f2  # Take greater than 3, but no more than 2 elements
     >>> f([2, 4, 3, 5, 6, 0, 1, 7], as_mask=False)
     array([4, 7])
+
+    >>> r = f & f3  # Can also stack StackedFilter and Filter
+    >>> r([3, 4, 5, 6, 7], as_mask=True)
+    array([False, False, False, False, False])
     """
     __conditions__ = ['ge', 'le', 'gt', 'lt', 'top_k', 'bot_k', 'top_ratio', 'bot_ratio']
 

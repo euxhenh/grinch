@@ -39,12 +39,17 @@ class StorageMixin:
 
     Attributes
     ----------
+    __columns__ : List[str]
+        List of allowed AnnData columns.
+
     prefix : str
         The prefix to prepend to all save keys after the column.
 
     storage : Dict[str, Any]
         A dict mapping a key to a representation.
     """
+    __columns__ = ['obs', 'var', 'obsm', 'varm', 'obsp', 'varp', 'uns']
+
     @property
     def prefix(self) -> str:
         """The prefix to prepend to all save keys."""
@@ -197,6 +202,8 @@ class StorageMixin:
         """
         save_class, *save_keys = key.split('.')
 
+        if save_class not in (cols := StorageMixin.__columns__):
+            raise ValueError(f"Save class not in allowed list={cols}.")
         # Make sure save keys are not empty
         for _ in filter(lambda x: len(x) == 0, save_keys):
             raise ValueError("Found 'save_key' of zero-length.")
