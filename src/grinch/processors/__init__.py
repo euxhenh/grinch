@@ -21,7 +21,7 @@ from .predictors import (
 )
 from .repeat import RepeatProcessor
 from .splitter import DataSplitter, Splitter
-from .tools import FilterNaN, GeneIdToName, ReplaceNaN, StoreAsMask
+from .tools import ApplyOp, FilterNaN, GeneIdToName, ReplaceNaN, StoreAsMask
 from .transformers import MDS, PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
@@ -57,6 +57,7 @@ __all__ = [
     'BaseTransformer',
     'TruncatedSVD',
     'GeneIdToName',
+    'ApplyOp',
     'StoreAsMask',
     'ReplaceNaN',
     'FilterNaN',

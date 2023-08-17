@@ -5,7 +5,7 @@ from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from ._utils import to_view
+from ._utils import assert_allclose, to_view
 
 X = np.array([
     [1.0, 4, 4, 2],
@@ -50,3 +50,21 @@ def test_fnan_2(X):
     fnan(adata)
 
     assert adata.shape[0] == 3
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_applyop(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.ApplyOp.Config",
+            "read_key": "obs.vals",
+            "op": "square",
+        }
+    )
+    cfg = instantiate(cfg)
+    op = cfg.create()
+    adata = AnnData(X)
+    adata.obs['vals'] = [2, 3, 4, 5]
+    op(adata)
+
+    assert_allclose(adata.obs['vals'], [4, 9, 16, 25])

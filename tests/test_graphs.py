@@ -33,3 +33,21 @@ def test_knn(X):
     ans = np.array([[0, 0, 1], [0, 0, 2], [1, 0, 0]])
     assert_allclose(ans, adata.obsp[OBSP.KNN_DISTANCE])
     assert isinstance(adata.obsp[OBSP.KNN_DISTANCE], sp.csr_matrix)
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_fuzzy(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FuzzySimplicialSetGraph.Config",
+            "x_key": "X",
+            "n_neighbors": 2,
+        }
+    )
+    cfg = instantiate(cfg)
+    umap = cfg.create()
+    adata = AnnData(X)
+    umap(adata)
+
+    ans = np.array([[0, 0, 1], [0, 0, 1], [1, 1, 0]])
+    assert_allclose(ans, adata.obsp[OBSP.UMAP_CONNECTIVITY])

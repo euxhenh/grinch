@@ -78,6 +78,24 @@ def test_log1p(X):
     adata = AnnData(X.copy())
     log1p(adata)
     X_logged = np.log1p(X)
-    print(adata)
     assert_allclose(X_logged, adata.X)
     assert_allclose(X, adata.layers['pre_log1p'])
+
+
+X_scaled = (X - X.mean(axis=0)) / X.var(axis=0) ** (1/2)
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_scale(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.Scale.Config",
+            "save_input": True,
+        }
+    )
+    cfg = instantiate(cfg)
+    scale = cfg.create()
+    adata = AnnData(X.copy())
+    scale(adata)
+    assert_allclose(X_scaled, adata.X)
+    assert_allclose(X, adata.layers['pre_scale'])
