@@ -1,9 +1,11 @@
 .. -*- mode: rst -*-
 
-|PythonVersion|_ |Codecov|_
+|PythonVersion|_ |CircleCI|_ |Codecov|_
 
 .. |PythonVersion| image:: https://img.shields.io/badge/python-3.10-blue
 .. _PythonVersion: https://pypi.org/project/scikit-learn/
+.. |CircleCI| image:: https://circleci.com/gh/euxhenh/grinch/tree/main.svg?style=shield
+.. _CircleCI: https://circleci.com/gh/euxhenh/grinch
 .. |Codecov| image:: https://codecov.io/gh/euxhenh/grinch/branch/main/graph/badge.svg?token=P8KNCOKJ69
 .. _Codecov: https://codecov.io/gh/euxhenh/grinch
 
