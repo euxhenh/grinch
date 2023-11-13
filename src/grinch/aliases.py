@@ -44,6 +44,7 @@ class AnnDataKeys:
         X_TRUNCATED_SVD = auto()
         X_UMAP = auto()
         GAUSSIAN_MIXTURE_PROBA = auto()
+        X_HARMONY = auto()
 
     class VARM:
         LOG_REG_COEF = auto()

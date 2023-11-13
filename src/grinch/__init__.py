@@ -13,12 +13,13 @@ from . import custom_types as typing
 from . import processors as pr
 from . import shortcuts
 from .aliases import ADK, OBS, OBSM, OBSP, UNS, VAR, VARM, VARP, AnnDataKeys
+from .base import StorageMixin
 from .cond_filter import Filter, StackedFilter
 from .conf import BaseConfigurable
 from .filters import FilterCells, FilterGenes, VarianceFilter
 from .main import instantiate_config
-from .normalizers import Combat, Log1P, NormalizeTotal, Scale
-from .pipeline import GRPipeline
+from .normalizers import Combat, Harmony, Log1P, NormalizeTotal, Scale
+from .pipeline import GRPipeline, MultiRead
 from .processors import *  # noqa
 from .reporter import Report, Reporter
 from .shortcuts import *  # noqa
@@ -33,9 +34,11 @@ __all__ = [
     'OBSP',
     'VARP',
     'UNS',
+    'StorageMixin',
     'AnnDataKeys',
     'BaseConfigurable',
     'GRPipeline',
+    'MultiRead',
     'FilterCells',
     'FilterGenes',
     'VarianceFilter',
@@ -44,6 +47,7 @@ __all__ = [
     'Filter',
     'StackedFilter',
     'Combat',
+    'Harmony',
     'Log1P',
     'Scale',
     'NormalizeTotal',

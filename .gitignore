@@ -16,3 +16,4 @@ figs
 .coverage
 docs/_build
 test-results
+docs
