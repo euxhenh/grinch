@@ -21,6 +21,7 @@ def plot1d(
     """Generates random variables from distribution `dist` and plots a
     histogram in kde mode.
     """
+
     # For better plot view in case there are a few extreme outliers
     params = norm.fit(rvs)
     z1 = norm.ppf(0.01, *params)
@@ -34,8 +35,10 @@ def plot1d(
         rvs_to_plot = rvs
 
     sns.violinplot(rvs_to_plot, color='#b56576')
-    ax = sns.stripplot(rvs_to_plot, color='black', size=1, jitter=1)
-    ax.set_title(title)
+    ax = sns.stripplot(rvs_to_plot, color='black', size=1, jitter=1, ax=ax)
+    assert ax is not None
+    if title is not None:
+        ax.set_title(title)
     params = fit_nbinom(rvs) if dist == 'nbinom' else None
     stats = stats1d(rvs, dist, params=params, pprint=True)
     ax.axhline(stats['dist_q05'], color='#e56b6f', zorder=100)
