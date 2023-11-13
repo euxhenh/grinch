@@ -248,8 +248,6 @@ class GSEAPrerank(GSEA):
         # still needed in order to scale log2fc by the q-values before
         # ranking.
         filter_by: List[Filter] = []
-
-        qval_scaling: bool = True
         seed: int = 123  # Prerank doesn't accept null seeds
 
     cfg: Config
@@ -261,14 +259,15 @@ class GSEAPrerank(GSEA):
         *,
         gene_sets: str | List[str] = DEFAULT_GENE_SET_PRERANK,
         qval_scaling: bool = True,  # pass inside cfg.kwargs
+        qval_eps: float = 1e-200,  # pass inside cfg.kwargs
         **kwargs
     ) -> pd.DataFrame:
         """Wrapper around gp.prerank."""
         data = test.log2fc
         if qval_scaling:
-            if test.qvals.min() < 1e-50:
-                logger.warning("Some q-values are <1e-50.")
-                qvals = np.clip(test.qvals, 1e-50, None)
+            if test.qvals.min() < qval_eps:
+                logger.warning(f"Some q-values are <{qval_eps}.")
+                qvals = np.clip(test.qvals, qval_eps, None)
             else:
                 qvals = test.qvals
             data = data * (-np.log10(qvals))

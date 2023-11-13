@@ -1,6 +1,7 @@
 import abc
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
+import harmonypy
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -9,9 +10,11 @@ from pydantic import Field, field_validator, validate_call
 from sklearn.preprocessing import normalize
 from sklearn.utils.validation import check_array, check_non_negative
 
+from .aliases import OBSM
+from .base import StorageMixin
 from .conf import BaseConfigurable
 from .external.combat import combat  # type: ignore
-from .processors import BaseProcessor
+from .processors import ReadKey, WriteKey
 from .utils.stats import mean_var
 
 
@@ -78,7 +81,7 @@ class BaseNormalizer(BaseConfigurable):
         raise NotImplementedError
 
 
-class Combat(BaseNormalizer):
+class Combat(BaseNormalizer, StorageMixin):
     """Performs batch correction using Combat
     Source:
     https://academic.oup.com/biostatistics/article/8/1/118/252073?login=false
@@ -90,12 +93,12 @@ class Combat(BaseNormalizer):
         if TYPE_CHECKING:
             create: Callable[..., 'Combat']
 
-        batch_key: str
+        batch_key: ReadKey
 
     cfg: Config
 
     def _normalize(self, adata: AnnData) -> None:
-        batch: pd.Series = BaseProcessor.read(adata, self.cfg.batch_key)
+        batch: pd.Series = self.read(adata, self.cfg.batch_key)
         if not isinstance(batch, pd.Series):
             raise ValueError("Batch should be a pandas series")
 
@@ -108,6 +111,33 @@ class Combat(BaseNormalizer):
         data.index = batch.index
         corrected_data = combat(data.T, batch).T
         adata.X = corrected_data.to_numpy()
+
+
+class Harmony(BaseNormalizer, StorageMixin):
+    """Performs batch correction based on Harmony.
+    https://www.nature.com/articles/s41592-019-0619-0
+
+    Uses scanpy's port.
+    """
+    class Config(BaseNormalizer.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'Harmony']
+
+        batch: str
+        x_key: ReadKey = f"obsm.{OBSM.X_PCA}"
+        write_key: WriteKey = f"obsm.{OBSM.X_HARMONY}"
+        kwargs: Dict[str, Any] = {}
+
+    cfg: Config
+
+    @StorageMixin.lazy_writer
+    def _normalize(self, adata: AnnData) -> None:
+        X = self.read(adata, self.cfg.x_key)
+        hm_out = harmonypy.run_harmony(
+            X, adata.obs, self.cfg.batch, **self.cfg.kwargs
+        )
+        self.store_item(self.cfg.write_key, hm_out.Z_corr.T)
 
 
 class NormalizeTotal(BaseNormalizer):

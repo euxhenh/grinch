@@ -19,6 +19,17 @@ def retry(
     """Returns a decorator that will rerun f n times if msg
     is found in the Exception. If msg is None, will rerun on
     any raise Exception.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> @retry(100, msg='found 0', verbose=False)
+    ... def f():
+    ...     if np.random.randint(0, 2) == 0:
+    ...         raise ValueError("found 0")
+    ...     print('done')
+    >>> f()
+    done
     """
     def _decorator(f):
         def _wrapper(*args, **kwargs):
@@ -45,7 +56,7 @@ def plt_interactive(save_path: str | Path | None = None, **kwargs):
     """
     plt.ion()
     yield None
-    plt.ioff()
+    plt.tight_layout()
 
     if save_path is not None:
         # Set good defaults
@@ -54,5 +65,5 @@ def plt_interactive(save_path: str | Path | None = None, **kwargs):
         kwargs.setdefault('transparent', True)
         plt.savefig(str(save_path), **kwargs)
 
-    plt.clf()
     plt.close()
+    plt.ioff()

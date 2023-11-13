@@ -24,6 +24,15 @@ from .ops import group_indices
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    'mean_var',
+    'ttest',
+    'ttest_from_mean_var',
+    '_correct',
+    '_compute_log2fc',
+    'PartMeanVar',
+]
+
 
 @overload
 def _var(

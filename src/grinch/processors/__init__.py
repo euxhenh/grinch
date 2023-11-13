@@ -1,4 +1,4 @@
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ReadKey, WriteKey
 from .de import KSTest, TTest, UnimodalityTest
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
@@ -26,6 +26,8 @@ from .transformers import MDS, PCA, UMAP, BaseTransformer, TruncatedSVD
 
 __all__ = [
     'BaseProcessor',
+    'ReadKey',
+    'WriteKey',
     'TTest',
     'KSTest',
     'UnimodalityTest',

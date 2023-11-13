@@ -1,14 +1,17 @@
+import gc
 import logging
 import traceback
 from os.path import expanduser
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import anndata
+import scanpy as sc
 from anndata import AnnData
 from pydantic import Field, FilePath, field_validator, validate_call
 from tqdm.auto import tqdm
 
+from .base import StorageMixin
 from .conf import BaseConfigurable
 from .processors import (
     BasePredictor,
@@ -16,19 +19,84 @@ from .processors import (
     DataSplitter,
     GroupProcess,
     Splitter,
+    WriteKey,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class GRPipeline(BaseConfigurable):
+class ReadMixin:
+    """Mixin class for reading data files."""
+
+    @staticmethod
+    def read(filepath: FilePath) -> AnnData:
+        """Reads AnnData from filepath"""
+        if filepath.suffix == '.h5':
+            return sc.read_10x_h5(filepath)
+        return anndata.read(filepath)
+
+
+class MultiRead(BaseConfigurable, ReadMixin):
+    """Reads multiple adatas and concatenates them."""
+
+    class Config(BaseConfigurable.Config):
+        """MultiRead.Config
+
+        Parameters
+        ----------
+        data_readpath: Dict
+            Maps the ID of a dataset to the path of the AnnData.
+        id_key: str
+            The ID will be stored as a key under `id_key` if not None.
+        [obs|var]_names_make_unique: bool
+            If True, will make the corresponding axis labels unique.
+        kwargs: Dict
+            Arguments to pass to `concat`.
+        """
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'MultiRead']
+
+        paths: Dict[str, FilePath] = {}
+        id_key: WriteKey | None = 'obs.batch_ID'
+        obs_names_make_unique: bool = True
+        var_names_make_unique: bool = True
+        kwargs: Dict[str, Any] = {}
+
+        @field_validator('paths', mode='before')
+        def expand_paths(cls, val):
+            return {k: expanduser(v) for k, v in val.items()}
+
+    cfg: Config
+
+    def __call__(self) -> AnnData:
+        adatas = []
+        for idx, readpath in self.cfg.paths.items():
+            logger.info(f"Reading AnnData from '{readpath}'...")
+            adata = self.read(readpath)
+            if self.cfg.obs_names_make_unique:
+                adata.obs_names_make_unique()
+            if self.cfg.var_names_make_unique:
+                adata.var_names_make_unique()
+            if self.cfg.id_key is not None:
+                StorageMixin.write(adata, self.cfg.id_key, idx)
+            adatas.append(adata)
+        adata = anndata.concat(adatas, **self.cfg.kwargs)
+        del adatas
+        gc.collect()
+        adata.obs_names_make_unique()
+        return adata
+
+
+class GRPipeline(BaseConfigurable, ReadMixin):
 
     class Config(BaseConfigurable.Config):
 
         if TYPE_CHECKING:
             create: Callable[..., 'GRPipeline']
 
-        data_readpath: FilePath | None = None  # FilePath ensures file exists
+        # FilePath ensures file exists
+        data_readpath: FilePath | MultiRead.Config | None = None
         data_writepath: Path | None = None
         processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
@@ -41,7 +109,9 @@ class GRPipeline(BaseConfigurable):
 
         @field_validator('data_readpath', 'data_writepath', mode='before')
         def expand_paths(cls, val):
-            return expanduser(val) if val is not None else None
+            if not isinstance(val, MultiRead.Config):
+                return expanduser(val) if val is not None else None
+            return val
 
     cfg: Config
 
@@ -52,13 +122,10 @@ class GRPipeline(BaseConfigurable):
         for c in self.cfg.processors:
             if self.cfg.seed is not None:
                 c.seed = self.cfg.seed
-                path = self.cfg.data_writepath or self.cfg.data_readpath
-                if path is not None:
-                    c.logs_path = c.logs_path / path.stem
             self.processors.append(c.create())
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
-    def __call__(self, adata: Optional[AnnData] = None, **kwargs) -> DataSplitter:
+    def __call__(self, adata: AnnData | None = None, **kwargs) -> DataSplitter:
         """Applies processor to the different data splits in DataSplitter.
         It differentiates between predictors (calls processor.predict),
         transformers (calls processor.transform) and it defaults to
@@ -67,8 +134,12 @@ class GRPipeline(BaseConfigurable):
         if adata is None:
             if self.cfg.data_readpath is None:
                 raise ValueError("A path to adata or an adata object is required.")
-            logger.info(f"Reading AnnData from '{self.cfg.data_readpath}'...")
-            adata = anndata.read_h5ad(self.cfg.data_readpath)
+            if isinstance(self.cfg.data_readpath, MultiRead.Config):
+                multi_read = self.cfg.data_readpath.create()
+                adata = multi_read()
+            else:
+                logger.info(f"Reading AnnData from '{self.cfg.data_readpath}'...")
+                adata = self.read(self.cfg.data_readpath)
         logger.info(adata)
         ds = DataSplitter(adata) if not isinstance(adata, DataSplitter) else adata
 

@@ -64,7 +64,10 @@ class Filter(BaseModel, Generic[T]):
     >>> r([3, 4, 5, 6, 7], as_mask=True)
     array([False, False, False, False, False])
     """
-    __conditions__ = ['ge', 'le', 'gt', 'lt', 'top_k', 'bot_k', 'top_ratio', 'bot_ratio']
+    __conditions__ = ['ge', 'le', 'gt', 'lt',
+                      'equal', 'not_equal',
+                      'top_k', 'bot_k',
+                      'top_ratio', 'bot_ratio']
 
     model_config = {
         'validate_assignment': True,
@@ -79,6 +82,9 @@ class Filter(BaseModel, Generic[T]):
     le: T | None = None  # less than or equal
     gt: T | None = None  # greater than
     lt: T | None = None  # less than
+
+    equal: T | None = None  # exactly equal to
+    not_equal: T | None = None  # not equal to
 
     top_k: NonNegativeInt | None = None  # top k items after sorting
     bot_k: NonNegativeInt | None = None  # bottom k items after sorting
@@ -167,6 +173,15 @@ class Filter(BaseModel, Generic[T]):
         k = int(np.ceil(ratio * len(arr)))  # round up
         return self._take_k_functional(arr, k, as_mask, self.is_top)
 
+    def _take_equal(self, arr, as_mask: bool = True):
+        """Take elements exactly equal to `self.cfg.equal`.
+        """
+        if self.equal is not None:
+            mask = arr == self.equal
+        elif self.not_equal is not None:
+            mask = arr != self.not_equal
+        return mask if as_mask else arr[mask]
+
     def _take_cutoff(self, arr, as_mask: bool = True):
         """Takes the elements which are greater than or less than cutoff.
         """
@@ -233,6 +248,8 @@ class Filter(BaseModel, Generic[T]):
 
         if any_not_None(self.ge, self.gt, self.le, self.lt):
             return self._take_cutoff(arr, as_mask)
+        if any_not_None(self.equal, self.not_equal):
+            return self._take_equal(arr, as_mask)
         if any_not_None(self.top_k, self.bot_k):
             return self._take_k(arr, as_mask)
         if any_not_None(self.top_ratio, self.bot_ratio):
@@ -254,6 +271,7 @@ class StackedFilter(UserList):
     *filters: iterable
         An iterable of Filter's or StackedFilter's.
     """
+
     def __init__(self, *filters: Filter | StackedFilter):
         __filters__: List[Filter] = []
 

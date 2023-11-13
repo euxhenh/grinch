@@ -4,6 +4,7 @@ import scipy.sparse as sp
 from anndata import AnnData
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
+from sklearn.preprocessing import StandardScaler
 
 from ._utils import assert_allclose, to_view
 
@@ -82,7 +83,8 @@ def test_log1p(X):
     assert_allclose(X, adata.layers['pre_log1p'])
 
 
-X_scaled = (X - X.mean(axis=0)) / X.var(axis=0) ** (1/2)
+nm = StandardScaler()
+X_scaled = nm.fit_transform(X)
 
 
 @pytest.mark.parametrize("X", X_mods)
@@ -97,5 +99,5 @@ def test_scale(X):
     scale = cfg.create()
     adata = AnnData(X.copy())
     scale(adata)
-    assert_allclose(X_scaled, adata.X)
+    assert_allclose(X_scaled, adata.X, rtol=1e-6, atol=1e-6)
     assert_allclose(X, adata.layers['pre_scale'])

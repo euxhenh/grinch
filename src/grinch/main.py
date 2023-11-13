@@ -1,3 +1,4 @@
+#!/Users/ehasanaj/mambaforge/envs/m10/bin/python
 import argparse
 import logging
 import os
@@ -18,18 +19,9 @@ logging.basicConfig(
 logging.captureWarnings(True)
 
 
-try:
-    import grinch
-    src_dir = os.path.dirname(grinch.__file__)
-except ImportError:
-    src_dir = os.path.dirname(os.path.realpath(__file__))
-
-root_dir = os.path.abspath(os.path.join(src_dir, os.pardir, os.pardir))
-
-
 def instantiate_config(config_name):
     head, tail = os.path.split(config_name)
-    config_dir = os.path.join(root_dir, head)
+    config_dir = os.path.join(os.getcwd(), 'conf')
     # context initialization
     with hydra.initialize_config_dir(version_base=None, config_dir=config_dir):
         cfg = hydra.compose(config_name=tail)
