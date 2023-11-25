@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pytest
 from anndata import AnnData
@@ -6,7 +8,7 @@ from omegaconf import OmegaConf
 
 from grinch import OBS, OBSM, DataSplitter
 
-from ._utils import to_view, assert_allclose
+from ._utils import assert_allclose, to_view
 
 X = np.array([
     [2, 2, 0, 0, 0],
@@ -17,7 +19,7 @@ X = np.array([
     [0, 1, 5, 3, 1],
 ], dtype=np.float32)
 
-X_mods = [X, to_view(X)]
+X_mods = [X, to_view(X), ]
 
 
 @pytest.mark.parametrize("X", X_mods)
@@ -72,3 +74,25 @@ def test_pipeline_end_to_end_single_dataset(X):
     assert_allclose(train.obs[OBS.KMEANS], [0, 1])
     assert_allclose(train.obs[OBS.LOG_REG], [0, 1])
     assert_allclose(val.obs[OBS.LOG_REG], [0, 1, 1])
+
+
+def test_multi_read():
+    curdir = os.path.dirname(os.path.realpath(__file__))
+    multiread_cfg = OmegaConf.create({
+        "_target_": "src.grinch.MultiRead.Config",
+        "paths": {
+            "a1": os.path.join(curdir, 'adatas', 'a1.h5ad'),
+            "a2": os.path.join(curdir, 'adatas', 'a2.h5ad'),
+        },
+        "id_key": None,
+    })
+
+    cfg = OmegaConf.create({
+        "_target_": "src.grinch.GRPipeline.Config",
+        "data_readpath": multiread_cfg,
+        "processors": [],
+    })
+
+    cfg = instantiate(cfg, _convert_='all')
+    obj = cfg.create()
+    obj()  # empty run

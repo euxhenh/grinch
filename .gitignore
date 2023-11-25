@@ -17,3 +17,4 @@ figs
 docs/_build
 test-results
 docs
+!tests/adatas/*

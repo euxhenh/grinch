@@ -335,7 +335,7 @@ class KSTest(PairwiseDETest):
 
         pvals, qvals = self.get_pqvals(pvals)
         m1 = pmv.compute([label], ddof=1)[1]  # take label
-        m2 = m2 or pmv.compute([label], ddof=1, exclude=True)[1]  # all but label
+        m2 = m2 if m2 is not None else pmv.compute([label], ddof=1, exclude=True)[1]  # all - label
         log2fc = self.get_log2fc(m1, m2)
 
         return pd.DataFrame(data=dict(
