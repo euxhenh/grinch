@@ -33,7 +33,7 @@ class ReadMixin:
         """Reads AnnData from filepath"""
         if filepath.suffix == '.h5':
             return sc.read_10x_h5(filepath)
-        return anndata.read(filepath)
+        return anndata.read_h5ad(filepath)
 
 
 class MultiRead(BaseConfigurable, ReadMixin):

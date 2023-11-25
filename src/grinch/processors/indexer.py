@@ -91,5 +91,8 @@ class IndexProcessor(BaseIndexer):
         # passing a view
         key = ['obs_indices', 'var_indices'][int(self.cfg.axis)]
         kwargs = {key: mask}
-        logger.info(f"Running '{self.processor.__class__.__name__}'.")
+        logger.info(
+            f"Running '{self.processor.__class__.__name__}' "
+            f"on {mask.sum()} / {mask.size} points."
+        )
         self.processor(adata, **kwargs)
