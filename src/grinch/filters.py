@@ -5,10 +5,12 @@ from typing import TYPE_CHECKING, Callable
 import numpy as np
 from anndata import AnnData
 from pydantic import NonNegativeFloat, NonNegativeInt, validate_call
-from sklearn.utils.validation import check_non_negative
+from sklearn.utils.validation import check_non_negative, column_or_1d
 
 from .aliases import OBS, VAR
+from .base import StorageMixin
 from .conf import BaseConfigurable
+from .processors import ReadKey
 from .utils import any_not_None, true_inside
 from .utils.decorators import plt_interactive
 from .utils.plotting import plot1d
@@ -132,6 +134,8 @@ class FilterGenes(BaseFilter):
         max_counts: NonNegativeFloat | None = None
         min_cells: NonNegativeInt | None = None
         max_cells: NonNegativeInt | None = None
+        remove_MT_genes: bool = False
+        gene_names_key: ReadKey = "var_names"  # only used if remove_MT_genes
 
     cfg: Config
 
@@ -169,6 +173,11 @@ class FilterGenes(BaseFilter):
                 self.cfg.min_cells,
                 self.cfg.max_cells,
             )
+
+        if self.cfg.remove_MT_genes:
+            gene_names = StorageMixin.read(adata, self.cfg.gene_names_key)
+            gene_names = np.char.upper(column_or_1d(gene_names).astype(str))
+            to_keep &= ~np.char.startswith(gene_names, 'MT-')
 
         if to_keep.sum() < 1:
             raise ValueError(
