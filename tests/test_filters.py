@@ -235,11 +235,13 @@ def test_gene_all(X):
             "min_counts": 6,
             "min_cells": 1,
             "max_cells": 2,
+            "remove_MT_genes": True,
         }
     )
     cfg = instantiate(cfg)
     filter_genes = cfg.create()
     adata = AnnData(X)
+    adata.var_names = ["G1", "MT2", "MT-3", "G4"]
     X_original = adata.X.copy()
     filter_genes(adata)
     assert_allclose(X_original, X)
@@ -247,6 +249,25 @@ def test_gene_all(X):
     assert_allclose(X_filtered, adata.X)
     assert_allclose(adata.var[VAR.N_COUNTS], [9])
     assert_allclose(adata.var[VAR.N_CELLS], [2])
+
+
+@pytest.mark.parametrize("X", X_mods)
+def test_gene_MT(X):
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.FilterGenes.Config",
+            "remove_MT_genes": True,
+        }
+    )
+    cfg = instantiate(cfg)
+    filter_genes = cfg.create()
+    adata = AnnData(X)
+    adata.var_names = ["G1", "MT2", "MT-3", "G4"]
+    X_original = adata.X.copy()
+    filter_genes(adata)
+    assert_allclose(X_original, X)
+    X_filtered = X[:, [0, 1, 3]]
+    assert_allclose(X_filtered, adata.X)
 
 
 @pytest.mark.parametrize("X", X_mods)
