@@ -241,7 +241,7 @@ def _compute_log2fc(mean1, mean2, base='e', is_logged=False):
             base = np.e if base == 'e' else float(base)
             log2fc *= np.log2(base)
     else:
-        log2fc = np.log2((mean1 + 1) / (mean2 + 1))
+        log2fc = np.log2(mean1 + 1) - np.log2(mean2 + 1)
     return log2fc
 
 

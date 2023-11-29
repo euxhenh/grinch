@@ -101,6 +101,7 @@ class GRPipeline(BaseConfigurable, ReadMixin):
         processors: List[BaseConfigurable.Config]
         verbose: bool = Field(True, exclude=True)
         write_key: str = "pipeline"
+        compression: str | int | None = None
         # It may be desirable to write only the columns of adata without
         # the data matrix so save memory. In that case, set no_data_write
         # to True. This will replace the data matrix with a sparse matrix
@@ -165,7 +166,8 @@ class GRPipeline(BaseConfigurable, ReadMixin):
         if self.cfg.data_writepath is not None:
             logger.info(f"Writting AnnData at '{self.cfg.data_writepath}'...")
             ds.write_h5ad(str(self.cfg.data_writepath),
-                          no_data_write=self.cfg.no_data_write)
+                          no_data_write=self.cfg.no_data_write,
+                          compression=self.cfg.compression)
         return ds
 
     def _apply(self, ds: DataSplitter, processor: BaseConfigurable) -> None:

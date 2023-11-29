@@ -27,14 +27,14 @@ class DataSplitter:
     def is_split(self) -> bool:
         return any_not_None(self.VAL_SPLIT, self.TEST_SPLIT)
 
-    def write_h5ad(self, path: str, no_data_write: bool = False) -> None:
+    def write_h5ad(self, path: str, no_data_write: bool = False, **kwargs) -> None:
         """Writes anndata to path. If any of VAL or TEST splits are not
         None, will instead write both to a folder with the name specified
         in path.
         """
         if not any_not_None(self.VAL_SPLIT, self.TEST_SPLIT):
             to_write = as_empty(self.TRAIN_SPLIT) if no_data_write else self.TRAIN_SPLIT
-            to_write.write_h5ad(path)
+            to_write.write_h5ad(path, **kwargs)
             return
 
         if path.endswith('.h5ad'):
@@ -47,7 +47,7 @@ class DataSplitter:
                 if os.path.exists(path_to_write):
                     logger.warning(f"Object {path_to_write} exists. This will be overwritten.")
                 to_write = as_empty(sp) if no_data_write else sp
-                to_write.write_h5ad(path_to_write)
+                to_write.write_h5ad(path_to_write, **kwargs)
 
 
 class Splitter(BaseConfigurable, StorageMixin):
