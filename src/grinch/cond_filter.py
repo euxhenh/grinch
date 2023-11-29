@@ -144,6 +144,7 @@ class Filter(BaseModel, Generic[T]):
         """
         if k > (n := len(arr)):
             logger.warning(f"Requested {k} items but array has size {n}.")
+            k = n
 
         idx = np.argpartition(arr, -k if top else k)  # linear time
         idx = idx[-k:] if top else idx[:k]
