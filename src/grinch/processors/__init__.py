@@ -18,6 +18,7 @@ from .predictors import (
     KMeans,
     Leiden,
     LogisticRegression,
+    XGBClassifier,
 )
 from .repeat import RepeatProcessor
 from .splitter import DataSplitter, Splitter
@@ -50,6 +51,7 @@ __all__ = [
     'FuzzySimplicialSetGraph',
     'Leiden',
     'LogisticRegression',
+    'XGBClassifier',
     'DataSplitter',
     'RepeatProcessor',
     'Splitter',

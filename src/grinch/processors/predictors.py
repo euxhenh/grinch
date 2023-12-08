@@ -5,14 +5,21 @@ from typing import TYPE_CHECKING, Callable, Dict, Literal
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from pydantic import Field, PositiveFloat, PositiveInt, validate_call
+from pydantic import (
+    Field,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    validate_call,
+)
 from sklearn.cluster import KMeans as _KMeans
 from sklearn.linear_model import LogisticRegression as _LogisticRegression
 from sklearn.mixture import BayesianGaussianMixture as _BayesianGaussianMixture
 from sklearn.mixture import GaussianMixture as _GaussianMixture
 from sklearn.utils import indexable
+from xgboost import XGBClassifier as _XGBClassifier
 
-from ..aliases import OBS, OBSM, OBSP
+from ..aliases import OBS, OBSM, OBSP, UNS
 from ..base import StorageMixin
 from ..custom_types import NP1D_Any, NP1D_float
 from ..utils.ops import group_indices
@@ -263,3 +270,44 @@ class LogisticRegression(BaseSupervisedPredictor):
             random_state=self.cfg.seed,
             **self.cfg.kwargs,
         )
+
+
+class XGBClassifier(BaseSupervisedPredictor):
+    """XGBoostClassifier"""
+    __processor_attrs__ = ['feature_importances_', 'n_features_in_']
+
+    class Config(BaseSupervisedPredictor.Config):
+
+        if TYPE_CHECKING:
+            create: Callable[..., 'XGBClassifier']
+
+        labels_key: WriteKey = f"obs.{OBS.XGB_CLASSIFIER}"
+        proba_key: WriteKey = f"obsm.{OBSM.XGB_CLASSIFIER_PROBA}"
+        score_key: WriteKey = f"uns.{UNS.XGB_CLASSIFIER_SCORE}"
+        # XGBoost kwargs
+        n_estimators: ProcessorParam[PositiveInt | None] = 2
+        max_depth: ProcessorParam[PositiveInt | None] = 1
+        max_leaves: ProcessorParam[NonNegativeInt] = 0  # 0 == no limit
+        learning_rate: ProcessorParam[PositiveFloat | None] = 1.0
+
+    cfg: Config
+
+    def __init__(self, cfg: Config, /):
+        super().__init__(cfg)
+
+        self.processor: _XGBClassifier = _XGBClassifier(
+            n_estimators=self.cfg.n_estimators,
+            max_depth=self.cfg.max_depth,
+            max_leaves=self.cfg.max_leaves,
+            learning_rate=self.cfg.learning_rate,
+            random_state=self.cfg.seed,
+            **self.cfg.kwargs,
+        )
+
+    def _post_process(self, adata: AnnData) -> None:
+        x = self.read(adata, self.cfg.x_key)
+        y = self.read(adata, self.cfg.y_key)
+        proba = self.processor.predict_proba(x)
+        score = self.processor.score(x, y)
+        self.store_item(self.cfg.proba_key, proba)
+        self.store_item(self.cfg.score_key, score)

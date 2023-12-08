@@ -23,6 +23,7 @@ class AnnDataKeys:
         GAUSSIAN_MIXTURE_SCORE = auto()
         LEIDEN = auto()
         LOG_REG = auto()
+        XGB_CLASSIFIER = auto()
 
     class VAR:
         N_COUNTS = auto()
@@ -45,6 +46,7 @@ class AnnDataKeys:
         X_UMAP = auto()
         GAUSSIAN_MIXTURE_PROBA = auto()
         X_HARMONY = auto()
+        XGB_CLASSIFIER_PROBA = auto()
 
     class VARM:
         LOG_REG_COEF = auto()
@@ -59,6 +61,7 @@ class AnnDataKeys:
         N_GENE_ID_TO_NAME_FAILED = auto()
         ALL_CUSTOM_LEAD_GENES = auto()
         PIPELINE = auto()
+        XGB_CLASSIFIER_SCORE = auto()
 
     class OBSP:
         KNN_CONNECTIVITY = auto()

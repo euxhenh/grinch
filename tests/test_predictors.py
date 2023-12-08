@@ -12,10 +12,17 @@ from ._utils import assert_allclose, to_view
 X = np.array([
     [6, 8, 0, 0, 0],
     [5, 7, 0, 0, 0],
+    [6, 8, 1, 0, 0],
+    [4, 7, 0, 0, 0],
     [0, 1, 5, 6, 5],
     [2, 1, 7, 9, 8],
     [0, 1, 5, 6, 7],
+    [0, 1, 8, 6, 5],
+    [2, 1, 7, 8, 8],
+    [0, 1, 9, 6, 7],
 ], dtype=np.float32)
+
+K_plus = 4
 
 X_test = np.array([
     [0, -1, 5, 6, 5],
@@ -43,8 +50,8 @@ def test_kmeans_x(X):
     adata = AnnData(X)
     kmeans(adata)
     outp = adata.obs[OBS.KMEANS]
-    assert np.unique(outp[:2]).size == 1
-    assert np.unique(outp[2:]).size == 1
+    assert np.unique(outp[:K_plus]).size == 1
+    assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
 
 
@@ -75,8 +82,8 @@ def test_kmeans_x_pca(X):
     kmeans = cfg.create()
     kmeans(adata)
     outp = adata.obs[OBS.KMEANS]
-    assert np.unique(outp[:2]).size == 1
-    assert np.unique(outp[2:]).size == 1
+    assert np.unique(outp[:K_plus]).size == 1
+    assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
 
     adata_test = AnnData(X_test)
@@ -102,21 +109,25 @@ def test_gmix_x(X):
     adata = AnnData(X)
     kmeans(adata)
     outp = adata.obs[OBS.GAUSSIAN_MIXTURE]
-    assert np.unique(outp[:2]).size == 1
-    assert np.unique(outp[2:]).size == 1
+    assert np.unique(outp[:K_plus]).size == 1
+    assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
     proba = adata.obsm[OBSM.GAUSSIAN_MIXTURE_PROBA]
-    assert (proba[:2, 0] > proba[:2, 1]).all()
-    assert (proba[2:, 0] < proba[2:, 1]).all()
+    assert (proba[:K_plus, 0] > proba[:K_plus, 1]).all()
+    assert (proba[K_plus:, 0] < proba[K_plus:, 1]).all()
 
 
 @pytest.mark.parametrize("X", X_mods_no_sparse)
-def test_log_reg_x(X):
+@pytest.mark.parametrize(
+    "classifier, key", [("LogisticRegression", OBS.LOG_REG),
+                        ("XGBClassifier", OBS.XGB_CLASSIFIER)]
+)
+def test_log_reg_x(X, classifier, key):
     adata = AnnData(X)
     cfg_pca = OmegaConf.create(
         {
             "_target_": "src.grinch.PCA.Config",
-            "n_components": 2,
+            "n_components": 4,
             "seed": 42,
             "write_key": f"obsm.{OBSM.X_PCA}",
         }
@@ -139,26 +150,26 @@ def test_log_reg_x(X):
 
     cfg = OmegaConf.create(
         {
-            "_target_": "src.grinch.LogisticRegression.Config",
+            "_target_": f"src.grinch.{classifier}.Config",
             "x_key": f"obsm.{OBSM.X_PCA}",
             "y_key": f"obs.{OBS.KMEANS}",
             "seed": 42,
-            "labels_key": f"obs.{OBS.LOG_REG}",
+            "labels_key": f"obs.{key}",
         }
     )
     # Need to start using convert all for lists and dicts
     cfg = instantiate(cfg, _convert_='all')
     lr = cfg.create()
     lr(adata)
-    outp = adata.obs[OBS.LOG_REG]
-    assert np.unique(outp[:2]).size == 1
-    assert np.unique(outp[2:]).size == 1
+    outp = adata.obs[key]
+    assert np.unique(outp[:K_plus]).size == 1
+    assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
 
     adata_test = AnnData(X_test)
     pca.transform(adata_test)
     lr.predict(adata_test)
-    outp = adata_test.obs[OBS.LOG_REG]
+    outp = adata_test.obs[key]
     assert outp[0] == outp[2]
     assert outp[0] != outp[1]
 
@@ -170,7 +181,7 @@ def test_leiden(X):
         {
             "_target_": "src.grinch.KNNGraph.Config",
             "x_key": "X",
-            "n_neighbors": 1,
+            "n_neighbors": 3,
         }
     )
     cfg_knn = instantiate(cfg_knn)
@@ -182,20 +193,22 @@ def test_leiden(X):
             "_target_": "src.grinch.Leiden.Config",
             "x_key": f"obsp.{OBSP.KNN_DISTANCE}",
             "seed": 42,
+            "resolution": 0.5,
         }
     )
     cfg = instantiate(cfg)
     leiden = cfg.create()
     leiden(adata)
     pred = adata.obs[OBS.LEIDEN]
-    true = np.array([0, 0, 1, 1, 1])
+    true = np.ones(X.shape[0])
+    true[:K_plus] = 0
     if pred[0] == 1:
         true = 1 - true
     assert_allclose(pred, true)
 
     centroids = {
-        pred[0]: np.ravel(X[:2].mean(axis=0)),
-        1 - pred[0]: np.ravel(X[2:].mean(axis=0)),
+        pred[0]: np.ravel(X[:K_plus].mean(axis=0)),
+        1 - pred[0]: np.ravel(X[K_plus:].mean(axis=0)),
     }
     pred_centroid = adata.uns['leiden_']["cluster_centers_"]
     assert_allclose(centroids[0], pred_centroid['0'])
