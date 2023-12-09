@@ -154,7 +154,6 @@ def test_classifiers_x(X, classifier, key):
             "y_key": f"obs.{OBS.KMEANS}",
             "seed": 42,
             "labels_key": f"obs.{key}",
-            **kwargs,
         }
     )
     # Need to start using convert all for lists and dicts
