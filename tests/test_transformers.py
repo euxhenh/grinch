@@ -87,6 +87,7 @@ def test_umap(X):
             # things happening with spectral initialization and reproducibility
             'kwargs': {
                 'init': 'random',
+                'n_jobs': 1,  # since using random seed
             }
         }
     )
@@ -98,6 +99,7 @@ def test_umap(X):
         random_state=SEED,
         transform_seed=SEED,
         init='random',
+        n_jobs=1,
     )
     adata = AnnData(X)
     up = cfg.create()
