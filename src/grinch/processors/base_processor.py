@@ -16,7 +16,7 @@ from typing import (
 )
 
 from anndata import AnnData
-from pydantic import field_validator, validate_call
+from pydantic import Field, field_validator, validate_call
 
 from ..base import StorageMixin
 from ..conf import BaseConfigurable
@@ -95,7 +95,7 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
             create: Callable[..., 'BaseProcessor']
 
         attrs_key: WriteKey | None = None
-        kwargs: Dict[str, ProcessorParam] = {}  # Processor kwargs
+        kwargs: Dict[str, ProcessorParam] = Field(default_factory=dict)  # Processor kwargs
 
         # Kwargs used by the processor, but are not ProcessorParam's
         __extra_processor_params__: List[str] = []
