@@ -173,6 +173,30 @@ def test_classifiers_x(X, classifier, key):
     assert outp[0] != outp[1]
 
 
+def test_xgboost():
+    from sklearn.datasets import make_classification
+    X, y = make_classification(n_samples=100, n_features=2,
+                               n_informative=2, n_redundant=0)
+    adata = AnnData(X)
+    adata.obs['y'] = y
+
+    cfg = OmegaConf.create(
+        {
+            "_target_": "src.grinch.XGBClassifier.Config",
+            "seed": 42,
+            "x_key": "X",
+            "y_key": "obs.y",
+        }
+    )
+
+    cfg = instantiate(cfg)
+    obj = cfg.create()
+    obj(adata)
+    outp = adata.obs[OBS.XGB_CLASSIFIER].to_numpy()
+    # < 5% error
+    assert (y != outp).mean() < 0.05 or (y != 1 - outp).mean() < 0.05
+
+
 @pytest.mark.parametrize("X", X_mods)
 def test_leiden(X):
     adata = AnnData(X)
