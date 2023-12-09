@@ -49,7 +49,7 @@ def test_kmeans_x(X):
     kmeans = cfg.create()
     adata = AnnData(X)
     kmeans(adata)
-    outp = adata.obs[OBS.KMEANS]
+    outp = adata.obs[OBS.KMEANS].to_numpy()
     assert np.unique(outp[:K_plus]).size == 1
     assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
@@ -81,7 +81,7 @@ def test_kmeans_x_pca(X):
     cfg = instantiate(cfg)
     kmeans = cfg.create()
     kmeans(adata)
-    outp = adata.obs[OBS.KMEANS]
+    outp = adata.obs[OBS.KMEANS].to_numpy()
     assert np.unique(outp[:K_plus]).size == 1
     assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
@@ -89,7 +89,7 @@ def test_kmeans_x_pca(X):
     adata_test = AnnData(X_test)
     pca.transform(adata_test)
     kmeans.predict(adata_test)
-    outp = adata_test.obs[OBS.KMEANS]
+    outp = adata_test.obs[OBS.KMEANS].to_numpy()
     assert outp[0] == outp[2]
     assert outp[0] != outp[1]
 
@@ -108,7 +108,7 @@ def test_gmix_x(X):
     kmeans = cfg.create()
     adata = AnnData(X)
     kmeans(adata)
-    outp = adata.obs[OBS.GAUSSIAN_MIXTURE]
+    outp = adata.obs[OBS.GAUSSIAN_MIXTURE].to_numpy()
     assert np.unique(outp[:K_plus]).size == 1
     assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
@@ -122,7 +122,7 @@ def test_gmix_x(X):
     "classifier, key", [("LogisticRegression", OBS.LOG_REG),
                         ("XGBClassifier", OBS.XGB_CLASSIFIER)]
 )
-def test_log_reg_x(X, classifier, key):
+def test_classifiers_x(X, classifier, key):
     adata = AnnData(X)
     cfg_pca = OmegaConf.create(
         {
@@ -161,7 +161,7 @@ def test_log_reg_x(X, classifier, key):
     cfg = instantiate(cfg, _convert_='all')
     lr = cfg.create()
     lr(adata)
-    outp = adata.obs[key]
+    outp = adata.obs[key].to_numpy()
     assert np.unique(outp[:K_plus]).size == 1
     assert np.unique(outp[K_plus:]).size == 1
     assert outp[0] != outp[-1]
@@ -169,7 +169,7 @@ def test_log_reg_x(X, classifier, key):
     adata_test = AnnData(X_test)
     pca.transform(adata_test)
     lr.predict(adata_test)
-    outp = adata_test.obs[key]
+    outp = adata_test.obs[key].to_numpy()
     assert outp[0] == outp[2]
     assert outp[0] != outp[1]
 
@@ -199,7 +199,7 @@ def test_leiden(X):
     cfg = instantiate(cfg)
     leiden = cfg.create()
     leiden(adata)
-    pred = adata.obs[OBS.LEIDEN]
+    pred = adata.obs[OBS.LEIDEN].to_numpy()
     true = np.ones(X.shape[0])
     true[:K_plus] = 0
     if pred[0] == 1:
