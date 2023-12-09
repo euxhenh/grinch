@@ -175,8 +175,9 @@ def test_classifiers_x(X, classifier, key):
 
 def test_xgboost():
     from sklearn.datasets import make_classification
-    X, y = make_classification(n_samples=100, n_features=2,
-                               n_informative=2, n_redundant=0)
+    X, y = make_classification(
+        n_samples=100, n_features=2, n_informative=2, n_redundant=0,
+        random_state=42, n_clusters_per_class=1, flip_y=False, class_sep=2.0)
     adata = AnnData(X)
     adata.obs['y'] = y
 
