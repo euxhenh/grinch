@@ -127,7 +127,7 @@ def test_classifiers_x(X, classifier, key):
     cfg_pca = OmegaConf.create(
         {
             "_target_": "src.grinch.PCA.Config",
-            "n_components": 4,
+            "n_components": 2,
             "seed": 42,
             "write_key": f"obsm.{OBSM.X_PCA}",
         }

@@ -215,7 +215,7 @@ class Leiden(BaseUnsupervisedPredictor):
 
 
 class BaseSupervisedPredictor(BasePredictor, abc.ABC):
-    """A base class for unsupervised predictors, e.g., clustering."""
+    """A base class for supervised predictors, e.g., logistic regression."""
     __processor_reqs__ = ['fit']
 
     class Config(BasePredictor.Config):
