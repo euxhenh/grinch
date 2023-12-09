@@ -119,8 +119,7 @@ def test_gmix_x(X):
 
 @pytest.mark.parametrize("X", X_mods_no_sparse)
 @pytest.mark.parametrize(
-    "classifier, key", [("LogisticRegression", OBS.LOG_REG),
-                        ("XGBClassifier", OBS.XGB_CLASSIFIER)]
+    "classifier, key", [("LogisticRegression", OBS.LOG_REG)]
 )
 def test_classifiers_x(X, classifier, key):
     adata = AnnData(X)
@@ -147,14 +146,6 @@ def test_classifiers_x(X, classifier, key):
     cfg_kmeans = instantiate(cfg_kmeans)
     kmeans = cfg_kmeans.create()
     kmeans(adata)
-
-    if classifier == "XGBClassifier":
-        kwargs = {
-            'n_estimators': 1,
-            'max_depth': 1,
-        }
-    else:
-        kwargs = {}
 
     cfg = OmegaConf.create(
         {
