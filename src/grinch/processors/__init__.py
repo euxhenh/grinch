@@ -1,5 +1,5 @@
 from .base_processor import BaseProcessor, ReadKey, WriteKey
-from .de import KSTest, TTest, UnimodalityTest
+from .de import KSTest, RankSum, TTest, UnimodalityTest
 from .feature_selection import PhenotypeCover
 from .graphs import BaseGraphConstructor, FuzzySimplicialSetGraph, KNNGraph
 from .group import GroupProcess
@@ -30,6 +30,7 @@ __all__ = [
     'ReadKey',
     'WriteKey',
     'TTest',
+    'RankSum',
     'KSTest',
     'UnimodalityTest',
     'GSEAEnrich',
