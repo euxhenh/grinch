@@ -53,6 +53,7 @@ class AnnDataKeys:
 
     class UNS:
         TTEST = auto()
+        RANK_SUM = auto()
         KSTEST = auto()
         GSEA_ENRICH = auto()
         GSEA_PRERANK = auto()

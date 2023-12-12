@@ -22,7 +22,8 @@ label = [0, 0, 0, 1, 1, 1]
 
 X_mods = [X, sp.csr_matrix(X), to_view(X)]
 tests = [("TTest", UNS.TTEST),
-         ("KSTest", UNS.KSTEST)]
+         ("KSTest", UNS.KSTEST),
+         ("RankSum", UNS.RANK_SUM)]
 
 
 # Test all combinations
