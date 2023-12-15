@@ -40,6 +40,9 @@ class Filter(BaseModel, Generic[T]):
         A percent fraction betwen 0 and 1. Will round up to the nearest
         item.
 
+    absolute : bool
+        If True, will consider the absolute value of `key`.
+
     Examples
     --------
     >>> f1 = Filter(gt=3)
@@ -63,6 +66,10 @@ class Filter(BaseModel, Generic[T]):
     >>> r = f & f3  # Can also stack StackedFilter and Filter
     >>> r([3, 4, 5, 6, 7], as_mask=True)
     array([False, False, False, False, False])
+
+    >>> fabs = Filter(ge=2, absolute=True)
+    >>> fabs([-5, -6, -1, 0, 1, 2], as_mask=False)
+    array([0, 1, 5])
     """
     __conditions__ = ['ge', 'le', 'gt', 'lt',
                       'equal', 'not_equal',
@@ -91,6 +98,8 @@ class Filter(BaseModel, Generic[T]):
     # These will be rounded up to the nearest item
     top_ratio: PercentFraction | None = None  # top fraction of items
     bot_ratio: PercentFraction | None = None  # bottom fraction of items
+
+    absolute: bool = False
 
     @model_validator(mode='before')
     def at_most_one_not_None(cls, data):
@@ -246,6 +255,8 @@ class Filter(BaseModel, Generic[T]):
             obj = self._get_member(obj, self.key)
 
         arr: np.ndarray[T, Any] = column_or_1d(obj)
+        if self.absolute:
+            arr = np.abs(arr)
 
         if any_not_None(self.ge, self.gt, self.le, self.lt):
             return self._take_cutoff(arr, as_mask)

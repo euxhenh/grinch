@@ -48,7 +48,7 @@ class StorageMixin:
     storage : Dict[str, Any]
         A dict mapping a key to a representation.
     """
-    __columns__ = ['obs', 'var', 'obsm', 'varm', 'obsp', 'varp', 'uns']
+    __columns__ = ['obs', 'var', 'obsm', 'varm', 'obsp', 'varp', 'uns', 'layers']
 
     @property
     def prefix(self) -> str:
@@ -114,7 +114,7 @@ class StorageMixin:
         Example
         -------
         If key='uns.ttest' and prefix='group-0.', then this returns
-        'uns.group-0.ttest'. Note the dot '.' after 'group-0'.
+        'uns.group-0.ttest'. Note the dot '.' in prefix.
         """
         first_key, store_keys = key.split('.', maxsplit=1)
         return f'{first_key}.{prefix}{store_keys}'
