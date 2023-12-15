@@ -77,36 +77,39 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         ----------
         attrs_key : str, default=None
             The key to store processors attributes in (post fit). Curly
-            brackets will be formatted. By default use `self.write_key`
-            followed by an underscore.
+            brackets will be formatted. E.g., if a Predictor has a key
+            called `labels_key`, one can set `attrs_key` to
+            `uns.{labels_key}_`. The value (tail) of `labels_key` will
+            automatically be parsed into `attrs_key`.
 
         kwargs : dict, default={}
-            Any Processor parameters that should be passed to the inner
-            processor object (or related methods).
+            Any additional processor parameters should be specified under a
+            `kwargs` dict. Important parameters may be explicitly set in
+            the Config for convenience.
 
         Class attributes
         ----------------
         __extra_processor_params__ : List[str]
-            Holds kwargs that will be passed to the underlying
-            processor/processor function, but are not marked as
-            ProcessorParams and are also not passed via kwargs.
+            Kwargs used by the processor, but are not ProcessorParam's or
+            have a different name than the one specified in the Config.
+            E.g., `random_state` should be here, as we use `seed`. The only
+            use for this list is to remove such keys from `kwargs` if any
+            is present.
         """
         if TYPE_CHECKING:
             create: Callable[..., 'BaseProcessor']
 
         attrs_key: WriteKey | None = None
-        kwargs: Dict[str, ProcessorParam] = Field(default_factory=dict)  # Processor kwargs
+        kwargs: Dict[str, ProcessorParam] = Field(default_factory=dict)
 
-        # Kwargs used by the processor, but are not ProcessorParam's
         __extra_processor_params__: List[str] = []
 
         def model_post_init(self, __context):
             """Safely formats attrs key using any field that is a str."""
             super().model_post_init(__context)
-
             if self.attrs_key is None:
                 return
-
+            # Use only the tail of other keys to format attrs_key.
             field_dict = {
                 k: v.rsplit('.', 1)[-1] for k, v in self.model_dump().items()
                 if isinstance(v, str)
@@ -122,8 +125,8 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
                                       cls.__extra_processor_params__):
                 if val.pop(explicit_key, None) is not None:
                     logger.warning(
-                        f"Popping '{explicit_key}' from kwargs. "
-                        "This key has been set explicitly."
+                        f"Popping '{explicit_key=}' from kwargs. "
+                        "This key has been set in the Config."
                     )
             return val
 
@@ -183,6 +186,16 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         **kwargs,
     ):
         """Calls the processor with adata.
+
+        Order of operations is as follows:
+        1) Clear self.storage
+        2) Run this __call__
+            a) Index into obs or var if any.
+            b) Run preprocessing
+            c) Run processing
+            d) Run postprocessing
+            e) Store processor attributes
+        3) Return storage if kwargs['return_storage'] or write otherwise
         """
         if all_not_None(obs_indices, var_indices):
             adata = adata[obs_indices, var_indices]
@@ -195,7 +208,6 @@ class BaseProcessor(BaseConfigurable, StorageMixin):
         self._pre_process(adata)
         self._process(adata)
         self._post_process(adata)
-
         self.store_attrs()
 
     def _pre_process(self, adata: AnnData) -> None:

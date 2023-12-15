@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from anndata import AnnData
 from diptest import diptest
-from pydantic import Field, PositiveFloat, field_validator
+from pydantic import Field, PositiveFloat, PositiveInt, field_validator
 from scipy.stats import ks_2samp, ranksums
 from sklearn.utils import (
     check_array,
@@ -80,6 +80,10 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
             These will be replaced with appropriate values (1 for
             p-values).
 
+        min_points_per_group : int, default=None
+            If not None, will skip computing values for groups with fewer
+            than this many points.
+
         control_group : str, default=None
             The label to use in a 'one_vs_one' test type. Must be present
             in the array specified by `group_key`.
@@ -105,6 +109,7 @@ class PairwiseDETest(BaseProcessor, abc.ABC):
         base: PositiveFloat | Literal['e'] | None = Field('e')
         correction: str = 'fdr_bh'
         replace_nan: bool = True
+        min_points_per_group: PositiveInt | None = None
 
         # If any of the following is not None, will perform a one_vs_one
         # test. E.g., if control samples are given in `control_key`, then for
@@ -272,6 +277,9 @@ class TTest(PairwiseDETest):
         """Perform a single t-Test.
         """
         n1, m1, v1 = pmv.compute([label], ddof=1)  # Stats for label
+        if self.cfg.min_points_per_group is not None:
+            if n1 < self.cfg.min_points_per_group:
+                return pd.DataFrame()  # Empty
         # If no control group, will compute from all but label (one-vs-all)
         n2, m2, v2 = control_stats or pmv.compute([label], ddof=1, exclude=True)
 
@@ -325,6 +333,10 @@ class RankSum(PairwiseDETest):
 
     def _single_test(self, pmv: PartMeanVar, label, *, x, y, m2=None) -> pd.DataFrame:
         """Perform a single rank sum test."""
+        if self.cfg.min_points_per_group is not None:
+            if x.shape[0] < self.cfg.min_points_per_group:
+                return pd.DataFrame()
+
         statistic, pvals = ranksums(x, y, alternative=self.cfg.alternative)
         pvals, qvals = self.get_pqvals(pvals)
         m1 = pmv.compute([label], ddof=1)[1]  # take label
@@ -383,6 +395,10 @@ class KSTest(PairwiseDETest):
 
     def _single_test(self, pmv: PartMeanVar, label, *, x, y, m2) -> pd.DataFrame:
         """Perform a single ks test"""
+        if self.cfg.min_points_per_group is not None:
+            if x.shape[0] < self.cfg.min_points_per_group:
+                return pd.DataFrame()
+
         part_ks_2samp = partial(
             ks_2samp,
             alternative=self.cfg.alternative,

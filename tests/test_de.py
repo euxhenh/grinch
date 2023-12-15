@@ -79,6 +79,30 @@ def test_tests(X, test, key):
     assert log2fc[4] < 2
 
 
+@pytest.mark.parametrize("test,key", tests)
+def test_small_group(test, key):
+    X = np.array([
+        [1, 2, 3, 100, 150],
+        [60, 46, 34, 0, 0],
+        [50, 49, 34, 0, 0],
+        [60, 46, 38, 0, 0],
+    ])
+    cfg = OmegaConf.create(
+            {
+                "_target_": f"src.grinch.{test}.Config",
+                "min_points_per_group": 2,
+                "group_key": "obs.label",
+            }
+        )
+    cfg = instantiate(cfg)
+    test = cfg.create()
+    adata = AnnData(X)
+    adata.obs['label'] = [0, 1, 1, 1]
+    test(adata)
+    # empty dataframe
+    assert len(adata.uns[key]['label-0']) == 0
+
+
 X = np.array([
     [1, 5, 4, 45, 62],
     [5, 2, 4, 44, 75],
