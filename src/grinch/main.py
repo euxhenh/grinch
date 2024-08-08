@@ -1,4 +1,3 @@
-#!/Users/ehasanaj/mambaforge/envs/m10/bin/python
 import argparse
 import logging
 import os
